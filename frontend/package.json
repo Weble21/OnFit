@@ -1,0 +1,11 @@
+{
+  "name": "onfit-frontend",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node server.mjs",
+    "start": "node server.mjs",
+    "check": "node --check src/app.js && node --check src/data.js && node --check server.mjs && node --check src/upload.js",
+    "test": "node --test tests/*.test.mjs"
+  }
+}
