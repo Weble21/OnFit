@@ -1,0 +1,13 @@
+spring:
+  application:
+    name: job-recommendation-backend
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/onfit}
+    username: ${DB_USERNAME:onfit}
+    password: ${DB_PASSWORD:onfit_local}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    enabled: true

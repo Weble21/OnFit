@@ -1,6 +1,13 @@
 HELP.md
+<<<<<<< HEAD
 .gradle
 build/
+=======
+.gradle/
+build/
+backend/.gradle/
+backend/build/
+>>>>>>> c926473 (feat.backend)
 !gradle/wrapper/gradle-wrapper.jar
 !**/src/main/**/build/
 !**/src/test/**/build/
@@ -34,4 +41,9 @@ out/
 /.nb-gradle/
 
 ### VS Code ###
+<<<<<<< HEAD
 .vscode/
+=======
+.vscode/*
+!.vscode/launch.json
+>>>>>>> c926473 (feat.backend)

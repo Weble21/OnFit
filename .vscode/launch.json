@@ -1,0 +1,12 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "java",
+      "name": "OnFit Backend",
+      "request": "launch",
+      "mainClass": "com.doggeon.jobrecommendation.JobRecommendationBackendApplication",
+      "cwd": "${workspaceFolder}/backend"
+    }
+  ]
+}

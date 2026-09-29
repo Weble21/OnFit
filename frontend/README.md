@@ -14,6 +14,11 @@ npm.cmd run dev --prefix frontend
 브라우저에서 http://localhost:5173 접속.
 다른 포트는 PowerShell에서 `$env:PORT = '5174'` 설정 후 실행하세요.
 
+<<<<<<< HEAD
+=======
+VS Code Live Server를 사용하는 경우에는 `frontend/index.html`에서 실행하세요. 저장소 루트가 서버 루트라면 주소는 `/frontend/index.html`입니다.
+
+>>>>>>> c926473 (feat.backend)
 ## 화면
 
 - `#/`: 서비스 소개, 로그인 팝업
