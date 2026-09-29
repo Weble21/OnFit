@@ -1,3 +1,7 @@
+import { profileSkills } from './data.js';
+
+const BACKEND_DOWN = '백엔드에 연결할 수 없습니다. PostgreSQL과 Spring Boot를 실행해 주세요.';
+
 async function request(path, options = {}) {
   let response;
   try {
@@ -6,10 +10,14 @@ async function request(path, options = {}) {
       headers: { 'Accept': 'application/json', ...(options.body ? { 'Content-Type': 'application/json' } : {}) },
     });
   } catch {
-    throw new Error('백엔드에 연결할 수 없습니다. PostgreSQL과 Spring Boot를 실행해 주세요.');
+    throw new Error(BACKEND_DOWN);
   }
   if (!response.ok) {
-    const error = new Error(response.status === 404 ? '요청한 데이터를 찾을 수 없습니다.' : '서버 요청에 실패했습니다.');
+    // The backend answers with an RFC 9457 problem whose `detail` is written for users.
+    const problem = await response.json().catch(() => null);
+    const fallback = response.status === 404 ? '요청한 데이터를 찾을 수 없습니다.'
+      : response.status === 502 ? BACKEND_DOWN : '서버 요청에 실패했습니다.';
+    const error = new Error(problem?.detail || fallback);
     error.status = response.status;
     throw error;
   }
@@ -29,18 +37,11 @@ export async function saveProfile(profile) {
 export const createRecommendations = () => request('/recommendations', { method: 'POST' });
 
 export function toProfileRequest(profile) {
-  const normalizeSkill = value => {
-    const key = value.toLowerCase().replace(/\s+/g, '');
-    return ({ postgres: 'postgresql', postgresql: 'postgresql', springboot: 'springboot' })[key] || key;
-  };
-  const skills = [...new Map(profile.projects.flatMap(project => project.stack.split(/[,，\n]/))
-    .map(value => value.trim()).filter(Boolean)
-    .map(value => [normalizeSkill(value), value])).values()];
   // PUT replaces the whole profile, so fields the form does not edit travel in `extra` and go back unchanged.
   return {
     targetRoles: [profile.role],
     preferredLocations: profile.location ? [profile.location.trim()] : [],
-    skills,
+    skills: profileSkills(profile),
     certificates: profile.certificates || [],
     projects: profile.projects.map(project => ({
       ...project.extra, name: project.name, description: project.description, techStack: project.stack,
@@ -74,9 +75,6 @@ export function fromProfileResponse(response, previous = null) {
 }
 
 export function toDisplayJob(job, recommendation = null) {
-  const matched = recommendation?.matchedEvidence || [];
-  const matchedRequired = job.requiredSkills.filter(skill => matched.includes('필수 기술 일치: ' + skill));
-  const matchedPreferred = job.preferredSkills.filter(skill => matched.includes('우대 기술 일치: ' + skill));
   return {
     id: String(job.id),
     company: job.companyName, initial: job.companyName.slice(0, 1), color: 'sage',
@@ -87,7 +85,7 @@ export function toDisplayJob(job, recommendation = null) {
     status: job.status, deadline: job.deadline,
     score: recommendation?.totalScore ?? null,
     scores: recommendation,
-    requiredMatch: { matched: matchedRequired, missing: recommendation?.missingSkills || [] },
-    preferredMatch: { matched: matchedPreferred },
+    requiredMatch: { matched: recommendation?.matchedRequiredSkills || [], missing: recommendation?.missingSkills || [] },
+    preferredMatch: { matched: recommendation?.matchedPreferredSkills || [] },
   };
 }

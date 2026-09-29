@@ -101,14 +101,19 @@ class ProfileApiTests {
                 }
                 """;
         mvc.perform(put("/api/profiles/me").contentType(MediaType.APPLICATION_JSON).content(duplicateSkills))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").value("중복된 기술입니다: Postgres"));
         assertEquals(3, jdbcTemplate.queryForObject("SELECT COUNT(*) FROM skills", Integer.class));
     }
 
     @Test
     void rejectsMissingFieldsAndInvalidDates() throws Exception {
         mvc.perform(post("/api/profiles").contentType(MediaType.APPLICATION_JSON).content("{}"))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").value(org.hamcrest.Matchers.startsWith("입력값을 확인해 주세요: ")));
+        mvc.perform(post("/api/profiles").contentType(MediaType.APPLICATION_JSON).content("{\"skills\": ["))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").value(org.hamcrest.Matchers.startsWith("요청 형식이 올바르지 않습니다.")));
 
         String invalidDates = """
                 {
@@ -123,6 +128,7 @@ class ProfileApiTests {
                 }
                 """;
         mvc.perform(put("/api/profiles/me").contentType(MediaType.APPLICATION_JSON).content(invalidDates))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").value("종료일은 시작일보다 빠를 수 없습니다."));
     }
 }

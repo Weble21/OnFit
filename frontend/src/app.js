@@ -1,5 +1,5 @@
 import { FILE_ACCEPT, validateAttachment, fileSize } from './upload.js';
-import { sampleProfile, profileSkills, analyzeText, sampleJD, roles, regions } from './data.js';
+import { sampleProfile, profileSkills, splitSkills, analyzeText, sampleJD, roles, regions } from './data.js';
 import { getProfile, saveProfile, createRecommendations, fromProfileResponse, toDisplayJob } from './api.js';
 
 const app = document.querySelector('#app');
@@ -371,7 +371,7 @@ async function saveProfileFromForm(form) {
   const data=new FormData(form);
   const extra=block=>JSON.parse(block.dataset.extra||'{}');
   const projects=[...form.querySelectorAll('.project-block')].map(p=>({name:p.querySelector('[name=projectName]').value.trim(),description:p.querySelector('[name=projectDescription]').value.trim(),stack:p.querySelector('[name=projectStack]').value.trim(),extra:extra(p)}));
-  if (projects.some(p=>!p.stack.split(/[,，\n]/).some(s=>s.trim()))) { toast('프로젝트에 기술을 한 개 이상 입력해 주세요.'); return; }
+  if (projects.some(p=>!splitSkills(p.stack).length)) { toast('프로젝트에 기술을 한 개 이상 입력해 주세요.'); return; }
   const career=data.get('career');
   const experiences=career==='경력'?[...form.querySelectorAll('.experience-block')].map(e=>({company:e.querySelector('[name=experienceCompany]').value.trim(),role:e.querySelector('[name=experienceRole]').value,start:e.querySelector('[name=experienceStart]').value,end:e.querySelector('[name=experienceEnd]').value,extra:extra(e)})):[];
   if (experiences.some(e=>e.end && e.end<e.start)) { toast('경력 종료 월은 시작 월보다 빠를 수 없어요.'); return; }

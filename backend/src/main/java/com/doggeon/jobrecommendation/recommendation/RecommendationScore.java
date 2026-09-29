@@ -9,9 +9,12 @@ import java.util.List;
 public record RecommendationScore(BigDecimal totalScore, BigDecimal requiredScore,
                                   BigDecimal preferredScore, BigDecimal semanticScore,
                                   BigDecimal experienceScore, BigDecimal preferenceScore,
+                                  List<String> matchedRequiredSkills, List<String> matchedPreferredSkills,
                                   List<String> matchedEvidence, List<String> missingSkills) {
 
     public RecommendationScore {
+        matchedRequiredSkills = List.copyOf(matchedRequiredSkills);
+        matchedPreferredSkills = List.copyOf(matchedPreferredSkills);
         matchedEvidence = List.copyOf(matchedEvidence);
         missingSkills = List.copyOf(missingSkills);
     }
@@ -19,6 +22,8 @@ public record RecommendationScore(BigDecimal totalScore, BigDecimal requiredScor
     public Recommendation toEntity(User user, JobPosting job) {
         Recommendation recommendation = new Recommendation(user, job, totalScore, requiredScore,
                 preferredScore, semanticScore, experienceScore, preferenceScore);
+        recommendation.getMatchedRequiredSkills().addAll(matchedRequiredSkills);
+        recommendation.getMatchedPreferredSkills().addAll(matchedPreferredSkills);
         recommendation.getMatchedEvidence().addAll(matchedEvidence);
         recommendation.getMissingSkills().addAll(missingSkills);
         return recommendation;
@@ -31,6 +36,8 @@ public record RecommendationScore(BigDecimal totalScore, BigDecimal requiredScor
                 && semanticScore.equals(existing.getSemanticScore())
                 && experienceScore.equals(existing.getExperienceScore())
                 && preferenceScore.equals(existing.getPreferenceScore())
+                && matchedRequiredSkills.equals(existing.getMatchedRequiredSkills())
+                && matchedPreferredSkills.equals(existing.getMatchedPreferredSkills())
                 && matchedEvidence.equals(existing.getMatchedEvidence())
                 && missingSkills.equals(existing.getMissingSkills());
     }

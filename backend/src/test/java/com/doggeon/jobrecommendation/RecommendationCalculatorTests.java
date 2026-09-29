@@ -9,6 +9,7 @@ import com.doggeon.jobrecommendation.domain.Project;
 import com.doggeon.jobrecommendation.domain.Skill;
 import com.doggeon.jobrecommendation.domain.User;
 import com.doggeon.jobrecommendation.domain.UserProfile;
+import com.doggeon.jobrecommendation.profile.SkillNormalizer;
 import com.doggeon.jobrecommendation.recommendation.RecommendationCalculator;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -43,6 +44,8 @@ class RecommendationCalculatorTests {
         assertThat(first.preferenceScore()).isEqualByComparingTo("100.00");
         assertThat(first.totalScore()).isEqualByComparingTo("58.33");
         assertThat(first.missingSkills()).containsExactly("Java");
+        assertThat(first.matchedRequiredSkills()).containsExactly("Spring Boot", "PostgreSQL");
+        assertThat(first.matchedPreferredSkills()).containsExactly("Docker");
         assertThat(first.matchedEvidence()).containsExactly(
                 "필수 기술 일치: Spring Boot", "필수 기술 일치: PostgreSQL",
                 "우대 기술 일치: Docker", "직무 경력 일치: 백엔드 개발자",
@@ -51,6 +54,35 @@ class RecommendationCalculatorTests {
         assertThat(recommendation.getTotalScore()).isEqualByComparingTo("58.33");
         assertThat(recommendation.getMatchedEvidence()).isEqualTo(first.matchedEvidence());
         assertThat(recommendation.getMissingSkills()).isEqualTo(first.missingSkills());
+        assertThat(recommendation.getMatchedRequiredSkills()).isEqualTo(first.matchedRequiredSkills());
+        assertThat(recommendation.getMatchedPreferredSkills()).isEqualTo(first.matchedPreferredSkills());
+        assertThat(first.matches(recommendation)).isTrue();
+    }
+
+    @Test
+    void projectStackSplitsOnFullWidthCommaButKeepsSlashNames() {
+        UserProfile profile = profile();
+        profile.addProject(new Project("배포 자동화", null, "Java，CI/CD; k8s", null, null, null));
+        JobPosting job = job();
+        job.getRequiredSkills().addAll(java.util.List.of("Java", "CI/CD", "Kubernetes"));
+
+        var result = calculator.calculate(profile, job);
+
+        assertThat(result.experienceScore()).isEqualByComparingTo("100.00");
+        assertThat(result.matchedEvidence()).containsExactly("프로젝트 기술 연관: 배포 자동화");
+    }
+
+    @Test
+    void commonAliasesMatchPostingSkillNames() {
+        UserProfile profile = profile();
+        for (String name : java.util.List.of("k8s", "NodeJS", "JS")) {
+            profile.addSkill(new Skill(name, SkillNormalizer.normalize(name)));
+        }
+        JobPosting job = job();
+        job.getRequiredSkills().addAll(java.util.List.of("Kubernetes", "Node.js", "JavaScript"));
+
+        assertThat(calculator.calculate(profile, job).matchedRequiredSkills())
+                .containsExactly("Kubernetes", "Node.js", "JavaScript");
     }
 
     @Test

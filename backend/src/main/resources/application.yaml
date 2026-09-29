@@ -17,3 +17,6 @@ spring:
 onfit:
   seed:
     enabled: ${ONFIT_SEED_ENABLED:true}
+  # Deadlines are judged in this zone. Set ONFIT_FIXED_DATE (yyyy-MM-dd) to pin "today" for demos.
+  time-zone: ${ONFIT_TIME_ZONE:Asia/Seoul}
+  fixed-date: ${ONFIT_FIXED_DATE:}

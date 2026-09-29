@@ -53,6 +53,18 @@ public class Recommendation {
     private BigDecimal preferenceScore;
 
     @ElementCollection
+    @CollectionTable(name = "recommendation_matched_required_skills", joinColumns = @JoinColumn(name = "recommendation_id"))
+    @OrderColumn(name = "sort_order")
+    @Column(name = "skill_name", nullable = false, length = 120)
+    private List<String> matchedRequiredSkills = new ArrayList<>();
+
+    @ElementCollection
+    @CollectionTable(name = "recommendation_matched_preferred_skills", joinColumns = @JoinColumn(name = "recommendation_id"))
+    @OrderColumn(name = "sort_order")
+    @Column(name = "skill_name", nullable = false, length = 120)
+    private List<String> matchedPreferredSkills = new ArrayList<>();
+
+    @ElementCollection
     @CollectionTable(name = "recommendation_evidence", joinColumns = @JoinColumn(name = "recommendation_id"))
     @OrderColumn(name = "sort_order")
     @Column(name = "evidence_text", nullable = false, columnDefinition = "text")
@@ -94,6 +106,8 @@ public class Recommendation {
     public BigDecimal getSemanticScore() { return semanticScore; }
     public BigDecimal getExperienceScore() { return experienceScore; }
     public BigDecimal getPreferenceScore() { return preferenceScore; }
+    public List<String> getMatchedRequiredSkills() { return matchedRequiredSkills; }
+    public List<String> getMatchedPreferredSkills() { return matchedPreferredSkills; }
     public List<String> getMatchedEvidence() { return matchedEvidence; }
     public List<String> getMissingSkills() { return missingSkills; }
     public Instant getCreatedAt() { return createdAt; }

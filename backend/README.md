@@ -104,8 +104,12 @@ Invoke-RestMethod -Method Get -Uri 'http://localhost:8080/api/profiles/me'
 `PUT /api/profiles/me`에도 같은 JSON 형식을 보내며, 전달한 목록이 기존 목록을
 대체합니다. `projects`와 `experiences`는 선택 사항이고 생략하면 빈 목록으로
 저장합니다. 기술명은 공백과 대소문자를 정리하고 `SpringBoot` → `spring boot`,
-`Postgres` → `postgresql` 등 일부 별칭을 통일합니다. 정규화 후 중복이면 400을
-반환합니다.
+`k8s` → `kubernetes` 같은 별칭을 통일합니다. 별칭 표는
+`src/main/resources/skill-aliases.json`이며 프론트엔드 사본과 테스트로 동기화를 확인합니다.
+정규화 후 중복이면 400을 반환합니다.
+
+오류 응답은 RFC 9457 `ProblemDetail` 형식이며 `detail`에 사용자에게 보여줄 한국어
+문구가 담깁니다(예: `중복된 기술입니다: Amazon Web Services`).
 
 ## 추천 점수 계산기 (5단계)
 
@@ -116,12 +120,14 @@ Invoke-RestMethod -Method Get -Uri 'http://localhost:8080/api/profiles/me'
 
 - 필수·우대 기술: 정규화한 기술명의 일치 비율. 공고에 해당 기술 목록이 없으면 0점.
 - 경험 연관성: 공고 직무와 정확히 일치하는 경력이 있으면 100점. 없으면 프로젝트별
-  `techStack`을 쉼표·세미콜론·슬래시로 나누어 필수 기술을 얼마나 포함하는지 계산하고
+  `techStack`을 쉼표(전각 포함)·세미콜론·줄바꿈으로 나누어(`CI/CD`처럼 `/`가 든 이름은 유지) 필수 기술을 얼마나 포함하는지 계산하고
   가장 높은 비율을 사용합니다. 둘 다 없으면 0점.
 - 희망조건: 희망 직무 일치 50점, 희망 지역 일치 50점. 값이 없거나 불일치하면 0점.
   지역은 시·도 단위로 비교해 `서울특별시 강남구`도 `서울` 공고와 일치한다(`RegionNormalizer`).
-- `matchedEvidence`는 일치한 기술·경력·프로젝트·희망조건을 일정한 순서로 담고,
-  `missingSkills`에는 누락된 **필수 기술만** 담습니다.
+- `matchedRequiredSkills`·`matchedPreferredSkills`는 일치한 필수·우대 기술 목록입니다.
+  화면은 이 필드를 사용하며, `matchedEvidence`는 사람이 읽는 근거 문장입니다.
+  `missingSkills`에는 누락된 **필수 기술만** 담습니다. (V3 마이그레이션이 기존 추천의
+  일치 기술 목록을 근거 문장에서 한 번 채워 넣었습니다.)
 
 계산은 외부 서비스나 현재 시간에 의존하지 않아 같은 입력이면 같은 점수를 냅니다.
 `RecommendationScore.toEntity()`로 점수와 근거를 기존 `Recommendation` 엔티티에
@@ -130,6 +136,9 @@ Invoke-RestMethod -Method Get -Uri 'http://localhost:8080/api/profiles/me'
 ## 공고·추천 API (6단계)
 
 현재 인증이 없으므로 추천은 `demo@onfit.local` 한 명의 프로필을 사용합니다.
+"마감일이 지나지 않음"은 `Asia/Seoul` 날짜 기준입니다(`ONFIT_TIME_ZONE`). 가상 공고의 마감일은
+고정 날짜이므로 시연이나 테스트에서는 `ONFIT_FIXED_DATE=2026-09-29`처럼 기준 날짜를
+고정할 수 있습니다. 테스트 프로필은 이 값을 고정해 두었습니다.
 실제 사용자별 접근 제어가 아니며, 운영 전 인증이 필요합니다.
 
 | 메서드 | 경로 | 결과 |
@@ -140,7 +149,7 @@ Invoke-RestMethod -Method Get -Uri 'http://localhost:8080/api/profiles/me'
 | GET | `/api/recommendations/{recommendationId}` | 데모 사용자의 저장된 추천 상세 |
 
 프로필이 없으면 추천 생성은 404를 반환합니다. `POST` 응답에는 공고, 전체·부분
-점수, `matchedEvidence`, `missingSkills`가 포함됩니다. 같은 사용자·공고에서
+점수, `matchedRequiredSkills`, `matchedPreferredSkills`, `matchedEvidence`, `missingSkills`가 포함됩니다. 같은 사용자·공고에서
 점수와 근거가 동일한 최신 결과가 있으면 새 행을 만들지 않고 재사용합니다.
 프로필 또는 공고가 바뀌어 결과가 달라지면 새 스냅샷을 저장합니다.
 

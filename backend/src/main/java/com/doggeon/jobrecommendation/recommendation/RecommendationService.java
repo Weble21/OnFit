@@ -1,12 +1,9 @@
 package com.doggeon.jobrecommendation.recommendation;
 
-import com.doggeon.jobrecommendation.domain.JobPostingStatus;
 import com.doggeon.jobrecommendation.domain.JobPosting;
 import com.doggeon.jobrecommendation.domain.Recommendation;
 import com.doggeon.jobrecommendation.domain.UserProfile;
 import com.doggeon.jobrecommendation.profile.UserProfileRepository;
-import com.doggeon.jobrecommendation.seed.JobPostingRepository;
-import java.time.LocalDate;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -22,11 +19,11 @@ public class RecommendationService {
 
     private static final String DEMO_EMAIL = "demo@onfit.local";
     private final UserProfileRepository profiles;
-    private final JobPostingRepository jobs;
+    private final JobService jobs;
     private final RecommendationRepository recommendations;
     private final RecommendationCalculator calculator;
 
-    public RecommendationService(UserProfileRepository profiles, JobPostingRepository jobs,
+    public RecommendationService(UserProfileRepository profiles, JobService jobs,
                                  RecommendationRepository recommendations,
                                  RecommendationCalculator calculator) {
         this.profiles = profiles;
@@ -43,8 +40,7 @@ public class RecommendationService {
         // One query for every job's latest snapshot instead of one lookup per job.
         Map<Long, Recommendation> latest = recommendations.findLatestPerJob(profile.getUser().getId())
                 .stream().collect(Collectors.toMap(r -> r.getJobPosting().getId(), Function.identity()));
-        return jobs.findByStatusAndDeadlineGreaterThanEqualOrderByIdAsc(
-                        JobPostingStatus.OPEN, LocalDate.now()).stream()
+        return jobs.openJobs().stream()
                 .map(job -> calculateOrReuse(profile, job, latest.get(job.getId())))
                 .map(RecommendationResponse::from)
                 .sorted(Comparator.comparing(RecommendationResponse::totalScore).reversed()

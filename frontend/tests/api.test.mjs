@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { toProfileRequest, fromProfileResponse, toDisplayJob } from '../src/api.js';
+import { toProfileRequest, fromProfileResponse, toDisplayJob, saveProfile } from '../src/api.js';
 
 test('profile form converts to backend schema', () => {
   const request = toProfileRequest({ role: '백엔드 개발자', location: '서울', projects: [
@@ -20,11 +20,13 @@ test('backend profile and recommendation map to existing UI', () => {
   const job = toDisplayJob({ id: 1, companyName: '가상 회사', title: '개발자', roleName: '백엔드 개발자',
     companyType: '스타트업', location: '서울', careerLevel: '신입', description: '', responsibilities: 'API 개발',
     requiredSkills: ['Java', 'Docker'], preferredSkills: ['AWS'], status: 'OPEN', deadline: '2027-12-31' },
-  { id: 2, totalScore: 52.5, matchedEvidence: ['필수 기술 일치: Java'], missingSkills: ['Docker'] });
+  { id: 2, totalScore: 52.5, matchedRequiredSkills: ['Java'], matchedPreferredSkills: ['AWS'],
+    matchedEvidence: ['필수 기술 일치: Java', '우대 기술 일치: AWS'], missingSkills: ['Docker'] });
   assert.equal(job.id, '1');
   assert.equal(job.score, 52.5);
   assert.deepEqual(job.requiredMatch.matched, ['Java']);
   assert.deepEqual(job.requiredMatch.missing, ['Docker']);
+  assert.deepEqual(job.preferredMatch.matched, ['AWS']);
 });
 
 test('experiences, certificates and fields the form does not edit survive a save', () => {
@@ -41,4 +43,19 @@ test('experiences, certificates and fields the form does not edit survive a save
   assert.equal(request.projects[0].projectUrl, 'https://example.com');
   assert.equal(request.projects[0].startedOn, '2024-01-01');
   assert.deepEqual(toProfileRequest({ ...profile, career: '신입' }).experiences, []);
+});
+
+test('server problem details reach the user instead of a generic message', async () => {
+  const original = globalThis.fetch;
+  globalThis.fetch = async () => new Response(JSON.stringify({ status: 400, detail: '중복된 기술입니다: Postgres' }),
+    { status: 400, headers: { 'Content-Type': 'application/problem+json' } });
+  try {
+    await assert.rejects(saveProfile({ role: '백엔드 개발자', location: '', projects: [{ name: 'A', description: '', stack: 'Java' }] }),
+      { message: '중복된 기술입니다: Postgres', status: 400 });
+    globalThis.fetch = async () => new Response('{"error":"Backend unavailable"}', { status: 502 });
+    await assert.rejects(saveProfile({ role: '백엔드 개발자', location: '', projects: [{ name: 'A', description: '', stack: 'Java' }] }),
+      { message: /백엔드에 연결할 수 없습니다/ });
+  } finally {
+    globalThis.fetch = original;
+  }
 });

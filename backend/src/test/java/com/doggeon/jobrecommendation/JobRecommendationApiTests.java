@@ -85,6 +85,8 @@ class JobRecommendationApiTests {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(id.intValue()))
                 .andExpect(jsonPath("$.job.requiredSkills").isArray())
+                .andExpect(jsonPath("$.matchedRequiredSkills").isArray())
+                .andExpect(jsonPath("$.matchedPreferredSkills").isArray())
                 .andExpect(jsonPath("$.matchedEvidence").isArray())
                 .andExpect(jsonPath("$.missingSkills").isArray());
         mvc.perform(get("/api/recommendations/999999"))

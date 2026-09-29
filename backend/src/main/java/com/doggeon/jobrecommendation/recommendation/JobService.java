@@ -1,7 +1,9 @@
 package com.doggeon.jobrecommendation.recommendation;
 
+import com.doggeon.jobrecommendation.domain.JobPosting;
 import com.doggeon.jobrecommendation.domain.JobPostingStatus;
 import com.doggeon.jobrecommendation.seed.JobPostingRepository;
+import java.time.Clock;
 import java.time.LocalDate;
 import java.util.List;
 import org.springframework.http.HttpStatus;
@@ -13,15 +15,22 @@ import org.springframework.web.server.ResponseStatusException;
 public class JobService {
 
     private final JobPostingRepository jobs;
+    private final Clock clock;
 
-    public JobService(JobPostingRepository jobs) {
+    public JobService(JobPostingRepository jobs, Clock clock) {
         this.jobs = jobs;
+        this.clock = clock;
     }
 
     @Transactional(readOnly = true)
     public List<JobResponse> listOpen() {
+        return openJobs().stream().map(JobResponse::from).toList();
+    }
+
+    /** Open postings whose deadline has not passed in the service time zone. */
+    public List<JobPosting> openJobs() {
         return jobs.findByStatusAndDeadlineGreaterThanEqualOrderByIdAsc(
-                JobPostingStatus.OPEN, LocalDate.now()).stream().map(JobResponse::from).toList();
+                JobPostingStatus.OPEN, LocalDate.now(clock));
     }
 
     @Transactional(readOnly = true)
