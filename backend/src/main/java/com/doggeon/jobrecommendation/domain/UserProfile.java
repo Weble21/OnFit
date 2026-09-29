@@ -96,6 +96,10 @@ public class UserProfile {
         experience.setProfile(this);
     }
 
+    public void markUpdated() {
+        updatedAt = Instant.now();
+    }
+
     public Long getId() { return id; }
     public User getUser() { return user; }
     public List<String> getTargetRoles() { return targetRoles; }

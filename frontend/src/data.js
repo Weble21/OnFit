@@ -1,7 +1,7 @@
 ﻿// Fictional fixtures and deterministic demo calculations. Replace with API calls.
 export const sampleProfile = {
   types: ['스타트업', '중견기업'], companies: '모노랩, 오르빗',
-  role: '백엔드 개발자', department: '플랫폼 개발팀', career: '신입', years: '',
+  role: '백엔드 개발자', location: '서울', department: '플랫폼 개발팀', career: '신입', experiences: [],
   projects: [{ name: '나만의 채용 추천 서비스', description: '사용자 프로필과 공고를 비교하는 추천 서비스를 개발했습니다. Spring Boot API와 PostgreSQL 데이터 모델을 설계하고 Docker로 AWS에 배포했습니다.', stack: 'Java, Spring Boot, PostgreSQL, Docker, AWS' }],
 };
 export const jobs = [
@@ -12,6 +12,9 @@ export const jobs = [
   { id: 'pixel', company: '픽셀스튜디오', initial: 'p', color: 'rose', type: '스타트업', role: '프론트엔드 개발자', team: '웹 경험팀', location: '서울 마포', career: '신입', title: '사용자 경험을 함께 만드는 프론트엔드 개발자', intro: '복잡한 일을 단순하게 만드는 웹 서비스를 만듭니다.', required: ['React', 'TypeScript', 'CSS'], preferred: ['JavaScript', 'Git'], duties: '반응형 웹 UI 개발과 접근성 개선', tags: ['디자인 협업', '유연근무'] },
   { id: 'data', company: '데이터그로브', initial: 'd', color: 'sage', type: '중견기업', role: '데이터 엔지니어', team: '데이터 플랫폼팀', location: '서울 서초', career: '경력', title: '데이터 플랫폼 엔지니어', intro: '데이터에서 다음 비즈니스의 가능성을 발견합니다.', required: ['Python', 'SQL', 'Spark'], preferred: ['AWS', 'Docker'], duties: '데이터 파이프라인 구축과 품질 관리', tags: ['기술 세미나', '하이브리드'] },
 ];
+// Server scoring compares role and region names exactly, so these must cover the seed postings' values.
+export const roles = ['백엔드 개발자', '프론트엔드 개발자', '모바일 개발자', '데이터 엔지니어', '데이터 분석가', 'AI 엔지니어', 'DevOps 엔지니어', '보안 엔지니어', 'QA 엔지니어', '게임 개발자', '로봇 개발자', '기타'];
+export const regions = ['서울', '경기', '인천', '부산', '대구', '광주', '대전', '울산', '세종', '강원', '충북', '충남', '전북', '전남', '경북', '경남', '제주'];
 export const knownSkills = ['Java', 'JavaScript', 'TypeScript', 'Spring Boot', 'PostgreSQL', 'MySQL', 'Python', 'FastAPI', 'Docker', 'AWS', 'Redis', 'React', 'SQL', 'CSS', 'Git', 'Kubernetes', 'Node.js', 'Spark', 'MongoDB'];
 const normalize = value => value.toLowerCase().replace(/\s+/g, ' ').trim();
 export const profileSkills = profile => [...new Set(profile.projects.flatMap(p => p.stack.split(/[,，\n]/)).map(s => s.trim()).filter(Boolean))];

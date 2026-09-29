@@ -1,33 +1,30 @@
-<<<<<<< HEAD
-﻿import http from 'node:http';
-import { readFile } from 'node:fs/promises';
-import { fileURLToPath } from 'node:url';
-=======
 import http from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { brotliCompressSync, gzipSync } from 'node:zlib';
->>>>>>> c926473 (feat.backend)
 import path from 'node:path';
 const root = fileURLToPath(new URL('.', import.meta.url));
 const port = Number(process.env.PORT || 5173);
+const backend = new URL(process.env.BACKEND_URL || 'http://127.0.0.1:8080');
 const types = { '.html': 'text/html', '.css': 'text/css', '.js': 'text/javascript' };
 http.createServer(async (req, res) => {
   try {
     const url = new URL(req.url, 'http://localhost');
+    if (url.pathname.startsWith('/api/')) {
+      const target = new URL(url.pathname + url.search, backend);
+      const upstream = http.request(target, { method: req.method, headers: { ...req.headers, host: target.host } }, response => {
+        res.writeHead(response.statusCode, response.headers);
+        response.pipe(res);
+      });
+      upstream.on('error', () => { if (!res.headersSent) res.writeHead(502, { 'Content-Type': 'application/json; charset=utf-8' }); res.end('{"error":"Backend unavailable"}'); });
+      req.pipe(upstream);
+      return;
+    }
     const relative = url.pathname === '/' ? 'index.html' : decodeURIComponent(url.pathname).replace(/^\/+/, '');
-    if (!['index.html', 'src/app.js', 'src/data.js', 'src/upload.js', 'src/styles.css'].includes(relative)) {
+    if (!['index.html', 'src/app.js', 'src/data.js', 'src/api.js', 'src/upload.js', 'src/styles.css'].includes(relative)) {
       res.writeHead(404); res.end('Not found'); return;
     }
     const file = path.resolve(root, relative);
-<<<<<<< HEAD
-    const body = await readFile(file);
-    res.writeHead(200, { 'Content-Type': types[path.extname(file)] + '; charset=utf-8', 'Cache-Control': 'no-cache' });
-    res.end(body);
-  } catch { res.writeHead(404); res.end('Not found'); }
-}).listen(port, '127.0.0.1', () => console.log('Onfit: http://localhost:' + port));
-
-=======
     let body = await readFile(file);
     const headers = { 'Content-Type': types[path.extname(file)] + '; charset=utf-8', 'Cache-Control': 'no-cache', 'Vary': 'Accept-Encoding' };
     const accepted = req.headers['accept-encoding'] || '';
@@ -37,4 +34,3 @@ http.createServer(async (req, res) => {
     res.end(body);
   } catch { res.writeHead(404); res.end('Not found'); }
 }).listen(port, '127.0.0.1', () => console.log('Onfit: http://localhost:' + port));
->>>>>>> c926473 (feat.backend)

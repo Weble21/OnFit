@@ -61,6 +61,9 @@ public class JobPosting {
     @Column(name = "source_url", length = 1000)
     private String sourceUrl;
 
+    @Column(name = "seed_key", length = 80, unique = true)
+    private String seedKey;
+
     @ElementCollection
     @CollectionTable(name = "job_required_skills", joinColumns = @JoinColumn(name = "job_id"))
     @OrderColumn(name = "sort_order")
@@ -95,6 +98,21 @@ public class JobPosting {
         this.status = status;
     }
 
+    public static JobPosting seeded(String seedKey, String companyName, String title, String roleName,
+                                    String companyType, String careerLevel, String description,
+                                    String responsibilities, String location, LocalDate deadline,
+                                    JobPostingStatus status, List<String> requiredSkills,
+                                    List<String> preferredSkills) {
+        JobPosting job = new JobPosting(companyName, title, roleName, responsibilities, location, deadline, status);
+        job.seedKey = seedKey;
+        job.companyType = companyType;
+        job.careerLevel = careerLevel;
+        job.description = description;
+        job.requiredSkills.addAll(requiredSkills);
+        job.preferredSkills.addAll(preferredSkills);
+        return job;
+    }
+
     public Long getId() { return id; }
     public String getCompanyName() { return companyName; }
     public String getTitle() { return title; }
@@ -107,6 +125,7 @@ public class JobPosting {
     public LocalDate getDeadline() { return deadline; }
     public JobPostingStatus getStatus() { return status; }
     public String getSourceUrl() { return sourceUrl; }
+    public String getSeedKey() { return seedKey; }
     public List<String> getRequiredSkills() { return requiredSkills; }
     public List<String> getPreferredSkills() { return preferredSkills; }
     public Instant getCreatedAt() { return createdAt; }

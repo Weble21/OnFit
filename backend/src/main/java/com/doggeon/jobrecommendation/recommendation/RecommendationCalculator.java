@@ -1,0 +1,127 @@
+package com.doggeon.jobrecommendation.recommendation;
+
+import com.doggeon.jobrecommendation.domain.Experience;
+import com.doggeon.jobrecommendation.domain.JobPosting;
+import com.doggeon.jobrecommendation.domain.Project;
+import com.doggeon.jobrecommendation.domain.Skill;
+import com.doggeon.jobrecommendation.domain.UserProfile;
+import com.doggeon.jobrecommendation.profile.SkillNormalizer;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Locale;
+import java.util.Set;
+import org.springframework.stereotype.Component;
+
+@Component
+public class RecommendationCalculator {
+
+    private static final BigDecimal REQUIRED_WEIGHT = new BigDecimal("0.35");
+    private static final BigDecimal PREFERRED_WEIGHT = new BigDecimal("0.20");
+    private static final BigDecimal SEMANTIC_WEIGHT = new BigDecimal("0.20");
+    private static final BigDecimal EXPERIENCE_WEIGHT = new BigDecimal("0.15");
+    private static final BigDecimal PREFERENCE_WEIGHT = new BigDecimal("0.10");
+    private static final BigDecimal ZERO = new BigDecimal("0.00");
+    private static final BigDecimal HUNDRED = new BigDecimal("100.00");
+
+    public RecommendationScore calculate(UserProfile profile, JobPosting job) {
+        Set<String> skills = new HashSet<>();
+        for (Skill skill : profile.getSkills()) {
+            skills.add(SkillNormalizer.normalize(skill.getName()));
+        }
+
+        List<String> evidence = new ArrayList<>();
+        List<String> missing = new ArrayList<>();
+        int requiredMatches = 0;
+        for (String required : job.getRequiredSkills()) {
+            if (skills.contains(SkillNormalizer.normalize(required))) {
+                requiredMatches++;
+                evidence.add("필수 기술 일치: " + required);
+            } else {
+                missing.add(required);
+            }
+        }
+        int preferredMatches = 0;
+        for (String preferred : job.getPreferredSkills()) {
+            if (skills.contains(SkillNormalizer.normalize(preferred))) {
+                preferredMatches++;
+                evidence.add("우대 기술 일치: " + preferred);
+            }
+        }
+
+        BigDecimal requiredScore = percentage(requiredMatches, job.getRequiredSkills().size());
+        BigDecimal preferredScore = percentage(preferredMatches, job.getPreferredSkills().size());
+        BigDecimal semanticScore = ZERO; // FastAPI embeddings are deferred to a later phase.
+        BigDecimal experienceScore = experienceScore(profile, job, evidence);
+        BigDecimal preferenceScore = preferenceScore(profile, job, evidence);
+        BigDecimal totalScore = requiredScore.multiply(REQUIRED_WEIGHT)
+                .add(preferredScore.multiply(PREFERRED_WEIGHT))
+                .add(semanticScore.multiply(SEMANTIC_WEIGHT))
+                .add(experienceScore.multiply(EXPERIENCE_WEIGHT))
+                .add(preferenceScore.multiply(PREFERENCE_WEIGHT))
+                .setScale(2, RoundingMode.HALF_UP);
+        return new RecommendationScore(totalScore, requiredScore, preferredScore, semanticScore,
+                experienceScore, preferenceScore, evidence, missing);
+    }
+
+    private BigDecimal experienceScore(UserProfile profile, JobPosting job, List<String> evidence) {
+        String jobRole = normalizeText(job.getRoleName());
+        for (Experience experience : profile.getExperiences()) {
+            if (normalizeText(experience.getRoleName()).equals(jobRole)) {
+                evidence.add("직무 경력 일치: " + experience.getRoleName());
+                return HUNDRED;
+            }
+        }
+
+        // Without an exact role match, use the best project's coverage of required skills.
+        BigDecimal best = ZERO;
+        String bestProject = null;
+        for (Project project : profile.getProjects()) {
+            Set<String> projectSkills = new HashSet<>();
+            if (project.getTechStack() != null) {
+                Arrays.stream(project.getTechStack().split("[,;/]"))
+                        .map(String::trim).filter(value -> !value.isEmpty())
+                        .map(SkillNormalizer::normalize).forEach(projectSkills::add);
+            }
+            long matches = job.getRequiredSkills().stream()
+                    .map(SkillNormalizer::normalize).filter(projectSkills::contains).count();
+            BigDecimal score = percentage((int) matches, job.getRequiredSkills().size());
+            if (score.compareTo(best) > 0) {
+                best = score;
+                bestProject = project.getName();
+            }
+        }
+        if (bestProject != null) {
+            evidence.add("프로젝트 기술 연관: " + bestProject);
+        }
+        return best;
+    }
+
+    private BigDecimal preferenceScore(UserProfile profile, JobPosting job, List<String> evidence) {
+        boolean roleMatch = profile.getTargetRoles().stream()
+                .map(RecommendationCalculator::normalizeText)
+                .anyMatch(role -> role.equals(normalizeText(job.getRoleName())));
+        boolean locationMatch = profile.getPreferredLocations().stream()
+                .map(RegionNormalizer::normalize)
+                .anyMatch(location -> location.equals(RegionNormalizer.normalize(job.getLocation())));
+        if (roleMatch) {
+            evidence.add("희망 직무 일치: " + job.getRoleName());
+        }
+        if (locationMatch) {
+            evidence.add("희망 지역 일치: " + job.getLocation());
+        }
+        return BigDecimal.valueOf((roleMatch ? 50 : 0) + (locationMatch ? 50 : 0)).setScale(2);
+    }
+
+    private static BigDecimal percentage(int matches, int total) {
+        return total == 0 ? ZERO : BigDecimal.valueOf(matches).multiply(HUNDRED)
+                .divide(BigDecimal.valueOf(total), 2, RoundingMode.HALF_UP);
+    }
+
+    private static String normalizeText(String value) {
+        return value.trim().replaceAll("\\s+", " ").toLowerCase(Locale.ROOT);
+    }
+}

@@ -11,3 +11,6 @@ spring:
       ddl-auto: validate
   flyway:
     enabled: true
+onfit:
+  seed:
+    enabled: ${ONFIT_SEED_ENABLED:true}

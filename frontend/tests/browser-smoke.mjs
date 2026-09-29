@@ -29,6 +29,13 @@ try {
   const call=(method,params={})=>new Promise((resolve,reject)=>{const id=++seq;pending.set(id,{resolve,reject});socket.send(JSON.stringify({id,method,params}));});
   const evaluate=async(expression)=>{const r=await call('Runtime.evaluate',{expression,awaitPromise:true,returnByValue:true});if(r.exceptionDetails)throw new Error(JSON.stringify(r.exceptionDetails));return r.result.value;};
   const wait=()=>new Promise(r=>setTimeout(r,160));
+  const waitFor=async(expression)=>{
+    for(let attempt=0;attempt<60;attempt++){
+      if(await evaluate(expression)) return;
+      await wait();
+    }
+    throw new Error('Timed out waiting for: '+expression);
+  };
   const click=async(selector)=>{await evaluate('document.querySelector('+JSON.stringify(selector)+').click()');await wait();};
   const route=async(hash)=>{await evaluate('location.hash='+JSON.stringify(hash));await wait();};
   const screenshot=async(name)=>{const shot=await call('Page.captureScreenshot',{format:'png',captureBeyondViewport:true});await writeFile(path.join(out,name+'.png'),Buffer.from(shot.data,'base64'));};
@@ -45,12 +52,14 @@ try {
   await click('[data-action="login"]');
   assert.equal(await evaluate('document.querySelectorAll(".oauth:disabled").length'),3);
   await click('[data-action="blank-demo"]');
+  await route('/profile');
   assert.ok(await evaluate('document.querySelector("#profile-form") !== null'));
   await evaluate("document.querySelector('[name=projectName]').value='브라우저 테스트 프로젝트';document.querySelector('[name=projectDescription]').value='Java API와 PostgreSQL 데이터베이스를 설계하고 AWS에 배포했습니다.';document.querySelector('[name=projectStack]').value='Java, Spring Boot, PostgreSQL, Docker, AWS';document.querySelector('[name=types][value=스타트업]').checked=true");
   await click('[data-action="add-project"]');
   assert.equal(await evaluate('document.querySelectorAll(".project-block").length'),2);
   await click('.project-block:last-child [data-action="remove-project"]');
   await evaluate('document.querySelector("#profile-form").requestSubmit()');await wait();
+  await waitFor('document.querySelectorAll(".job-card").length > 0');
   assert.ok(await evaluate('document.querySelectorAll(".job-card").length > 0'));
   await screenshot('recommendations-desktop');
   await click('[data-action="favorite"]');
@@ -116,9 +125,14 @@ try {
   await click('[data-mode="text"]');
 
   await route('/profile');
+  assert.equal(await evaluate('document.querySelector("#experience-field").disabled'),true);
   await evaluate("document.querySelector('[name=career][value=경력]').click()");
-  assert.equal(await evaluate('document.querySelector("[name=years]").required'),true);
+  assert.equal(await evaluate('document.querySelector("[name=experienceCompany]").matches(":required:enabled")'),true);
+  await click('[data-action="add-experience"]');
+  assert.equal(await evaluate('document.querySelectorAll(".experience-block").length'),2);
+  await click('.experience-block:last-child [data-action="remove-experience"]');
   await evaluate("document.querySelector('[name=career][value=신입]').click()");
+  assert.equal(await evaluate('document.querySelector("#experience-field").hidden'),true);
   await noOverflow();await screenshot('profile-desktop');
   await call('Emulation.setDeviceMetricsOverride',{width:390,height:844,deviceScaleFactor:1,mobile:true});
   for(const hash of ['/profile','/recommendations','/analyze','/favorites','/']){
