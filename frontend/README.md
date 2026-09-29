@@ -61,7 +61,7 @@ npm.cmd test --prefix frontend
 ## 백엔드 연결 위치
 
 - `src/api.js`: 프로필·공고·추천 API 연결 및 화면 데이터 변환
-- `src/data.js`: 자유 텍스트 JD 분석 데모만 유지 (아직 서버 AI 분석 아님)
+- `src/data.js`: 프로필 직무·지역 선택지와 자유 텍스트 JD 분석 데모 (아직 서버 AI 분석 아님)
 - `src/app.js`: 인증 전 임시 데모 사용자와 브라우저 전용 설정을 관리
 - `openLogin()`: OAuth 제공자별 백엔드 로그인 URL 연결
 - OAuth 완료 후 프로필 유무에 따라 프로필 설정 또는 추천 화면으로 이동

@@ -1,17 +1,9 @@
-﻿// Fictional fixtures and deterministic demo calculations. Replace with API calls.
+﻿// Demo profile, form choices and the keyword comparison behind free-text JD analysis.
 export const sampleProfile = {
   types: ['스타트업', '중견기업'], companies: '모노랩, 오르빗',
   role: '백엔드 개발자', location: '서울', department: '플랫폼 개발팀', career: '신입', experiences: [],
   projects: [{ name: '나만의 채용 추천 서비스', description: '사용자 프로필과 공고를 비교하는 추천 서비스를 개발했습니다. Spring Boot API와 PostgreSQL 데이터 모델을 설계하고 Docker로 AWS에 배포했습니다.', stack: 'Java, Spring Boot, PostgreSQL, Docker, AWS' }],
 };
-export const jobs = [
-  { id: 'mono', company: '모노랩', initial: 'm', color: 'sage', type: '스타트업', role: '백엔드 개발자', team: '커머스 플랫폼팀', location: '서울 성수', career: '신입', title: '함께 성장할 백엔드 개발자', intro: '일상의 작은 브랜드와 사람을 연결하는 커머스 플랫폼을 만들어요.', required: ['Java', 'Spring Boot', 'PostgreSQL'], preferred: ['Docker', 'Redis'], duties: '커머스 서비스 API 개발과 데이터 모델 설계, 안정적인 서비스 운영', tags: ['유연근무', '성장 지원'] },
-  { id: 'orbit', company: '오르빗', initial: 'ø', color: 'peach', type: '중견기업', role: '백엔드 개발자', team: '플랫폼 개발팀', location: '서울 판교 인근', career: '신입', title: '서비스의 기반을 만드는 서버 개발자', intro: '더 편리한 이동을 위한 서비스를 함께 만들 동료를 찾고 있어요.', required: ['Java', 'Spring Boot', 'MySQL'], preferred: ['AWS', 'Docker'], duties: '모빌리티 플랫폼 API 개발, 서비스 성능 개선 및 모니터링', tags: ['하이브리드', '교육비 지원'] },
-  { id: 'flow', company: '플로우웍스', initial: 'f', color: 'lavender', type: '스타트업', role: '백엔드 개발자', team: '제품 개발팀', location: '서울 강남', career: '신입', title: '팀의 일을 더 가볍게 만드는 개발자', intro: '팀이 본질에 집중할 수 있는 협업 도구를 만들고 있습니다.', required: ['Python', 'FastAPI', 'PostgreSQL'], preferred: ['Docker', 'AWS'], duties: '협업 서비스 API 개발 및 외부 서비스 연동', tags: ['원격근무', '자율 출퇴근'] },
-  { id: 'terra', company: '테라뱅크', initial: 't', color: 'sand', type: '대기업', role: '백엔드 개발자', team: '디지털 금융팀', location: '서울 여의도', career: '신입', title: '새로운 금융 경험을 만드는 개발자', intro: '누구나 쉽게 사용할 수 있는 금융 경험을 설계해요.', required: ['Java', 'Spring Boot', 'SQL'], preferred: ['AWS', 'Redis'], duties: '금융 서비스 개발 및 트랜잭션 안정성 개선', tags: ['복지 포인트', '체계적 온보딩'] },
-  { id: 'pixel', company: '픽셀스튜디오', initial: 'p', color: 'rose', type: '스타트업', role: '프론트엔드 개발자', team: '웹 경험팀', location: '서울 마포', career: '신입', title: '사용자 경험을 함께 만드는 프론트엔드 개발자', intro: '복잡한 일을 단순하게 만드는 웹 서비스를 만듭니다.', required: ['React', 'TypeScript', 'CSS'], preferred: ['JavaScript', 'Git'], duties: '반응형 웹 UI 개발과 접근성 개선', tags: ['디자인 협업', '유연근무'] },
-  { id: 'data', company: '데이터그로브', initial: 'd', color: 'sage', type: '중견기업', role: '데이터 엔지니어', team: '데이터 플랫폼팀', location: '서울 서초', career: '경력', title: '데이터 플랫폼 엔지니어', intro: '데이터에서 다음 비즈니스의 가능성을 발견합니다.', required: ['Python', 'SQL', 'Spark'], preferred: ['AWS', 'Docker'], duties: '데이터 파이프라인 구축과 품질 관리', tags: ['기술 세미나', '하이브리드'] },
-];
 // Server scoring compares role and region names exactly, so these must cover the seed postings' values.
 export const roles = ['백엔드 개발자', '프론트엔드 개발자', '모바일 개발자', '데이터 엔지니어', '데이터 분석가', 'AI 엔지니어', 'DevOps 엔지니어', '보안 엔지니어', 'QA 엔지니어', '게임 개발자', '로봇 개발자', '기타'];
 export const regions = ['서울', '경기', '인천', '부산', '대구', '광주', '대전', '울산', '세종', '강원', '충북', '충남', '전북', '전남', '경북', '경남', '제주'];
@@ -22,15 +14,6 @@ export function compareSkills(required, skills) {
   const normalized = new Set(skills.map(normalize));
   const matched = required.filter(s => normalized.has(normalize(s)));
   return { matched, missing: required.filter(s => !normalized.has(normalize(s))), score: required.length ? Math.round(matched.length / required.length * 100) : null };
-}
-export function matchJob(job, profile) {
-  const skills = profileSkills(profile);
-  const required = compareSkills(job.required, skills);
-  const preferred = compareSkills(job.preferred, skills);
-  const roleScore = profile.role === job.role ? 100 : 0;
-  const preferenceScore = !profile.types.length || profile.types.includes(job.type) ? 100 : 0;
-  const score = Math.round(required.score * .55 + preferred.score * .25 + roleScore * .15 + preferenceScore * .05);
-  return { ...job, score, requiredMatch: required, preferredMatch: preferred };
 }
 export function detectSkills(text) {
   return knownSkills.filter(skill => {

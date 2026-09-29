@@ -33,6 +33,7 @@ public class JobSeedService {
             throw new IllegalStateException("Expected 30-50 synthetic job postings, got " + jobs.length);
         }
         Set<String> keys = new HashSet<>();
+        Set<String> existing = repository.findAllSeedKeys();
         int added = 0;
         for (SeedJob job : jobs) {
             if (job.seedKey() == null || job.seedKey().isBlank() || !keys.add(job.seedKey())
@@ -41,7 +42,7 @@ public class JobSeedService {
                     || job.status() == null || job.deadline() == null) {
                 throw new IllegalStateException("Invalid or duplicate seed job: " + job.seedKey());
             }
-            if (!repository.existsBySeedKey(job.seedKey())) {
+            if (!existing.contains(job.seedKey())) {
                 repository.save(JobPosting.seeded(job.seedKey(), job.companyName(), job.title(),
                         job.roleName(), job.companyType(), job.careerLevel(), job.description(),
                         job.responsibilities(), job.location(), LocalDate.parse(job.deadline()),

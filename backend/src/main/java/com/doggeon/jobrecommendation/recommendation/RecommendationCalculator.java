@@ -14,6 +14,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
+import java.util.stream.Collectors;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -28,20 +29,20 @@ public class RecommendationCalculator {
     private static final BigDecimal HUNDRED = new BigDecimal("100.00");
 
     public RecommendationScore calculate(UserProfile profile, JobPosting job) {
-        Set<String> skills = new HashSet<>();
-        for (Skill skill : profile.getSkills()) {
-            skills.add(SkillNormalizer.normalize(skill.getName()));
-        }
+        Set<String> skills = profile.getSkills().stream()
+                .map(Skill::getNormalizedName).collect(Collectors.toSet());
+        List<String> requiredSkills = job.getRequiredSkills();
+        List<String> normalizedRequired = requiredSkills.stream().map(SkillNormalizer::normalize).toList();
 
         List<String> evidence = new ArrayList<>();
         List<String> missing = new ArrayList<>();
         int requiredMatches = 0;
-        for (String required : job.getRequiredSkills()) {
-            if (skills.contains(SkillNormalizer.normalize(required))) {
+        for (int i = 0; i < requiredSkills.size(); i++) {
+            if (skills.contains(normalizedRequired.get(i))) {
                 requiredMatches++;
-                evidence.add("필수 기술 일치: " + required);
+                evidence.add("필수 기술 일치: " + requiredSkills.get(i));
             } else {
-                missing.add(required);
+                missing.add(requiredSkills.get(i));
             }
         }
         int preferredMatches = 0;
@@ -52,10 +53,10 @@ public class RecommendationCalculator {
             }
         }
 
-        BigDecimal requiredScore = percentage(requiredMatches, job.getRequiredSkills().size());
+        BigDecimal requiredScore = percentage(requiredMatches, requiredSkills.size());
         BigDecimal preferredScore = percentage(preferredMatches, job.getPreferredSkills().size());
         BigDecimal semanticScore = ZERO; // FastAPI embeddings are deferred to a later phase.
-        BigDecimal experienceScore = experienceScore(profile, job, evidence);
+        BigDecimal experienceScore = experienceScore(profile, job, normalizedRequired, evidence);
         BigDecimal preferenceScore = preferenceScore(profile, job, evidence);
         BigDecimal totalScore = requiredScore.multiply(REQUIRED_WEIGHT)
                 .add(preferredScore.multiply(PREFERRED_WEIGHT))
@@ -67,7 +68,8 @@ public class RecommendationCalculator {
                 experienceScore, preferenceScore, evidence, missing);
     }
 
-    private BigDecimal experienceScore(UserProfile profile, JobPosting job, List<String> evidence) {
+    private BigDecimal experienceScore(UserProfile profile, JobPosting job, List<String> normalizedRequired,
+                                       List<String> evidence) {
         String jobRole = normalizeText(job.getRoleName());
         for (Experience experience : profile.getExperiences()) {
             if (normalizeText(experience.getRoleName()).equals(jobRole)) {
@@ -86,9 +88,8 @@ public class RecommendationCalculator {
                         .map(String::trim).filter(value -> !value.isEmpty())
                         .map(SkillNormalizer::normalize).forEach(projectSkills::add);
             }
-            long matches = job.getRequiredSkills().stream()
-                    .map(SkillNormalizer::normalize).filter(projectSkills::contains).count();
-            BigDecimal score = percentage((int) matches, job.getRequiredSkills().size());
+            long matches = normalizedRequired.stream().filter(projectSkills::contains).count();
+            BigDecimal score = percentage((int) matches, normalizedRequired.size());
             if (score.compareTo(best) > 0) {
                 best = score;
                 bestProject = project.getName();

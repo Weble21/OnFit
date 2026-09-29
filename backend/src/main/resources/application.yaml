@@ -9,6 +9,9 @@ spring:
     open-in-view: false
     hibernate:
       ddl-auto: validate
+    properties:
+      # Load lazy skill/evidence lists for many jobs in one IN query instead of one query each.
+      hibernate.default_batch_fetch_size: 100
   flyway:
     enabled: true
 onfit:

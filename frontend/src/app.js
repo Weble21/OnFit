@@ -1,6 +1,6 @@
 import { FILE_ACCEPT, validateAttachment, fileSize } from './upload.js';
 import { sampleProfile, profileSkills, analyzeText, sampleJD, roles, regions } from './data.js';
-import { getProfile, saveProfile, getJobs, getJob, createRecommendations, getRecommendation, fromProfileResponse, toDisplayJob } from './api.js';
+import { getProfile, saveProfile, createRecommendations, fromProfileResponse, toDisplayJob } from './api.js';
 
 const app = document.querySelector('#app');
 const modalRoot = document.querySelector('#modal-root');
@@ -111,11 +111,10 @@ async function loadRecommendations() {
   const request = ++recommendationRequest;
   recommendationsLoading = true; recommendationError = '';
   try {
-    const available = await getJobs();
+    // Each recommendation already carries its job, so the job list needs no separate request.
     const results = await createRecommendations();
     if (request !== recommendationRequest) return;
-    const byJob = new Map(results.map(result => [result.job.id, result]));
-    jobs = available.map(job => toDisplayJob(job, byJob.get(job.id)));
+    jobs = results.map(result => toDisplayJob(result.job, result));
     recommendationsLoaded = true;
   } catch (error) {
     if (request === recommendationRequest) recommendationError = error.message;
@@ -125,9 +124,6 @@ async function loadRecommendations() {
       if (['#/recommendations', '#/favorites'].includes(location.hash)) render();
     }
   }
-}
-function recommended() {
-  return [...jobs].sort((a,b)=>b.score-a.score || Number(a.id)-Number(b.id));
 }
 function jobCard(job) {
   const isSaved = favorites.includes(job.id);
@@ -140,11 +136,11 @@ function recommendations(savedOnly=false) {
     if (recommendationError) return '<div class="empty-state" role="alert"><h1>추천을 불러오지 못했어요</h1><p>'+esc(recommendationError)+'</p><button class="btn" data-action="retry-recommendations">다시 시도</button></div>';
     return '<div class="empty-state" role="status"><h1>추천을 계산하고 있어요</h1><p>저장된 프로필과 공고를 비교하고 있습니다.</p></div>';
   }
-  let list = savedOnly ? jobs.filter(j=>favorites.includes(j.id)) : recommended();
-  list = list.filter(j=>(filter==='전체'||j.type===filter) && (j.company+' '+j.title+' '+j.required.join(' ')).toLowerCase().includes(search.toLowerCase()));
-  list.sort(sort==='name' ? (a,b)=>a.company.localeCompare(b.company,'ko') : (a,b)=>b.score-a.score);
+  const query = search.toLowerCase();
+  const list = jobs.filter(j=>(!savedOnly||favorites.includes(j.id)) && (filter==='전체'||j.type===filter) && (j.company+' '+j.title+' '+j.required.join(' ')).toLowerCase().includes(query));
+  list.sort(sort==='name' ? (a,b)=>a.company.localeCompare(b.company,'ko') : (a,b)=>b.score-a.score || Number(a.id)-Number(b.id));
   const skills = profileSkills(profile);
-  const count = recommended().length;
+  const count = jobs.length;
   return pageHeading(savedOnly?'YOUR COLLECTION':'DISCOVER YOUR POSSIBILITIES',savedOnly?'마음에 담아둔 기회':'나의 경험이, 다음 기회로.',savedOnly?'관심 있는 기업을 모아두고 차근차근 준비해 보세요.':'지금까지 쌓아온 경험을 알아봐 줄 기업들을 만나보세요.', '<a class="btn outline small" href="#/profile">'+icon('user')+' 프로필 수정</a>')+
     (!savedOnly?'<section class="welcome-banner" aria-labelledby="welcome-title"><div><span class="banner-label">YOUR NEXT CHAPTER</span><h2 id="welcome-title">나에게 맞는 곳에서,<br>더 크게 자라날 수 있도록.</h2><p>등록한 기술과 희망 직무로 '+count+'개의 가상 공고를 비교했어요.</p><a href="#/analyze" class="banner-link">눈여겨본 공고가 있나요? 직접 분석하기 '+icon('arrow')+'</a></div>'+plant()+'</section><section class="profile-strip" aria-label="나의 커리어 키워드"><div class="profile-strip-title"><span class="round-icon" aria-hidden="true">'+icon('user')+'</span><div><small>나의 커리어 키워드</small><strong>'+esc(profile.role)+' <span>· '+esc(profile.career)+'</span></strong></div></div>'+pillList('profile-tags', [...skills.slice(0,4).map(s=>[s]), ...(skills.length>4?[['+'+(skills.length-4)]]:[])])+'<a href="#/profile" class="icon-btn" aria-label="커리어 프로필 수정">'+icon('chevron')+'</a></section>':'')+
     '<section class="recommendation-section" aria-labelledby="recommendation-title"><header class="section-heading"><h2 id="recommendation-title">'+(savedOnly?'저장한 기업':'발견한 기회')+' <span>'+list.length+'<span class="sr-only">곳</span></span></h2><span class="subtle">'+icon('spark')+' 서버 계산 추천</span></header><div class="filters"><div class="filter-tabs" role="group" aria-label="기업 유형">'+['전체',...new Set(jobs.map(job=>job.type))].map(f=>'<button class="'+(filter===f?'selected':'')+'" data-action="filter" data-value="'+esc(f)+'" aria-pressed="'+(filter===f)+'">'+esc(f)+'</button>').join('')+'</div><search class="filter-controls"><label class="search-field">'+icon('search')+'<input id="company-search" aria-label="기업 또는 기술 검색" placeholder="기업·기술 검색" value="'+esc(search)+'"></label><select id="sort" aria-label="추천 정렬"><option value="score" '+(sort==='score'?'selected':'')+'>점수순</option><option value="name" '+(sort==='name'?'selected':'')+'>기업명순</option></select></search></div><div class="job-grid">'+(list.length?list.map(jobCard).join(''):emptyState('아직 발견한 기회가 없어요',savedOnly?'추천 목록에서 북마크를 눌러 관심 기업을 저장해 보세요.':'검색어나 기업 유형을 바꿔보세요.',savedOnly?'/recommendations':null,'추천 둘러보기',3))+'</div></section><p class="demo-footnote">'+icon('file')+' 이 공고는 가상 데이터입니다. 점수는 서버의 규칙 기반 값이며 의미 유사도는 현재 0점입니다. 합격 가능성을 뜻하지 않습니다.</p>';
@@ -284,14 +280,11 @@ function openLogin() {
   openModal('<div class="login-modal">'+logo()+'<span class="eyebrow">WELCOME TO YOUR NEXT CHAPTER</span><h2>나에게 맞는 기회,<br>온핏에서 시작해요.</h2><p>좋아하는 일에 한 걸음 더 가까이.</p><div class="oauth-buttons"><button disabled class="oauth google"><b>G</b> Google로 시작하기</button><button disabled class="oauth kakao"><b>●</b> 카카오로 시작하기</button><button disabled class="oauth naver"><b>N</b> 네이버로 시작하기</button></div><p class="oauth-note">소셜 로그인은 백엔드 연동 후 제공됩니다.<br>지금은 로그인 없이 화면을 체험할 수 있어요.</p><button class="btn full" data-action="blank-demo">내 프로필로 체험하기 '+icon('arrow')+'</button><button class="btn text full" data-action="sample-demo">샘플 프로필로 둘러보기</button><small class="privacy-note">입력한 프로필은 현재 브라우저에만 저장됩니다.</small></div>','로그인 및 데모 시작');
   modalRoot.querySelector('.privacy-note').textContent = '프로필은 공용 데모 사용자로 서버에 저장됩니다. 실제 개인정보를 입력하지 마세요.';
 }
-async function openJob(id) {
-  const job = jobs.find(j=>j.id===id);
-  if (!job || !profile) return;
-  try {
-    const [detail, result] = await Promise.all([getJob(id), getRecommendation(job.recommendationId)]);
-    const matched = toDisplayJob(detail, result);
-    openModal('<article class="job-detail"><div class="company-logo '+matched.color+'" aria-hidden="true">'+esc(matched.initial)+'</div><div class="detail-eyebrow">'+esc(matched.company)+' · '+esc(matched.type)+' · 가상 공고</div><h2>'+esc(matched.title)+'</h2><p>'+esc(matched.intro)+'</p><div class="detail-meta">'+icon('pin')+esc(matched.location)+' · '+esc(matched.career)+' · 마감 '+esc(matched.deadline || '미정')+'</div><div class="detail-score"><div><small>서버 계산 추천 점수</small><strong>'+matched.score+'<span>점</span></strong></div><p>필수 35% · 우대 20% · 의미 20%<br>경험 15% · 희망조건 10% (의미 점수 0)</p></div><h3>함께 할 일</h3><p>'+esc(matched.duties)+'</p><h3>필수 기술</h3>'+pillList('job-skills', matched.required.map(s=>[s, matched.requiredMatch.matched.includes(s)?'matched':'missing']))+'<h3>우대 기술</h3>'+pillList('job-skills', matched.preferred.map(s=>[s, matched.preferredMatch.matched.includes(s)?'matched':'missing']))+'<h3>점수 상세</h3><p>필수 '+result.requiredScore+' · 우대 '+result.preferredScore+' · 의미 '+result.semanticScore+' · 경험 '+result.experienceScore+' · 희망조건 '+result.preferenceScore+'</p><h3>일치 근거</h3>'+(result.matchedEvidence.length?'<ul>'+result.matchedEvidence.map(e=>'<li>'+esc(e)+'</li>').join('')+'</ul>':'<p>일치 근거가 없습니다.</p>')+'<h3>확인할 필수 기술</h3>'+skillResult(result.missingSkills,'missing','누락된 필수 기술이 없습니다.')+'<div class="analysis-caveat" role="note">실제 채용 중인 공고가 아닌 가상 데이터입니다. 추천 점수는 합격 가능성이 아닙니다.</div><button class="btn full" data-action="favorite" data-id="'+job.id+'">'+icon('bookmark')+(favorites.includes(job.id)?'관심 기업에서 해제':'관심 기업에 저장')+'</button></article>','기업 추천 상세');
-  } catch (error) { toast(error.message); }
+function openJob(id) {
+  const matched = jobs.find(j=>j.id===id);
+  if (!matched || !profile) return;
+  const result = matched.scores;
+  openModal('<article class="job-detail"><div class="company-logo '+matched.color+'" aria-hidden="true">'+esc(matched.initial)+'</div><div class="detail-eyebrow">'+esc(matched.company)+' · '+esc(matched.type)+' · 가상 공고</div><h2>'+esc(matched.title)+'</h2><p>'+esc(matched.intro)+'</p><div class="detail-meta">'+icon('pin')+esc(matched.location)+' · '+esc(matched.career)+' · 마감 '+esc(matched.deadline || '미정')+'</div><div class="detail-score"><div><small>서버 계산 추천 점수</small><strong>'+matched.score+'<span>점</span></strong></div><p>필수 35% · 우대 20% · 의미 20%<br>경험 15% · 희망조건 10% (의미 점수 0)</p></div><h3>함께 할 일</h3><p>'+esc(matched.duties)+'</p><h3>필수 기술</h3>'+pillList('job-skills', matched.required.map(s=>[s, matched.requiredMatch.matched.includes(s)?'matched':'missing']))+'<h3>우대 기술</h3>'+pillList('job-skills', matched.preferred.map(s=>[s, matched.preferredMatch.matched.includes(s)?'matched':'missing']))+'<h3>점수 상세</h3><p>필수 '+result.requiredScore+' · 우대 '+result.preferredScore+' · 의미 '+result.semanticScore+' · 경험 '+result.experienceScore+' · 희망조건 '+result.preferenceScore+'</p><h3>일치 근거</h3>'+(result.matchedEvidence.length?'<ul>'+result.matchedEvidence.map(e=>'<li>'+esc(e)+'</li>').join('')+'</ul>':'<p>일치 근거가 없습니다.</p>')+'<h3>확인할 필수 기술</h3>'+skillResult(result.missingSkills,'missing','누락된 필수 기술이 없습니다.')+'<div class="analysis-caveat" role="note">실제 채용 중인 공고가 아닌 가상 데이터입니다. 추천 점수는 합격 가능성이 아닙니다.</div><button class="btn full" data-action="favorite" data-id="'+matched.id+'">'+icon('bookmark')+(favorites.includes(matched.id)?'관심 기업에서 해제':'관심 기업에 저장')+'</button></article>','기업 추천 상세');
 }
 document.addEventListener('click', event => {
   const button = event.target.closest('[data-action]');
@@ -311,7 +304,7 @@ document.addEventListener('click', event => {
   if (action==='logout') { demoSession=false; persist('demoSession',false); navigate('/'); toast('데모에서 나왔어요. 공용 데모 프로필은 서버에 남아 있습니다.'); }
   if (action==='filter') { filter=button.dataset.value; render(); }
   if (action==='reset-filters') { filter='전체'; search=''; render(); }
-  if (action==='job') void openJob(button.dataset.id);
+  if (action==='job') openJob(button.dataset.id);
   if (action==='retry-recommendations') { recommendationError=''; void loadRecommendations(); render(); }
   if (action==='favorite') {
     const id=button.dataset.id;
@@ -321,7 +314,7 @@ document.addEventListener('click', event => {
     favorites = had?favorites.filter(i=>i!==id):[...favorites,id];
     persist('favorites',favorites);
     render();
-    if (wasModal) void openJob(id);
+    if (wasModal) openJob(id);
     toast(had?'관심 기업에서 해제했어요.':'관심 기업에 저장했어요.');
   }
   if (action==='add-project') {

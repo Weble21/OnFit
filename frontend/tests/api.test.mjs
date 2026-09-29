@@ -22,7 +22,6 @@ test('backend profile and recommendation map to existing UI', () => {
     requiredSkills: ['Java', 'Docker'], preferredSkills: ['AWS'], status: 'OPEN', deadline: '2027-12-31' },
   { id: 2, totalScore: 52.5, matchedEvidence: ['필수 기술 일치: Java'], missingSkills: ['Docker'] });
   assert.equal(job.id, '1');
-  assert.equal(job.recommendationId, 2);
   assert.equal(job.score, 52.5);
   assert.deepEqual(job.requiredMatch.matched, ['Java']);
   assert.deepEqual(job.requiredMatch.missing, ['Docker']);

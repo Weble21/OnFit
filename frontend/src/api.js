@@ -19,15 +19,14 @@ async function request(path, options = {}) {
 export const getProfile = () => request('/profiles/me');
 export async function saveProfile(profile) {
   const body = JSON.stringify(toProfileRequest(profile));
-  let exists = false;
-  try { await getProfile(); exists = true; }
-  catch (error) { if (error.status !== 404) throw error; }
-  return request('/profiles' + (exists ? '/me' : ''), { method: exists ? 'PUT' : 'POST', body });
+  // Updating is the common case; only the first save needs to create the profile.
+  try { return await request('/profiles/me', { method: 'PUT', body }); }
+  catch (error) {
+    if (error.status !== 404) throw error;
+    return request('/profiles', { method: 'POST', body });
+  }
 }
-export const getJobs = () => request('/jobs');
-export const getJob = id => request('/jobs/' + encodeURIComponent(id));
 export const createRecommendations = () => request('/recommendations', { method: 'POST' });
-export const getRecommendation = id => request('/recommendations/' + encodeURIComponent(id));
 
 export function toProfileRequest(profile) {
   const normalizeSkill = value => {
@@ -79,7 +78,7 @@ export function toDisplayJob(job, recommendation = null) {
   const matchedRequired = job.requiredSkills.filter(skill => matched.includes('필수 기술 일치: ' + skill));
   const matchedPreferred = job.preferredSkills.filter(skill => matched.includes('우대 기술 일치: ' + skill));
   return {
-    id: String(job.id), recommendationId: recommendation?.id ?? null,
+    id: String(job.id),
     company: job.companyName, initial: job.companyName.slice(0, 1), color: 'sage',
     type: job.companyType || '기타', role: job.roleName, team: job.roleName,
     location: job.location, career: job.careerLevel || '경력 무관', title: job.title,

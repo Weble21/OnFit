@@ -1,5 +1,5 @@
 import http from 'node:http';
-import { readFile } from 'node:fs/promises';
+import { readFile, stat } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { brotliCompressSync, gzipSync } from 'node:zlib';
 import path from 'node:path';
@@ -7,6 +7,19 @@ const root = fileURLToPath(new URL('.', import.meta.url));
 const port = Number(process.env.PORT || 5173);
 const backend = new URL(process.env.BACKEND_URL || 'http://127.0.0.1:8080');
 const types = { '.html': 'text/html', '.css': 'text/css', '.js': 'text/javascript' };
+const assets = new Set(['index.html', 'src/app.js', 'src/data.js', 'src/api.js', 'src/upload.js', 'src/styles.css']);
+// Brotli at its default quality costs tens of milliseconds per file, so reuse each encoding until the file changes.
+const cache = new Map();
+async function encoded(file, encoding) {
+  const { mtimeMs } = await stat(file);
+  const key = file + ':' + encoding;
+  const hit = cache.get(key);
+  if (hit?.mtimeMs === mtimeMs) return hit.body;
+  const raw = await readFile(file);
+  const body = encoding === 'br' ? brotliCompressSync(raw) : encoding === 'gzip' ? gzipSync(raw) : raw;
+  cache.set(key, { mtimeMs, body });
+  return body;
+}
 http.createServer(async (req, res) => {
   try {
     const url = new URL(req.url, 'http://localhost');
@@ -21,15 +34,15 @@ http.createServer(async (req, res) => {
       return;
     }
     const relative = url.pathname === '/' ? 'index.html' : decodeURIComponent(url.pathname).replace(/^\/+/, '');
-    if (!['index.html', 'src/app.js', 'src/data.js', 'src/api.js', 'src/upload.js', 'src/styles.css'].includes(relative)) {
+    if (!assets.has(relative)) {
       res.writeHead(404); res.end('Not found'); return;
     }
     const file = path.resolve(root, relative);
-    let body = await readFile(file);
     const headers = { 'Content-Type': types[path.extname(file)] + '; charset=utf-8', 'Cache-Control': 'no-cache', 'Vary': 'Accept-Encoding' };
     const accepted = req.headers['accept-encoding'] || '';
-    if (/\bbr\b/.test(accepted)) { body = brotliCompressSync(body); headers['Content-Encoding'] = 'br'; }
-    else if (/\bgzip\b/.test(accepted)) { body = gzipSync(body); headers['Content-Encoding'] = 'gzip'; }
+    const encoding = /\bbr\b/.test(accepted) ? 'br' : /\bgzip\b/.test(accepted) ? 'gzip' : null;
+    if (encoding) headers['Content-Encoding'] = encoding;
+    const body = await encoded(file, encoding);
     res.writeHead(200, headers);
     res.end(body);
   } catch { res.writeHead(404); res.end('Not found'); }

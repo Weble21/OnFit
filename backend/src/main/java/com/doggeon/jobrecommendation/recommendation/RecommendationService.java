@@ -9,6 +9,9 @@ import com.doggeon.jobrecommendation.seed.JobPostingRepository;
 import java.time.LocalDate;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -37,21 +40,23 @@ public class RecommendationService {
         UserProfile profile = profiles.findByUserEmail(DEMO_EMAIL)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
                         "먼저 데모 프로필을 만들어 주세요."));
+        // One query for every job's latest snapshot instead of one lookup per job.
+        Map<Long, Recommendation> latest = recommendations.findLatestPerJob(profile.getUser().getId())
+                .stream().collect(Collectors.toMap(r -> r.getJobPosting().getId(), Function.identity()));
         return jobs.findByStatusAndDeadlineGreaterThanEqualOrderByIdAsc(
                         JobPostingStatus.OPEN, LocalDate.now()).stream()
-                .map(job -> calculateOrReuse(profile, job))
+                .map(job -> calculateOrReuse(profile, job, latest.get(job.getId())))
                 .map(RecommendationResponse::from)
                 .sorted(Comparator.comparing(RecommendationResponse::totalScore).reversed()
                         .thenComparing(result -> result.job().id()))
                 .toList();
     }
 
-    private Recommendation calculateOrReuse(UserProfile profile, JobPosting job) {
+    private Recommendation calculateOrReuse(UserProfile profile, JobPosting job, Recommendation previous) {
         RecommendationScore score = calculator.calculate(profile, job);
-        return recommendations.findFirstByUserIdAndJobPostingIdOrderByIdDesc(
-                        profile.getUser().getId(), job.getId())
-                .filter(score::matches)
-                .orElseGet(() -> recommendations.save(score.toEntity(profile.getUser(), job)));
+        return previous != null && score.matches(previous)
+                ? previous
+                : recommendations.save(score.toEntity(profile.getUser(), job));
     }
 
     @Transactional(readOnly = true)

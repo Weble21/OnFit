@@ -1,6 +1,6 @@
 ﻿import test from 'node:test';
 import assert from 'node:assert/strict';
-import { detectSkills, compareSkills, analyzeText, sampleJD, sampleProfile, matchJob, jobs } from '../src/data.js';
+import { detectSkills, compareSkills, analyzeText, sampleJD, sampleProfile } from '../src/data.js';
 test('skill names do not match substrings of other skills', () => {
   assert.deepEqual(detectSkills('JavaScript PostgreSQL'), ['JavaScript', 'PostgreSQL']);
   assert.deepEqual(detectSkills('NodeXjs'), []);
@@ -16,11 +16,5 @@ test('required and preferred criteria stay separate', () => {
   assert.equal(result.preferred.score, 50);
   assert.equal(result.overall.score, 80);
   assert.deepEqual(result.preferred.missing, ['Redis']);
-});
-test('profile changes affect recommendations, with bounded scores', () => {
-  const original = matchJob(jobs[0], sampleProfile);
-  const empty = matchJob(jobs[0], {...sampleProfile, projects: [{stack: ''}]});
-  assert.ok(original.score > empty.score);
-  for (const job of jobs) assert.ok(matchJob(job, sampleProfile).score >= 0 && matchJob(job, sampleProfile).score <= 100);
 });
 
