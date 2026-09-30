@@ -54,7 +54,7 @@ try {
   await click('[data-action="blank-demo"]');
   await route('/profile');
   assert.ok(await evaluate('document.querySelector("#profile-form") !== null'));
-  await evaluate("document.querySelector('[name=projectName]').value='브라우저 테스트 프로젝트';document.querySelector('[name=projectDescription]').value='Java API와 PostgreSQL 데이터베이스를 설계하고 AWS에 배포했습니다.';document.querySelector('[name=projectStack]').value='Java, Spring Boot, PostgreSQL, Docker, AWS';document.querySelector('[name=types][value=스타트업]').checked=true");
+  await evaluate("document.querySelector('[name=projectName]').value='브라우저 테스트 프로젝트';document.querySelector('[name=projectDescription]').value='Java API와 PostgreSQL 데이터베이스를 설계하고 AWS에 배포했습니다.';document.querySelector('[name=projectStack]').value='Java, Spring Boot, PostgreSQL, Docker, AWS';document.querySelector('[name=types][value=핀테크]').checked=true");
   await click('[data-action="add-project"]');
   assert.equal(await evaluate('document.querySelectorAll(".project-block").length'),2);
   await click('.project-block:last-child [data-action="remove-project"]');
@@ -62,6 +62,29 @@ try {
   await waitFor('document.querySelectorAll(".job-card").length > 0');
   assert.ok(await evaluate('document.querySelectorAll(".job-card").length > 0'));
   await screenshot('recommendations-desktop');
+  const koreanSearch = await evaluate(`(() => {
+    const field = document.querySelector('#company-search');
+    field.focus();
+    field.dispatchEvent(new CompositionEvent('compositionstart', { bubbles: true }));
+    field.value = 'ㄱ';
+    field.dispatchEvent(new InputEvent('input', { bubbles: true, isComposing: true, data: 'ㄱ' }));
+    const sameDuringComposition = document.querySelector('#company-search') === field;
+    field.value = '가온';
+    field.dispatchEvent(new InputEvent('input', { bubbles: true, isComposing: true, data: '가온' }));
+    field.dispatchEvent(new CompositionEvent('compositionend', { bubbles: true, data: '가온' }));
+    field.dispatchEvent(new InputEvent('input', { bubbles: true, data: '가온' }));
+    const result = { sameDuringComposition, sameAfterComposition: document.querySelector('#company-search') === field,
+      value: field.value, count: document.querySelectorAll('.job-card').length,
+      company: document.querySelector('.job-card .company-line h3')?.textContent };
+    field.value = '';
+    field.dispatchEvent(new InputEvent('input', { bubbles: true }));
+    return result;
+  })()`);
+  assert.equal(koreanSearch.sameDuringComposition, true);
+  assert.equal(koreanSearch.sameAfterComposition, true);
+  assert.equal(koreanSearch.value, '가온');
+  assert.ok(koreanSearch.count > 0);
+  assert.ok(koreanSearch.company.includes('가온'));
   await click('[data-action="favorite"]');
   await route('/favorites');
   assert.equal(await evaluate('document.querySelectorAll(".job-card").length'),1);

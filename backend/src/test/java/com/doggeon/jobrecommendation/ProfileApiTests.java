@@ -94,7 +94,7 @@ class ProfileApiTests {
 
         String duplicateSkills = """
                 {
-                  "targetRoles": [],
+                  "targetRoles": ["백엔드 개발자"],
                   "preferredLocations": [],
                   "skills": ["PostgreSQL", "Postgres"],
                   "certificates": []
@@ -108,6 +108,12 @@ class ProfileApiTests {
 
     @Test
     void rejectsMissingFieldsAndInvalidDates() throws Exception {
+        String noRole = """
+                {"targetRoles": [], "preferredLocations": [], "skills": [], "certificates": []}
+                """;
+        mvc.perform(post("/api/profiles").contentType(MediaType.APPLICATION_JSON).content(noRole))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").value(org.hamcrest.Matchers.startsWith("입력값을 확인해 주세요: targetRoles")));
         mvc.perform(post("/api/profiles").contentType(MediaType.APPLICATION_JSON).content("{}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.detail").value(org.hamcrest.Matchers.startsWith("입력값을 확인해 주세요: ")));
@@ -117,7 +123,7 @@ class ProfileApiTests {
 
         String invalidDates = """
                 {
-                  "targetRoles": [],
+                  "targetRoles": ["백엔드 개발자"],
                   "preferredLocations": [],
                   "skills": [],
                   "certificates": [],

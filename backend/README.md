@@ -102,7 +102,8 @@ Invoke-RestMethod -Method Get -Uri 'http://localhost:8080/api/profiles/me'
 ```
 
 `PUT /api/profiles/me`에도 같은 JSON 형식을 보내며, 전달한 목록이 기존 목록을
-대체합니다. `projects`와 `experiences`는 선택 사항이고 생략하면 빈 목록으로
+대체합니다. `targetRoles`는 1개 이상 필요하고 `preferredLocations`는 빈 목록을
+허용합니다. `projects`와 `experiences`는 선택 사항이고 생략하면 빈 목록으로
 저장합니다. 기술명은 공백과 대소문자를 정리하고 `SpringBoot` → `spring boot`,
 `k8s` → `kubernetes` 같은 별칭을 통일합니다. 별칭 표는
 `src/main/resources/skill-aliases.json`이며 프론트엔드 사본과 테스트로 동기화를 확인합니다.
@@ -151,7 +152,11 @@ Invoke-RestMethod -Method Get -Uri 'http://localhost:8080/api/profiles/me'
 프로필이 없으면 추천 생성은 404를 반환합니다. `POST` 응답에는 공고, 전체·부분
 점수, `matchedRequiredSkills`, `matchedPreferredSkills`, `matchedEvidence`, `missingSkills`가 포함됩니다. 같은 사용자·공고에서
 점수와 근거가 동일한 최신 결과가 있으면 새 행을 만들지 않고 재사용합니다.
-프로필 또는 공고가 바뀌어 결과가 달라지면 새 스냅샷을 저장합니다.
+프로필 또는 공고가 바뀌어 결과가 달라지면 새 스냅샷을 저장합니다. 새 스냅샷이
+하나라도 저장되면 `201 Created`, 모두 재사용했으면 `200 OK`를 반환합니다.
+
+공고의 `companyType`은 업종(핀테크, 게임 등)입니다. V4 마이그레이션이 규모 값
+"스타트업"이 들어 있던 가상 공고 2건을 "클라우드"로 바로잡았습니다.
 
 ```powershell
 Invoke-RestMethod http://localhost:8080/api/jobs

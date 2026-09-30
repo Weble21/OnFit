@@ -4,6 +4,7 @@ import com.doggeon.jobrecommendation.domain.JobPosting;
 import com.doggeon.jobrecommendation.domain.Recommendation;
 import com.doggeon.jobrecommendation.domain.UserProfile;
 import com.doggeon.jobrecommendation.profile.UserProfileRepository;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -32,27 +33,34 @@ public class RecommendationService {
         this.calculator = calculator;
     }
 
+    /** {@code created} is false when every result reused an identical earlier snapshot. */
+    public record Result(List<RecommendationResponse> recommendations, boolean created) {
+    }
+
     @Transactional
-    public List<RecommendationResponse> create() {
+    public Result create() {
         UserProfile profile = profiles.findByUserEmail(DEMO_EMAIL)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
                         "먼저 데모 프로필을 만들어 주세요."));
         // One query for every job's latest snapshot instead of one lookup per job.
         Map<Long, Recommendation> latest = recommendations.findLatestPerJob(profile.getUser().getId())
                 .stream().collect(Collectors.toMap(r -> r.getJobPosting().getId(), Function.identity()));
-        return jobs.openJobs().stream()
-                .map(job -> calculateOrReuse(profile, job, latest.get(job.getId())))
-                .map(RecommendationResponse::from)
+        List<Recommendation> results = new ArrayList<>();
+        boolean created = false;
+        for (JobPosting job : jobs.openJobs()) {
+            RecommendationScore score = calculator.calculate(profile, job);
+            Recommendation previous = latest.get(job.getId());
+            if (previous != null && score.matches(previous)) {
+                results.add(previous);
+            } else {
+                results.add(recommendations.save(score.toEntity(profile.getUser(), job)));
+                created = true;
+            }
+        }
+        return new Result(results.stream().map(RecommendationResponse::from)
                 .sorted(Comparator.comparing(RecommendationResponse::totalScore).reversed()
                         .thenComparing(result -> result.job().id()))
-                .toList();
-    }
-
-    private Recommendation calculateOrReuse(UserProfile profile, JobPosting job, Recommendation previous) {
-        RecommendationScore score = calculator.calculate(profile, job);
-        return previous != null && score.matches(previous)
-                ? previous
-                : recommendations.save(score.toEntity(profile.getUser(), job));
+                .toList(), created);
     }
 
     @Transactional(readOnly = true)

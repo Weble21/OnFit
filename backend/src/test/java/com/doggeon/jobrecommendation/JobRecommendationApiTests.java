@@ -67,7 +67,7 @@ class JobRecommendationApiTests {
         }
 
         var created = mvc.perform(post("/api/recommendations"))
-                .andExpect(status().isCreated())
+                .andExpect(status().is2xxSuccessful())
                 .andExpect(jsonPath("$.length()").value(36))
                 .andExpect(jsonPath("$[0].semanticScore").value(0))
                 .andExpect(jsonPath("$[0].job.status").value("OPEN"))
@@ -76,8 +76,9 @@ class JobRecommendationApiTests {
         Number score = JsonPath.read(created, "$[0].totalScore");
         assertThat(score.doubleValue()).isGreaterThan(0);
         Integer count = jdbc.queryForObject("SELECT count(*) FROM recommendations", Integer.class);
+        // Nothing changed, so every snapshot is reused and nothing new is created.
         var repeated = mvc.perform(post("/api/recommendations"))
-                .andExpect(status().isCreated())
+                .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
         assertThat(JsonPath.<Number>read(repeated, "$[0].id").longValue()).isEqualTo(id.longValue());
         assertThat(jdbc.queryForObject("SELECT count(*) FROM recommendations", Integer.class)).isEqualTo(count);
