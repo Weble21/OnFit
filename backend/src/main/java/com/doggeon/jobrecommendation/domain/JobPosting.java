@@ -36,8 +36,11 @@ public class JobPosting {
     @Column(name = "role_name", nullable = false, length = 120)
     private String roleName;
 
-    @Column(name = "company_type", length = 100)
-    private String companyType;
+    @Column(length = 100)
+    private String industry;
+
+    @Column(name = "company_size", length = 100)
+    private String companySize;
 
     @Column(name = "career_level", length = 100)
     private String careerLevel;
@@ -99,13 +102,14 @@ public class JobPosting {
     }
 
     public static JobPosting seeded(String seedKey, String companyName, String title, String roleName,
-                                    String companyType, String careerLevel, String description,
+                                    String industry, String companySize, String careerLevel, String description,
                                     String responsibilities, String location, LocalDate deadline,
                                     JobPostingStatus status, List<String> requiredSkills,
                                     List<String> preferredSkills) {
         JobPosting job = new JobPosting(companyName, title, roleName, responsibilities, location, deadline, status);
         job.seedKey = seedKey;
-        job.companyType = companyType;
+        job.industry = industry;
+        job.companySize = companySize;
         job.careerLevel = careerLevel;
         job.description = description;
         job.requiredSkills.addAll(requiredSkills);
@@ -117,7 +121,8 @@ public class JobPosting {
     public String getCompanyName() { return companyName; }
     public String getTitle() { return title; }
     public String getRoleName() { return roleName; }
-    public String getCompanyType() { return companyType; }
+    public String getIndustry() { return industry; }
+    public String getCompanySize() { return companySize; }
     public String getCareerLevel() { return careerLevel; }
     public String getDescription() { return description; }
     public String getResponsibilities() { return responsibilities; }

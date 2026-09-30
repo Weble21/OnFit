@@ -155,8 +155,10 @@ Invoke-RestMethod -Method Get -Uri 'http://localhost:8080/api/profiles/me'
 프로필 또는 공고가 바뀌어 결과가 달라지면 새 스냅샷을 저장합니다. 새 스냅샷이
 하나라도 저장되면 `201 Created`, 모두 재사용했으면 `200 OK`를 반환합니다.
 
-공고의 `companyType`은 업종(핀테크, 게임 등)입니다. V4 마이그레이션이 규모 값
-"스타트업"이 들어 있던 가상 공고 2건을 "클라우드"로 바로잡았습니다.
+공고의 `industry`는 업종(핀테크, 게임 등), `companySize`는 기업 규모입니다.
+규모를 확인할 수 없는 가상 공고는 `companySize: null`로 반환하며 임의 값을 넣지 않습니다.
+V4는 업종 칸에 있던 "스타트업" 2건을 "클라우드"로 바로잡고, V5는 기존 업종 값을
+`industry` 열로 보존하면서 별도의 nullable `company_size` 열을 추가합니다.
 
 ```powershell
 Invoke-RestMethod http://localhost:8080/api/jobs

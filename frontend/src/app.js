@@ -41,6 +41,7 @@ function validProfile(value) {
       value.experiences.every(e => e && ['company','role','start','end'].every(k => typeof e[k] === 'string'))));
 }
 let profile = read('profile', null);
+let profileSavePending = false;
 if (!validProfile(profile)) profile = null;
 let jobs = [];
 let recommendationsLoaded = false;
@@ -128,11 +129,11 @@ async function loadRecommendations() {
 function jobCard(job) {
   const isSaved = favorites.includes(job.id);
   const matched = job.requiredMatch.matched;
-  return '<article class="job-card"><div class="job-card-top"><span class="company-logo '+job.color+'" aria-hidden="true">'+esc(job.initial)+'</span><button class="icon-btn bookmark '+(isSaved?'saved':'')+'" data-action="favorite" data-id="'+job.id+'" aria-label="'+esc(job.company)+(isSaved?' 관심 기업 해제':' 관심 기업 저장')+'" aria-pressed="'+isSaved+'">'+icon('bookmark')+'</button></div><div class="company-line"><h3>'+esc(job.company)+'</h3>'+pill(job.type)+'</div><p class="job-title">'+esc(job.title)+'</p><p class="job-meta">'+icon('pin')+esc(job.location)+'<span aria-hidden="true">·</span>'+esc(job.career)+'</p>'+pillList('job-skills', job.required.map(s=>[s, matched.includes(s)?'matched':'']))+'<p class="match-reason">'+icon('spark')+'<span>'+(matched.length?esc(matched.slice(0,2).join(', '))+' 기술이 일치해요.':'필수 기술을 확인해 보세요.')+'</span></p><footer class="job-card-bottom"><div class="card-score"><strong>'+job.score+'<small>점</small></strong><span>추천 점수</span></div><button class="btn text" data-action="job" data-id="'+job.id+'" aria-label="'+esc(job.company)+' 공고 자세히 보기">자세히 보기 '+icon('arrow')+'</button></footer></article>';
+  return '<article class="job-card"><div class="job-card-top"><span class="company-logo '+job.color+'" aria-hidden="true">'+esc(job.initial)+'</span><button class="icon-btn bookmark '+(isSaved?'saved':'')+'" data-action="favorite" data-id="'+job.id+'" aria-label="'+esc(job.company)+(isSaved?' 관심 기업 해제':' 관심 기업 저장')+'" aria-pressed="'+isSaved+'">'+icon('bookmark')+'</button></div><div class="company-line"><h3>'+esc(job.company)+'</h3>'+pill(job.industry)+'</div><p class="job-title">'+esc(job.title)+'</p><p class="job-meta">'+icon('pin')+esc(job.location)+'<span aria-hidden="true">·</span>'+esc(job.career)+(job.companySize?'<span aria-hidden="true">·</span>'+esc(job.companySize):'')+'</p>'+pillList('job-skills', job.required.map(s=>[s, matched.includes(s)?'matched':'']))+'<p class="match-reason">'+icon('spark')+'<span>'+(matched.length?esc(matched.slice(0,2).join(', '))+' 기술이 일치해요.':'필수 기술을 확인해 보세요.')+'</span></p><footer class="job-card-bottom"><div class="card-score"><strong>'+job.score+'<small>점</small></strong><span>추천 점수</span></div><button class="btn text" data-action="job" data-id="'+job.id+'" aria-label="'+esc(job.company)+' 공고 자세히 보기">자세히 보기 '+icon('arrow')+'</button></footer></article>';
 }
 function filteredJobs(savedOnly) {
   const query = search.toLowerCase();
-  const list = jobs.filter(j=>(!savedOnly||favorites.includes(j.id)) && (filter==='전체'||j.type===filter) && (j.company+' '+j.title+' '+j.required.join(' ')).toLowerCase().includes(query));
+  const list = jobs.filter(j=>(!savedOnly||favorites.includes(j.id)) && (filter==='전체'||j.industry===filter) && (j.company+' '+j.title+' '+j.required.join(' ')).toLowerCase().includes(query));
   return list.sort(sort==='name' ? (a,b)=>a.company.localeCompare(b.company,'ko') : (a,b)=>b.score-a.score || Number(a.id)-Number(b.id));
 }
 function jobGridContent(list, savedOnly) {
@@ -149,7 +150,7 @@ function recommendations(savedOnly=false) {
   const count = jobs.length;
   return pageHeading(savedOnly?'YOUR COLLECTION':'DISCOVER YOUR POSSIBILITIES',savedOnly?'마음에 담아둔 기회':'나의 경험이, 다음 기회로.',savedOnly?'관심 있는 기업을 모아두고 차근차근 준비해 보세요.':'지금까지 쌓아온 경험을 알아봐 줄 기업들을 만나보세요.', '<a class="btn outline small" href="#/profile">'+icon('user')+' 프로필 수정</a>')+
     (!savedOnly?'<section class="welcome-banner" aria-labelledby="welcome-title"><div><span class="banner-label">YOUR NEXT CHAPTER</span><h2 id="welcome-title">나에게 맞는 곳에서,<br>더 크게 자라날 수 있도록.</h2><p>등록한 기술과 희망 직무로 '+count+'개의 가상 공고를 비교했어요.</p><a href="#/analyze" class="banner-link">눈여겨본 공고가 있나요? 직접 분석하기 '+icon('arrow')+'</a></div>'+plant()+'</section><section class="profile-strip" aria-label="나의 커리어 키워드"><div class="profile-strip-title"><span class="round-icon" aria-hidden="true">'+icon('user')+'</span><div><small>나의 커리어 키워드</small><strong>'+esc(profile.role)+' <span>· '+esc(profile.career)+'</span></strong></div></div>'+pillList('profile-tags', [...skills.slice(0,4).map(s=>[s]), ...(skills.length>4?[['+'+(skills.length-4)]]:[])])+'<a href="#/profile" class="icon-btn" aria-label="커리어 프로필 수정">'+icon('chevron')+'</a></section>':'')+
-    '<section class="recommendation-section" aria-labelledby="recommendation-title"><header class="section-heading"><h2 id="recommendation-title">'+(savedOnly?'저장한 기업':'발견한 기회')+' <span>'+list.length+'<span class="sr-only">곳</span></span></h2><span class="subtle">'+icon('spark')+' 서버 계산 추천</span></header><div class="filters"><div class="filter-tabs" role="group" aria-label="업종">'+['전체',...[...new Set(jobs.map(job=>job.type))].sort((a,b)=>profile.types.includes(b)-profile.types.includes(a))].map(f=>'<button class="'+(filter===f?'selected':'')+'" data-action="filter" data-value="'+esc(f)+'" aria-pressed="'+(filter===f)+'">'+esc(f)+'</button>').join('')+'</div><search class="filter-controls"><label class="search-field">'+icon('search')+'<input id="company-search" aria-label="기업 또는 기술 검색" placeholder="기업·기술 검색" value="'+esc(search)+'"></label><select id="sort" aria-label="추천 정렬"><option value="score" '+(sort==='score'?'selected':'')+'>점수순</option><option value="name" '+(sort==='name'?'selected':'')+'>기업명순</option></select></search></div><div class="job-grid">'+jobGridContent(list,savedOnly)+'</div></section><p class="demo-footnote">'+icon('file')+' 이 공고는 가상 데이터입니다. 점수는 서버의 규칙 기반 값이며 의미 유사도는 현재 0점입니다. 합격 가능성을 뜻하지 않습니다.</p>';
+    '<section class="recommendation-section" aria-labelledby="recommendation-title"><header class="section-heading"><h2 id="recommendation-title">'+(savedOnly?'저장한 기업':'발견한 기회')+' <span>'+list.length+'<span class="sr-only">곳</span></span></h2><span class="subtle">'+icon('spark')+' 서버 계산 추천</span></header><div class="filters"><div class="filter-tabs" role="group" aria-label="업종">'+['전체',...[...new Set(jobs.map(job=>job.industry))].sort((a,b)=>profile.types.includes(b)-profile.types.includes(a))].map(f=>'<button class="'+(filter===f?'selected':'')+'" data-action="filter" data-value="'+esc(f)+'" aria-pressed="'+(filter===f)+'">'+esc(f)+'</button>').join('')+'</div><search class="filter-controls"><label class="search-field">'+icon('search')+'<input id="company-search" aria-label="기업 또는 기술 검색" placeholder="기업·기술 검색" value="'+esc(search)+'"></label><select id="sort" aria-label="추천 정렬"><option value="score" '+(sort==='score'?'selected':'')+'>점수순</option><option value="name" '+(sort==='name'?'selected':'')+'>기업명순</option></select></search></div><div class="job-grid">'+jobGridContent(list,savedOnly)+'</div></section><p class="demo-footnote">'+icon('file')+' 이 공고는 가상 데이터입니다. 점수는 서버의 규칙 기반 값이며 의미 유사도는 현재 0점입니다. 합격 가능성을 뜻하지 않습니다.</p>';
 }
 function emptyState(title, text, href, label, level=2) {
   return '<div class="empty-state"><span class="round-icon" aria-hidden="true">'+icon('leaf')+'</span><h'+level+'>'+title+'</h'+level+'><p>'+text+'</p>'+(href?'<a href="#'+href+'" class="btn">'+label+' '+icon('arrow')+'</a>':'<button class="btn outline" data-action="reset-filters">필터 초기화</button>')+'</div>';
@@ -288,7 +289,7 @@ function openJob(id) {
   const matched = jobs.find(j=>j.id===id);
   if (!matched || !profile) return;
   const result = matched.scores;
-  openModal('<article class="job-detail"><div class="company-logo '+matched.color+'" aria-hidden="true">'+esc(matched.initial)+'</div><div class="detail-eyebrow">'+esc(matched.company)+' · '+esc(matched.type)+' · 가상 공고</div><h2>'+esc(matched.title)+'</h2><p>'+esc(matched.intro)+'</p><div class="detail-meta">'+icon('pin')+esc(matched.location)+' · '+esc(matched.career)+' · 마감 '+esc(matched.deadline || '미정')+'</div><div class="detail-score"><div><small>서버 계산 추천 점수</small><strong>'+matched.score+'<span>점</span></strong></div><p>필수 35% · 우대 20% · 의미 20%<br>경험 15% · 희망조건 10% (의미 점수 0)</p></div><h3>함께 할 일</h3><p>'+esc(matched.duties)+'</p><h3>필수 기술</h3>'+pillList('job-skills', matched.required.map(s=>[s, matched.requiredMatch.matched.includes(s)?'matched':'missing']))+'<h3>우대 기술</h3>'+pillList('job-skills', matched.preferred.map(s=>[s, matched.preferredMatch.matched.includes(s)?'matched':'missing']))+'<h3>점수 상세</h3><p>필수 '+result.requiredScore+' · 우대 '+result.preferredScore+' · 의미 '+result.semanticScore+' · 경험 '+result.experienceScore+' · 희망조건 '+result.preferenceScore+'</p><h3>일치 근거</h3>'+(result.matchedEvidence.length?'<ul>'+result.matchedEvidence.map(e=>'<li>'+esc(e)+'</li>').join('')+'</ul>':'<p>일치 근거가 없습니다.</p>')+'<h3>확인할 필수 기술</h3>'+skillResult(result.missingSkills,'missing','누락된 필수 기술이 없습니다.')+'<div class="analysis-caveat" role="note">실제 채용 중인 공고가 아닌 가상 데이터입니다. 추천 점수는 합격 가능성이 아닙니다.</div><button class="btn full" data-action="favorite" data-id="'+matched.id+'">'+icon('bookmark')+(favorites.includes(matched.id)?'관심 기업에서 해제':'관심 기업에 저장')+'</button></article>','기업 추천 상세');
+  openModal('<article class="job-detail"><div class="company-logo '+matched.color+'" aria-hidden="true">'+esc(matched.initial)+'</div><div class="detail-eyebrow">'+esc(matched.company)+' · '+esc(matched.industry)+(matched.companySize?' · '+esc(matched.companySize):'')+' · 가상 공고</div><h2>'+esc(matched.title)+'</h2><p>'+esc(matched.intro)+'</p><div class="detail-meta">'+icon('pin')+esc(matched.location)+' · '+esc(matched.career)+' · 마감 '+esc(matched.deadline || '미정')+'</div><div class="detail-score"><div><small>서버 계산 추천 점수</small><strong>'+matched.score+'<span>점</span></strong></div><p>필수 35% · 우대 20% · 의미 20%<br>경험 15% · 희망조건 10% (의미 점수 0)</p></div><h3>함께 할 일</h3><p>'+esc(matched.duties)+'</p><h3>필수 기술</h3>'+pillList('job-skills', matched.required.map(s=>[s, matched.requiredMatch.matched.includes(s)?'matched':'missing']))+'<h3>우대 기술</h3>'+pillList('job-skills', matched.preferred.map(s=>[s, matched.preferredMatch.matched.includes(s)?'matched':'missing']))+'<h3>점수 상세</h3><p>필수 '+result.requiredScore+' · 우대 '+result.preferredScore+' · 의미 '+result.semanticScore+' · 경험 '+result.experienceScore+' · 희망조건 '+result.preferenceScore+'</p><h3>일치 근거</h3>'+(result.matchedEvidence.length?'<ul>'+result.matchedEvidence.map(e=>'<li>'+esc(e)+'</li>').join('')+'</ul>':'<p>일치 근거가 없습니다.</p>')+'<h3>확인할 필수 기술</h3>'+skillResult(result.missingSkills,'missing','누락된 필수 기술이 없습니다.')+'<div class="analysis-caveat" role="note">실제 채용 중인 공고가 아닌 가상 데이터입니다. 추천 점수는 합격 가능성이 아닙니다.</div><button class="btn full" data-action="favorite" data-id="'+matched.id+'">'+icon('bookmark')+(favorites.includes(matched.id)?'관심 기업에서 해제':'관심 기업에 저장')+'</button></article>','기업 추천 상세');
 }
 document.addEventListener('click', event => {
   const button = event.target.closest('[data-action]');
@@ -397,11 +398,20 @@ async function saveProfileFromForm(form) {
 document.addEventListener('submit', event=>{
   if (event.target.id==='profile-form') {
     event.preventDefault();
+    if (profileSavePending) return;
     const form=event.target;
     for (const field of form.querySelectorAll('[required]:not(:disabled)')) {
       if (!field.value.trim()) { field.setCustomValidity('공백이 아닌 내용을 입력해 주세요.'); field.reportValidity(); return; }
     }
-    void saveProfileFromForm(form);
+    profileSavePending=true;
+    const submitButton=form.querySelector('[type="submit"]');
+    if (submitButton) submitButton.disabled=true;
+    form.setAttribute('aria-busy','true');
+    void saveProfileFromForm(form).finally(()=>{
+      profileSavePending=false;
+      if (submitButton) submitButton.disabled=false;
+      form.removeAttribute('aria-busy');
+    });
   }
   if (event.target.id==='analysis-form') {
     event.preventDefault();

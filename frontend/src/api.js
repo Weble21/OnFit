@@ -78,7 +78,8 @@ export function toDisplayJob(job, recommendation = null) {
   return {
     id: String(job.id),
     company: job.companyName, initial: job.companyName.slice(0, 1), color: 'sage',
-    type: job.companyType || '기타', role: job.roleName, team: job.roleName,
+    industry: job.industry || '기타', companySize: job.companySize || null,
+    role: job.roleName, team: job.roleName,
     location: job.location, career: job.careerLevel || '경력 무관', title: job.title,
     intro: job.description || '', duties: job.responsibilities,
     required: job.requiredSkills, preferred: job.preferredSkills,

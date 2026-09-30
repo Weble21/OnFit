@@ -113,10 +113,18 @@ class ProfileApiTests {
                 """;
         mvc.perform(post("/api/profiles").contentType(MediaType.APPLICATION_JSON).content(noRole))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.detail").value(org.hamcrest.Matchers.startsWith("입력값을 확인해 주세요: targetRoles")));
+                .andExpect(jsonPath("$.detail").value("희망 직무 입력값을 확인해 주세요."));
         mvc.perform(post("/api/profiles").contentType(MediaType.APPLICATION_JSON).content("{}"))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.detail").value(org.hamcrest.Matchers.startsWith("입력값을 확인해 주세요: ")));
+                .andExpect(jsonPath("$.detail").value(org.hamcrest.Matchers.not(
+                        org.hamcrest.Matchers.containsString("targetRoles"))));
+        String noProjectName = """
+                {"targetRoles":["백엔드 개발자"],"preferredLocations":[],"skills":[],"certificates":[],
+                 "projects":[{"name":""}]}
+                """;
+        mvc.perform(post("/api/profiles").contentType(MediaType.APPLICATION_JSON).content(noProjectName))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").value("프로젝트 1번의 이름 입력값을 확인해 주세요."));
         mvc.perform(post("/api/profiles").contentType(MediaType.APPLICATION_JSON).content("{\"skills\": ["))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.detail").value(org.hamcrest.Matchers.startsWith("요청 형식이 올바르지 않습니다.")));

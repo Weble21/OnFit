@@ -42,12 +42,17 @@ class JobRecommendationApiTests {
         mvc.perform(get("/api/jobs"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(36))
+                .andExpect(jsonPath("$[0].industry").value("클라우드"))
+                .andExpect(jsonPath("$[0].companySize").value(org.hamcrest.Matchers.nullValue()))
                 .andExpect(jsonPath("$[0].requiredSkills[0]").value("Java"));
         mvc.perform(get("/api/jobs/{id}", closedId))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("CLOSED"));
         mvc.perform(get("/api/jobs/999999"))
                 .andExpect(status().isNotFound());
+        mvc.perform(get("/api/jobs/abc"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").value("공고 ID는 숫자로 입력해 주세요."));
     }
 
     @Test
@@ -67,7 +72,7 @@ class JobRecommendationApiTests {
         }
 
         var created = mvc.perform(post("/api/recommendations"))
-                .andExpect(status().is2xxSuccessful())
+                .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.length()").value(36))
                 .andExpect(jsonPath("$[0].semanticScore").value(0))
                 .andExpect(jsonPath("$[0].job.status").value("OPEN"))
@@ -92,5 +97,8 @@ class JobRecommendationApiTests {
                 .andExpect(jsonPath("$.missingSkills").isArray());
         mvc.perform(get("/api/recommendations/999999"))
                 .andExpect(status().isNotFound());
+        mvc.perform(get("/api/recommendations/abc"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").value("추천 ID는 숫자로 입력해 주세요."));
     }
 }

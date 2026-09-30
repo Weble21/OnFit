@@ -58,7 +58,28 @@ try {
   await click('[data-action="add-project"]');
   assert.equal(await evaluate('document.querySelectorAll(".project-block").length'),2);
   await click('.project-block:last-child [data-action="remove-project"]');
-  await evaluate('document.querySelector("#profile-form").requestSubmit()');await wait();
+  const pendingSave = await evaluate(`(() => {
+    const originalFetch = window.fetch.bind(window);
+    window.__profileWriteCount = 0;
+    window.fetch = (...args) => {
+      const [url, options] = args;
+      if (String(url).startsWith('/api/profiles') && ['PUT', 'POST'].includes(options?.method)) {
+        window.__profileWriteCount++;
+        if (!window.__releaseProfileSave) {
+          return new Promise(resolve => { window.__releaseProfileSave = () => resolve(originalFetch(...args)); });
+        }
+      }
+      return originalFetch(...args);
+    };
+    const form = document.querySelector('#profile-form');
+    form.requestSubmit();
+    form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    return { writes: window.__profileWriteCount,
+      disabled: form.querySelector('[type="submit"]').disabled,
+      busy: form.getAttribute('aria-busy') };
+  })()`);
+  assert.deepEqual(pendingSave, { writes: 1, disabled: true, busy: 'true' });
+  await evaluate('window.__releaseProfileSave()');
   await waitFor('document.querySelectorAll(".job-card").length > 0');
   assert.ok(await evaluate('document.querySelectorAll(".job-card").length > 0'));
   await screenshot('recommendations-desktop');

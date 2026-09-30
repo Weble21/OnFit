@@ -6,7 +6,7 @@ export const sampleProfile = {
 };
 // Server scoring compares role and region names exactly, so these must cover the seed postings' values.
 export const roles = ['백엔드 개발자', '프론트엔드 개발자', '모바일 개발자', '데이터 엔지니어', '데이터 분석가', 'AI 엔지니어', 'DevOps 엔지니어', '보안 엔지니어', 'QA 엔지니어', '게임 개발자', '로봇 개발자', '기타'];
-// Posting companyType values are industries; the profile's interest options must cover them.
+// Posting industry values must be covered by the profile's interest options.
 export const industries = ['클라우드', '핀테크', '모빌리티', '이커머스', '헬스케어', '에듀테크', '게임', '물류', '보안', '미디어', '여행', '에너지', '제조', '프롭테크', '애그리테크', '로보틱스', '인슈어테크', '소셜', '리테일'];
 export const regions = ['서울', '경기', '인천', '부산', '대구', '광주', '대전', '울산', '세종', '강원', '충북', '충남', '전북', '전남', '경북', '경남', '제주'];
 export const knownSkills = ['Java', 'JavaScript', 'TypeScript', 'Spring Boot', 'PostgreSQL', 'MySQL', 'Python', 'FastAPI', 'Docker', 'AWS', 'Redis', 'React', 'SQL', 'CSS', 'Git', 'Kubernetes', 'Node.js', 'Spark', 'MongoDB'];

@@ -8,5 +8,6 @@ const seed = JSON.parse(await readFile(new URL('../../backend/src/main/resources
 test('every seeded role and region can be chosen in the profile form', () => {
   assert.deepEqual(seed.map(job => job.roleName).filter(role => !roles.includes(role)), []);
   assert.deepEqual(seed.map(job => job.location).filter(region => !regions.includes(region)), []);
-  assert.deepEqual(seed.map(job => job.companyType).filter(industry => !industries.includes(industry)), []);
+  assert.deepEqual(seed.map(job => job.industry).filter(industry => !industries.includes(industry)), []);
+  assert.ok(seed.every(job => 'companySize' in job));
 });

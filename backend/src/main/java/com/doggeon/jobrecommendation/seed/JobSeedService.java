@@ -37,6 +37,8 @@ public class JobSeedService {
         int added = 0;
         for (SeedJob job : jobs) {
             if (job.seedKey() == null || job.seedKey().isBlank() || !keys.add(job.seedKey())
+                    || job.industry() == null || job.industry().isBlank()
+                    || (job.companySize() != null && job.companySize().isBlank())
                     || job.requiredSkills() == null || job.requiredSkills().isEmpty()
                     || job.preferredSkills() == null || job.responsibilities() == null
                     || job.status() == null || job.deadline() == null) {
@@ -44,7 +46,7 @@ public class JobSeedService {
             }
             if (!existing.contains(job.seedKey())) {
                 repository.save(JobPosting.seeded(job.seedKey(), job.companyName(), job.title(),
-                        job.roleName(), job.companyType(), job.careerLevel(), job.description(),
+                        job.roleName(), job.industry(), job.companySize(), job.careerLevel(), job.description(),
                         job.responsibilities(), job.location(), LocalDate.parse(job.deadline()),
                         job.status(), job.requiredSkills(), job.preferredSkills()));
                 added++;
@@ -54,7 +56,7 @@ public class JobSeedService {
     }
 
     private record SeedJob(String seedKey, String companyName, String title, String roleName,
-                           String companyType, String careerLevel, String description,
+                           String industry, String companySize, String careerLevel, String description,
                            String responsibilities, String location, String deadline,
                            JobPostingStatus status, List<String> requiredSkills,
                            List<String> preferredSkills) {
