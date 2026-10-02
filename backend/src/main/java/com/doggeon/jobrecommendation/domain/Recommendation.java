@@ -46,6 +46,9 @@ public class Recommendation {
     @Column(name = "semantic_score", nullable = false, precision = 5, scale = 2)
     private BigDecimal semanticScore;
 
+    @Column(name = "model_version", nullable = false, length = 200)
+    private String modelVersion;
+
     @Column(name = "experience_score", nullable = false, precision = 5, scale = 2)
     private BigDecimal experienceScore;
 
@@ -87,12 +90,21 @@ public class Recommendation {
                           BigDecimal requiredScore, BigDecimal preferredScore,
                           BigDecimal semanticScore, BigDecimal experienceScore,
                           BigDecimal preferenceScore) {
+        this(user, jobPosting, totalScore, requiredScore, preferredScore, semanticScore,
+                experienceScore, preferenceScore, "rules-only-v1");
+    }
+
+    public Recommendation(User user, JobPosting jobPosting, BigDecimal totalScore,
+                          BigDecimal requiredScore, BigDecimal preferredScore,
+                          BigDecimal semanticScore, BigDecimal experienceScore,
+                          BigDecimal preferenceScore, String modelVersion) {
         this.user = user;
         this.jobPosting = jobPosting;
         this.totalScore = totalScore;
         this.requiredScore = requiredScore;
         this.preferredScore = preferredScore;
         this.semanticScore = semanticScore;
+        this.modelVersion = modelVersion;
         this.experienceScore = experienceScore;
         this.preferenceScore = preferenceScore;
     }
@@ -104,6 +116,7 @@ public class Recommendation {
     public BigDecimal getRequiredScore() { return requiredScore; }
     public BigDecimal getPreferredScore() { return preferredScore; }
     public BigDecimal getSemanticScore() { return semanticScore; }
+    public String getModelVersion() { return modelVersion; }
     public BigDecimal getExperienceScore() { return experienceScore; }
     public BigDecimal getPreferenceScore() { return preferenceScore; }
     public List<String> getMatchedRequiredSkills() { return matchedRequiredSkills; }

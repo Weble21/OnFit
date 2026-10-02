@@ -20,8 +20,12 @@ public record RecommendationScore(BigDecimal totalScore, BigDecimal requiredScor
     }
 
     public Recommendation toEntity(User user, JobPosting job) {
+        return toEntity(user, job, SemanticScoreProvider.RULES_VERSION);
+    }
+
+    public Recommendation toEntity(User user, JobPosting job, String modelVersion) {
         Recommendation recommendation = new Recommendation(user, job, totalScore, requiredScore,
-                preferredScore, semanticScore, experienceScore, preferenceScore);
+                preferredScore, semanticScore, experienceScore, preferenceScore, modelVersion);
         recommendation.getMatchedRequiredSkills().addAll(matchedRequiredSkills);
         recommendation.getMatchedPreferredSkills().addAll(matchedPreferredSkills);
         recommendation.getMatchedEvidence().addAll(matchedEvidence);

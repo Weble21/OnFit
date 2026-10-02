@@ -18,15 +18,28 @@ import org.springframework.stereotype.Component;
 @Component
 public class RecommendationCalculator {
 
-    private static final BigDecimal REQUIRED_WEIGHT = new BigDecimal("0.35");
-    private static final BigDecimal PREFERRED_WEIGHT = new BigDecimal("0.20");
-    private static final BigDecimal SEMANTIC_WEIGHT = new BigDecimal("0.20");
-    private static final BigDecimal EXPERIENCE_WEIGHT = new BigDecimal("0.15");
-    private static final BigDecimal PREFERENCE_WEIGHT = new BigDecimal("0.10");
     private static final BigDecimal ZERO = new BigDecimal("0.00");
     private static final BigDecimal HUNDRED = new BigDecimal("100.00");
 
     public RecommendationScore calculate(UserProfile profile, JobPosting job) {
+        return calculate(profile, job, RecommendationWeights.DEFAULT);
+    }
+
+    /** Offline experiments pass weights explicitly; the live API retains DEFAULT. */
+    public RecommendationScore calculate(UserProfile profile, JobPosting job, RecommendationWeights weights) {
+        return calculate(profile, job, weights, ZERO);
+    }
+
+    public RecommendationScore calculate(UserProfile profile, JobPosting job, BigDecimal semanticScore) {
+        return calculate(profile, job, RecommendationWeights.DEFAULT, semanticScore);
+    }
+
+    public RecommendationScore calculate(UserProfile profile, JobPosting job, RecommendationWeights weights,
+                                         BigDecimal semanticScore) {
+        if (semanticScore == null || semanticScore.compareTo(ZERO) < 0
+                || semanticScore.compareTo(HUNDRED) > 0 || semanticScore.scale() > 2) {
+            throw new IllegalArgumentException("Semantic score must be 0..100 with up to two decimal places");
+        }
         Set<String> skills = profile.getSkills().stream()
                 .map(Skill::getNormalizedName).collect(Collectors.toSet());
         List<String> requiredSkills = job.getRequiredSkills();
@@ -53,14 +66,13 @@ public class RecommendationCalculator {
 
         BigDecimal requiredScore = percentage(matchedRequired.size(), requiredSkills.size());
         BigDecimal preferredScore = percentage(matchedPreferred.size(), job.getPreferredSkills().size());
-        BigDecimal semanticScore = ZERO; // FastAPI embeddings are deferred to a later phase.
         BigDecimal experienceScore = experienceScore(profile, job, normalizedRequired, evidence);
         BigDecimal preferenceScore = preferenceScore(profile, job, evidence);
-        BigDecimal totalScore = requiredScore.multiply(REQUIRED_WEIGHT)
-                .add(preferredScore.multiply(PREFERRED_WEIGHT))
-                .add(semanticScore.multiply(SEMANTIC_WEIGHT))
-                .add(experienceScore.multiply(EXPERIENCE_WEIGHT))
-                .add(preferenceScore.multiply(PREFERENCE_WEIGHT))
+        BigDecimal totalScore = requiredScore.multiply(weights.required())
+                .add(preferredScore.multiply(weights.preferred()))
+                .add(semanticScore.multiply(weights.semantic()))
+                .add(experienceScore.multiply(weights.experience()))
+                .add(preferenceScore.multiply(weights.preference()))
                 .setScale(2, RoundingMode.HALF_UP);
         return new RecommendationScore(totalScore, requiredScore, preferredScore, semanticScore,
                 experienceScore, preferenceScore, matchedRequired, matchedPreferred, evidence, missing);

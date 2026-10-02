@@ -6,7 +6,7 @@ import java.util.List;
 
 public record RecommendationResponse(Long id, JobResponse job, BigDecimal totalScore,
                                      BigDecimal requiredScore, BigDecimal preferredScore,
-                                     BigDecimal semanticScore, BigDecimal experienceScore,
+                                     BigDecimal semanticScore, String modelVersion, BigDecimal experienceScore,
                                      BigDecimal preferenceScore, List<String> matchedRequiredSkills,
                                      List<String> matchedPreferredSkills, List<String> matchedEvidence,
                                      List<String> missingSkills) {
@@ -15,7 +15,7 @@ public record RecommendationResponse(Long id, JobResponse job, BigDecimal totalS
         return new RecommendationResponse(recommendation.getId(),
                 JobResponse.from(recommendation.getJobPosting()), recommendation.getTotalScore(),
                 recommendation.getRequiredScore(), recommendation.getPreferredScore(),
-                recommendation.getSemanticScore(), recommendation.getExperienceScore(),
+                recommendation.getSemanticScore(), recommendation.getModelVersion(), recommendation.getExperienceScore(),
                 recommendation.getPreferenceScore(),
                 List.copyOf(recommendation.getMatchedRequiredSkills()),
                 List.copyOf(recommendation.getMatchedPreferredSkills()),

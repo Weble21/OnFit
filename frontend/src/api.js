@@ -36,6 +36,23 @@ export async function saveProfile(profile) {
 }
 export const createRecommendations = () => request('/recommendations', { method: 'POST' });
 
+export async function extractJobText(file, signal) {
+  const body = new FormData();
+  body.append('file', file);
+  let response;
+  try {
+    response = await fetch('/api/job-text/extract', { method: 'POST', body, signal, headers: { Accept: 'application/json' } });
+  } catch (error) {
+    if (error.name === 'AbortError') throw error;
+    throw new Error(BACKEND_DOWN);
+  }
+  if (!response.ok) {
+    const problem = await response.json().catch(() => null);
+    throw new Error(problem?.detail || (response.status === 502 ? BACKEND_DOWN : '파일에서 텍스트를 추출하지 못했습니다.'));
+  }
+  return response.json();
+}
+
 export function toProfileRequest(profile) {
   // PUT replaces the whole profile, so fields the form does not edit travel in `extra` and go back unchanged.
   return {

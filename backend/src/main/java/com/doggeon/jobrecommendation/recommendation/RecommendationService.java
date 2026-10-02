@@ -23,14 +23,19 @@ public class RecommendationService {
     private final JobService jobs;
     private final RecommendationRepository recommendations;
     private final RecommendationCalculator calculator;
+    private final RecommendationRetention retention;
+    private final SemanticScoreProvider semantic;
 
     public RecommendationService(UserProfileRepository profiles, JobService jobs,
                                  RecommendationRepository recommendations,
-                                 RecommendationCalculator calculator) {
+                                 RecommendationCalculator calculator, RecommendationRetention retention,
+                                 SemanticScoreProvider semantic) {
         this.profiles = profiles;
         this.jobs = jobs;
         this.recommendations = recommendations;
         this.calculator = calculator;
+        this.retention = retention;
+        this.semantic = semantic;
     }
 
     /** {@code created} is false when every result reused an identical earlier snapshot. */
@@ -43,17 +48,20 @@ public class RecommendationService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
                         "먼저 데모 프로필을 만들어 주세요."));
         // One query for every job's latest snapshot instead of one lookup per job.
-        Map<Long, Recommendation> latest = recommendations.findLatestPerJob(profile.getUser().getId())
+        Map<Long, Recommendation> latest = recommendations.findLatestPerJob(profile.getUser().getId(), retention.cutoff())
                 .stream().collect(Collectors.toMap(r -> r.getJobPosting().getId(), Function.identity()));
         List<Recommendation> results = new ArrayList<>();
         boolean created = false;
-        for (JobPosting job : jobs.openJobs()) {
-            RecommendationScore score = calculator.calculate(profile, job);
+        List<JobPosting> openJobs = jobs.openJobs();
+        SemanticScoreProvider.Result semanticResult = semantic.score(profile, openJobs);
+        for (JobPosting job : openJobs) {
+            RecommendationScore score = calculator.calculate(profile, job, semanticResult.score(job.getId()));
             Recommendation previous = latest.get(job.getId());
-            if (previous != null && score.matches(previous)) {
+            if (previous != null && semanticResult.modelVersion().equals(previous.getModelVersion())
+                    && score.matches(previous)) {
                 results.add(previous);
             } else {
-                results.add(recommendations.save(score.toEntity(profile.getUser(), job)));
+                results.add(recommendations.save(score.toEntity(profile.getUser(), job, semanticResult.modelVersion())));
                 created = true;
             }
         }
@@ -65,7 +73,7 @@ public class RecommendationService {
 
     @Transactional(readOnly = true)
     public RecommendationResponse get(Long id) {
-        return recommendations.findByIdAndUserEmail(id, DEMO_EMAIL)
+        return recommendations.findByIdAndUserEmailAndCreatedAtGreaterThanEqual(id, DEMO_EMAIL, retention.cutoff())
                 .map(RecommendationResponse::from)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
                         "추천 결과를 찾을 수 없습니다."));

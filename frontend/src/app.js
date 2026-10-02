@@ -1,6 +1,6 @@
 import { FILE_ACCEPT, validateAttachment, fileSize } from './upload.js';
 import { sampleProfile, profileSkills, splitSkills, analyzeText, sampleJD, roles, regions, industries } from './data.js';
-import { getProfile, saveProfile, createRecommendations, fromProfileResponse, toDisplayJob } from './api.js';
+import { getProfile, saveProfile, createRecommendations, extractJobText, fromProfileResponse, toDisplayJob } from './api.js';
 
 const app = document.querySelector('#app');
 const modalRoot = document.querySelector('#modal-root');
@@ -61,6 +61,9 @@ let attachmentText = '';
 let attachmentError = '';
 let attachmentBusy = false;
 let attachmentRequest = 0;
+let attachmentAbort = null;
+let attachmentConfirmed = false;
+let attachmentStatus = '';
 let analysis = null;
 let modalTrigger = null;
 let toastTimer;
@@ -190,7 +193,7 @@ function analysisResult() {
 
 function currentJobText() { return inputMode==='file' ? attachmentText : jdText; }
 function canAnalyze() {
-  return currentJobText().trim().length >= 20 && (inputMode==='text' || (!!attachment && !attachmentBusy));
+  return currentJobText().trim().length >= 20 && (inputMode==='text' || (!!attachment && !attachmentBusy && attachmentConfirmed));
 }
 function attachmentMarkup() {
   if (!attachment) return '<button type="button" class="upload-zone" data-action="pick-file"><span class="round-icon">'+icon('plus')+'</span><strong>공고 사진이나 PDF를 올려주세요</strong><span>파일을 끌어다 놓거나 클릭해서 선택하세요.</span><small>JPG · PNG · WebP · PDF / 1개, 최대 10MB</small></button>';
@@ -208,11 +211,13 @@ function analyzePage() {
   '<div class="analysis-layout"><section class="panel jd-panel" aria-labelledby="jd-title"><header class="section-heading"><h2 id="jd-title">'+icon('file')+' 채용공고 입력</h2>'+(!fileMode?'<button class="btn text small" data-action="sample-jd">예시 불러오기</button>':'')+'</header>'+
   '<div class="input-mode-switch" role="group" aria-label="채용공고 입력 방식"><button data-action="input-mode" data-mode="text" aria-pressed="'+!fileMode+'" class="'+(!fileMode?'selected':'')+'">'+icon('file')+' 텍스트 입력</button><button data-action="input-mode" data-mode="file" aria-pressed="'+fileMode+'" class="'+(fileMode?'selected':'')+'">'+icon('plus')+' 사진 · PDF 첨부</button></div>'+
   '<form id="analysis-form">'+(fileMode?'<div id="attachment-zone" aria-busy="'+attachmentBusy+'"><input type="file" id="jd-file" class="sr-only" tabindex="-1" accept="'+FILE_ACCEPT+'" aria-label="채용공고 파일 선택">'+attachmentMarkup()+'</div><p id="attachment-error" class="upload-error" role="alert">'+esc(attachmentError)+'</p>'+
-  '<div class="ocr-status" role="status"><span>'+icon('file')+'</span><div><strong>'+(attachmentBusy?'파일을 확인하고 있어요':'자동 텍스트 추출 · 연결 예정')+'</strong><p>한국어 OCR은 아직 연결되지 않았어요. 지금은 원본을 보며 아래에 공고 내용을 입력하면 텍스트 기준으로 분석할 수 있어요.</p></div></div>':'<p class="subtle input-help">담당 업무, 자격요건, 우대사항을 함께 넣어주세요.</p>')+
+  '<div class="ocr-status" role="status"><span>'+icon('file')+'</span><div><strong>'+(attachmentBusy?'파일에서 텍스트를 추출하고 있어요':attachmentConfirmed?'텍스트 확인 완료':'추출 결과를 확인해 주세요')+'</strong><p>'+esc(attachmentStatus || 'PDF 텍스트와 이미지·스캔 PDF의 OCR 결과를 아래에서 수정한 뒤 확인해 주세요.')+'</p></div></div>':'<p class="subtle input-help">담당 업무, 자격요건, 우대사항을 함께 넣어주세요.</p>')+
   '<label class="'+(fileMode?'review-label':'sr-only')+'" for="jd-text">'+(fileMode?'공고 텍스트 확인·수정':'채용공고 또는 Job Description')+'</label>'+
-  '<textarea id="jd-text" name="jd" required minlength="20" maxlength="15000" '+(fileMode&&!attachment?'disabled':'')+' placeholder="'+(fileMode?'자동 추출은 아직 제공되지 않습니다. 첨부한 공고의 내용을 직접 입력해 주세요.':'분석할 공고를 붙여넣으세요.&#10;&#10;자격요건&#10;· Java, Spring Boot 기반의 개발 경험&#10;&#10;우대사항&#10;· Docker 기반 배포 경험')+'">'+esc(text)+'</textarea>'+
-  '<div class="textarea-footer"><span>'+(fileMode?'입력·수정한 텍스트를 분석합니다.':'텍스트로 입력 · 최소 20자')+'</span><span id="jd-count">'+text.length.toLocaleString()+' / 15,000</span></div><button class="btn full" id="analyze-button" type="submit" '+(!canAnalyze()?'disabled':'')+'>'+icon('spark')+' 내 프로필과 비교하기</button></form>'+
-  (fileMode?'<p class="upload-help">첨부 파일은 서버로 전송하지 않으며, 새로고침하면 사라집니다.</p>':'')+
+  '<textarea id="jd-text" name="jd" required minlength="20" maxlength="15000" '+(fileMode&&(!attachment||attachmentBusy)?'disabled':'')+' placeholder="'+(fileMode?'추출 결과가 없으면 원본을 보며 직접 입력해 주세요.':'분석할 공고를 붙여넣으세요.&#10;&#10;자격요건&#10;· Java, Spring Boot 기반의 개발 경험&#10;&#10;우대사항&#10;· Docker 기반 배포 경험')+'">'+esc(text)+'</textarea>'+
+  '<div class="textarea-footer"><span>'+(fileMode?'입력·수정한 텍스트를 확인해야 분석합니다.':'텍스트로 입력 · 최소 20자')+'</span><span id="jd-count">'+text.length.toLocaleString()+' / 15,000</span></div>'+
+  (fileMode?'<button class="btn text small" id="confirm-text" type="button" data-action="confirm-text" '+(!attachment||attachmentBusy||text.trim().length<20||attachmentConfirmed?'disabled':'')+'>텍스트 확인</button>':'')+
+  '<button class="btn full" id="analyze-button" type="submit" '+(!canAnalyze()?'disabled':'')+'>'+icon('spark')+' 내 프로필과 비교하기</button></form>'+
+  (fileMode?'<p class="upload-help">파일은 텍스트 추출을 위해 서버에 전송되며 처리 후 삭제됩니다. 브라우저 미리보기와 수정 텍스트는 새로고침하면 사라집니다.</p>':'')+
   '<p class="jd-profile">'+icon('user')+'<span>'+esc(profile.role)+' · '+esc(profile.career)+' 프로필로 비교</span><a href="#/profile" aria-label="비교할 프로필 수정">수정</a></p></section><section class="panel result-panel" id="analysis-output" aria-live="polite">'+analysisResult()+'</section></div>';
 }
 function refreshAnalysisInput() {
@@ -220,8 +225,9 @@ function refreshAnalysisInput() {
 }
 function removeAttachment() {
   attachmentRequest++;
+  attachmentAbort?.abort(); attachmentAbort=null;
   if (attachment) URL.revokeObjectURL(attachment.url);
-  attachment=null; attachmentText=''; attachmentError=''; attachmentBusy=false; analysis=null;
+  attachment=null; attachmentText=''; attachmentError=''; attachmentBusy=false; attachmentConfirmed=false; attachmentStatus=''; analysis=null;
 }
 async function selectAttachment(files) {
   if (!files.length) return;
@@ -239,13 +245,22 @@ async function selectAttachment(files) {
     }
     if(request!==attachmentRequest) return;
     const url=URL.createObjectURL(file.slice(0,file.size,info.mime));
+    attachmentAbort?.abort();
+    attachmentAbort=new AbortController();
     if (attachment) URL.revokeObjectURL(attachment.url);
-    attachment={file,url,...info}; attachmentText=''; analysis=null;
+    attachment={file,url,...info}; attachmentText=''; attachmentConfirmed=false; attachmentStatus=''; analysis=null;
+    refreshAnalysisInput();
+    const result=await extractJobText(file, attachmentAbort.signal);
+    if(request!==attachmentRequest) return;
+    attachmentText=result.text || '';
+    attachmentStatus=(result.method==='PDF_TEXT'?'PDF 텍스트 추출':'OCR 처리')+' 완료 · '+result.pages+'쪽'+(result.truncated?' · 15,000자까지만 표시':'')+'. 원본과 비교하고 수정한 뒤 확인해 주세요.';
   } catch(error) {
     if(request!==attachmentRequest) return;
+    if (error.name==='AbortError') return;
     attachmentError=error instanceof DOMException?'이미지를 읽을 수 없어요. 다른 원본 파일을 선택해 주세요.':error.message;
+    attachmentStatus=attachment?'추출에 실패했습니다. 원본을 보며 텍스트를 직접 입력할 수 있습니다.':'';
   } finally {
-    if(request===attachmentRequest) { attachmentBusy=false; refreshAnalysisInput(); }
+    if(request===attachmentRequest) { attachmentBusy=false; attachmentAbort=null; refreshAnalysisInput(); }
   }
 }
 function render() {
@@ -302,6 +317,10 @@ document.addEventListener('click', event => {
   }
   if (action==='pick-file') document.querySelector('#jd-file')?.click();
   if (action==='remove-file') { removeAttachment(); render(); document.querySelector('[data-action="pick-file"]')?.focus(); }
+  if (action==='confirm-text' && attachment && !attachmentBusy && attachmentText.trim().length>=20) {
+    attachmentConfirmed=true; attachmentStatus='확인한 텍스트만 분석합니다. 수정하면 다시 확인해 주세요.';
+    render(); document.querySelector('#analyze-button')?.focus();
+  }
   if (action==='login') openLogin();
   if (action==='close-modal') closeModal();
   if (action==='sample-demo') startDemo(true);
@@ -350,9 +369,12 @@ document.addEventListener('click', event => {
 });
 document.addEventListener('input', event=>{
   if (event.target.id==='jd-text') {
-    if (inputMode==='file') attachmentText=event.target.value; else jdText=event.target.value;
+    if (inputMode==='file') { attachmentText=event.target.value; attachmentConfirmed=false; attachmentStatus='수정한 텍스트를 다시 확인해 주세요.'; }
+    else jdText=event.target.value;
     analysis=null;
     document.querySelector('#analyze-button').disabled=!canAnalyze();
+    const confirm=document.querySelector('#confirm-text');
+    if (confirm) confirm.disabled=attachmentBusy||attachmentText.trim().length<20;
     document.querySelector('#jd-count').textContent=currentJobText().length.toLocaleString()+' / 15,000';
     document.querySelector('#analysis-output').innerHTML=analysisResult();
   }
@@ -415,7 +437,7 @@ document.addEventListener('submit', event=>{
   }
   if (event.target.id==='analysis-form') {
     event.preventDefault();
-    if (!canAnalyze()) { toast('공고 텍스트를 20자 이상 입력해 주세요. 파일 모드에서는 파일도 필요합니다.'); return; }
+    if (!canAnalyze()) { toast('공고 텍스트를 20자 이상 입력하고, 파일 모드에서는 수정한 텍스트를 확인해 주세요.'); return; }
     analysis=analyzeText(currentJobText(),profile);
     document.querySelector('#analysis-output').innerHTML=analysisResult();
   }

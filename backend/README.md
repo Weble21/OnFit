@@ -2,6 +2,15 @@
 
 Spring Boot API server for the OnFit job recommendation project.
 
+단계별 작업 상태는 [roadmap](../docs/roadmap.md), PostgreSQL 검증·페이지네이션·추천 보존·오류/로그·백업/비밀값 정책은
+[운영 문서](../docs/operations.md)를 참고하세요.
+
+추천 품질 기준과 가중치 비교 방법은 [추천 평가 문서](../docs/recommendation-quality.md)에 있습니다.
+`./gradlew.bat recommendationEvaluation`으로 40개 가상 공고·10개 프로필의 점수/순위 비교 보고서를 생성합니다.
+
+FastAPI 의미 점수 연동 설정·계약·평가 결과는 [의미 유사도 문서](../docs/semantic-integration.md)에 있습니다.
+공고 파일 추출 API와 OCR 설치·오류·보관 정책은 [파일 추출 문서](../docs/file-extraction.md)에 있습니다.
+
 ## Stack
 
 - Java 21
@@ -40,8 +49,8 @@ tables automatically. PostgreSQL must be running for the API to start.
 들어 있습니다. 서버를 시작하면 누락된 공고만 PostgreSQL에 저장합니다. 각 공고의
 `seedKey`가 고정되어 있어 재시작해도 중복되지 않습니다. 이미 저장된 공고의 내용은
 JSON을 수정해도 자동 갱신되지 않습니다. 운영 환경에서 시드를 끄려면
-`ONFIT_SEED_ENABLED=false`로 설정하세요. 현재 단계에는 채용공고 조회 API가 없으며,
-5~6단계에서 추천 계산과 API를 추가할 예정입니다.
+`ONFIT_SEED_ENABLED=false`로 설정하세요. `prod` 프로필은 기본적으로 시드와 고정 날짜를 끄며
+DB 접속 환경변수를 필수로 요구합니다. 현재 공고 조회와 추천 API는 아래에 설명되어 있습니다.
 
 저장소 루트에서 적재 결과를 확인할 수 있습니다.
 
@@ -51,11 +60,13 @@ docker compose -f infra/compose.yaml exec postgres psql -U onfit -d onfit -c 'SE
 
 ```powershell
 ./gradlew.bat test
+./gradlew.bat postgresTest
 ```
 
-Tests use an in-memory H2 database in PostgreSQL compatibility mode to run the
-same Flyway migration and validate the entity mappings. They do not replace a
-real PostgreSQL startup check.
+`test`는 H2 PostgreSQL 호환 모드에서 빠른 회귀 검증을 합니다. `postgresTest`는 Docker의
+실제 PostgreSQL에서 새 DB 및 V1~V5 DB의 업그레이드, 시드 중복, 핵심 API, 추천 재사용/보존을 검증합니다.
+Docker Linux 엔진이 필요하며 엔진이 없으면 실패합니다. `check`는 두 작업을 모두 실행합니다.
+CI에서도 백엔드의 두 작업과 프론트의 `npm test`, `npm run check`를 실행합니다.
 
 ## PostgreSQL 상태 확인
 
@@ -117,7 +128,8 @@ Invoke-RestMethod -Method Get -Uri 'http://localhost:8080/api/profiles/me'
 `RecommendationCalculator`는 프로필과 공고를 받아 0~100점의 부분 점수 및
 추천 근거를 계산합니다. 전체 점수는 `필수 기술 × 0.35 + 우대 기술 × 0.20 +
 의미 유사도 × 0.20 + 경험 연관성 × 0.15 + 희망조건 × 0.10`이며 소수 둘째 자리로
-반올림합니다. 의미 유사도는 AI 연동 전까지 **항상 0점**이라 현재 최고점은 80점입니다.
+반올림합니다. 기본값(`ONFIT_AI_ENABLED=false`) 또는 AI 장애 대체 시 의미 유사도는 0점이므로 최고점은 80점입니다.
+AI 연동을 켜고 정상 응답을 받으면 의미 유사도에 따라 최고 100점까지 계산합니다.
 
 - 필수·우대 기술: 정규화한 기술명의 일치 비율. 공고에 해당 기술 목록이 없으면 0점.
 - 경험 연관성: 공고 직무와 정확히 일치하는 경력이 있으면 100점. 없으면 프로젝트별
@@ -144,7 +156,7 @@ Invoke-RestMethod -Method Get -Uri 'http://localhost:8080/api/profiles/me'
 
 | 메서드 | 경로 | 결과 |
 | --- | --- | --- |
-| GET | `/api/jobs` | 상태가 `OPEN`이고 마감일이 지나지 않은 공고 목록 |
+| GET | `/api/jobs?page=0&size=20` | 열린 공고를 페이지 객체로 반환 (content, page, size, totalElements, totalPages, hasNext) |
 | GET | `/api/jobs/{jobId}` | 공고 상세 (마감 공고도 조회 가능) |
 | POST | `/api/recommendations` | 데모 프로필로 열린 공고 전체를 계산해 점수순 목록 반환 |
 | GET | `/api/recommendations/{recommendationId}` | 데모 사용자의 저장된 추천 상세 |
@@ -161,6 +173,6 @@ V4는 업종 칸에 있던 "스타트업" 2건을 "클라우드"로 바로잡고
 `industry` 열로 보존하면서 별도의 nullable `company_size` 열을 추가합니다.
 
 ```powershell
-Invoke-RestMethod http://localhost:8080/api/jobs
+Invoke-RestMethod 'http://localhost:8080/api/jobs?page=0&size=20'
 Invoke-RestMethod -Method Post http://localhost:8080/api/recommendations
 ```

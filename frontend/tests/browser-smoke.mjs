@@ -132,6 +132,8 @@ try {
   assert.equal(await evaluate('document.querySelector("#jd-text").value'),'');
   assert.equal(await evaluate('document.querySelector("#analyze-button").disabled'),true);
   await evaluate('document.querySelector("#jd-text").value="자격요건: Java, Spring Boot, PostgreSQL을 사용한 개발 경험";document.querySelector("#jd-text").dispatchEvent(new Event("input",{bubbles:true}))');
+  assert.equal(await evaluate('document.querySelector("#analyze-button").disabled'),true);
+  await click('[data-action="confirm-text"]');
   await evaluate('document.querySelector("#analysis-form").requestSubmit()');
   assert.equal(await evaluate('document.querySelector(".score-circle strong").textContent'),'100%');
   await screenshot('upload-image-desktop');
@@ -156,7 +158,7 @@ try {
   await writeFile(path.join(out,'posting.pdf'),pdf);
   await attach([path.join(out,'posting.pdf')]);
   assert.ok(await evaluate('!!document.querySelector(".pdf-preview")'));
-  assert.equal(await evaluate('document.querySelector("#jd-text").value'),'');
+  assert.ok((await evaluate('document.querySelector("#jd-text").value')).includes('Java Spring Boot'));
   assert.equal(await evaluate('document.querySelector(".score-circle")'),null);
   assert.equal(await evaluate('document.querySelector("#analyze-button").disabled'),true);
   await noOverflow(); await screenshot('upload-pdf-desktop');

@@ -1,0 +1,89 @@
+name: Regression tests
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install OCR engine and Korean language data
+        run: sudo apt-get update -qq && sudo apt-get install -y tesseract-ocr tesseract-ocr-kor
+      - name: Check Korean OCR availability
+        run: tesseract --list-langs 2>&1 | grep -q '^kor$'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Recommendation quality report
+        working-directory: backend
+        run: bash gradlew recommendationEvaluation --console=plain
+      - name: H2 and real PostgreSQL regression
+        working-directory: backend
+        run: bash gradlew test postgresTest --console=plain
+      - name: Upload backend reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-test-reports
+          path: |
+            backend/build/reports/tests/
+            backend/build/reports/recommendation-evaluation/
+  frontend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm test
+        working-directory: frontend
+      - run: npm run check
+        working-directory: frontend
+  ai:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: ai-service/requirements-lock.txt
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v4
+      - uses: actions/cache@v4
+        with:
+          path: ai-service/.cache/hf
+          key: ${{ runner.os }}-onfit-ai-f16484b452bc5449a3ad85665709a2648b51d735
+      - name: Install pinned Python dependencies
+        run: python -m pip install -r ai-service/requirements-test.txt
+      - name: Cache pinned multilingual model
+        env:
+          HF_HOME: ${{ github.workspace }}/ai-service/.cache/hf
+        run: python ai-service/prepare_model.py
+      - name: AI contract and actual model tests
+        env:
+          HF_HOME: ${{ github.workspace }}/ai-service/.cache/hf
+        run: python -m pytest ai-service/test_app.py ai-service/test_model.py -q
+      - name: Real model ranking evaluation through Spring HTTP client
+        env:
+          HF_HOME: ${{ github.workspace }}/ai-service/.cache/hf
+        run: python ai-service/run_evaluation.py
+      - name: Upload actual model ranking
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: semantic-evaluation
+          path: backend/build/reports/semantic-evaluation/

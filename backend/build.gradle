@@ -24,6 +24,7 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-validation'
 	implementation 'org.springframework.boot:spring-boot-starter-webmvc'
 	implementation 'org.flywaydb:flyway-database-postgresql'
+	implementation 'org.apache.pdfbox:pdfbox:3.0.6'
 	compileOnly 'org.projectlombok:lombok'
 	developmentOnly 'org.springframework.boot:spring-boot-devtools'
 	runtimeOnly 'org.postgresql:postgresql'
@@ -33,6 +34,9 @@ dependencies {
 	testImplementation 'org.springframework.boot:spring-boot-starter-flyway-test'
 	testImplementation 'org.springframework.boot:spring-boot-starter-validation-test'
 	testImplementation 'org.springframework.boot:spring-boot-starter-webmvc-test'
+	testImplementation 'org.springframework.boot:spring-boot-testcontainers'
+	testImplementation 'org.testcontainers:testcontainers-junit-jupiter'
+	testImplementation 'org.testcontainers:testcontainers-postgresql'
 	testCompileOnly 'org.projectlombok:lombok'
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 	testRuntimeOnly 'com.h2database:h2'
@@ -40,5 +44,37 @@ dependencies {
 }
 
 tasks.named('test') {
-	useJUnitPlatform()
+	useJUnitPlatform { excludeTags 'postgres' }
+}
+
+tasks.register('postgresTest', Test) {
+	description = 'Runs required real PostgreSQL migration and API regression tests (Docker required).'
+	group = 'verification'
+	testClassesDirs = sourceSets.test.output.classesDirs
+	classpath = sourceSets.test.runtimeClasspath
+	useJUnitPlatform { includeTags 'postgres' }
+	shouldRunAfter tasks.named('test')
+}
+
+tasks.named('check') { dependsOn tasks.named('postgresTest') }
+
+tasks.register('recommendationEvaluation', JavaExec) {
+	description = 'Produces deterministic baseline/candidate recommendation rankings and comparison report.'
+	group = 'verification'
+	dependsOn tasks.named('testClasses')
+	classpath = sourceSets.test.runtimeClasspath
+	mainClass = 'com.doggeon.jobrecommendation.evaluation.RecommendationEvaluation'
+	args layout.buildDirectory.dir('reports/recommendation-evaluation').get().asFile.absolutePath
+	if (providers.gradleProperty('evaluationWeights').isPresent()) {
+		args file(providers.gradleProperty('evaluationWeights').get()).absolutePath
+	}
+}
+
+tasks.register('semanticEvaluation', JavaExec) {
+	description = 'Calls the pinned private AI service and compares semantic rankings against evaluation-v1.'
+	group = 'verification'
+	dependsOn tasks.named('testClasses')
+	classpath = sourceSets.test.runtimeClasspath
+	mainClass = 'com.doggeon.jobrecommendation.evaluation.SemanticEvaluation'
+	args layout.buildDirectory.dir('reports/semantic-evaluation').get().asFile.absolutePath
 }

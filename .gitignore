@@ -1,4 +1,13 @@
 HELP.md
+.env
+.env.*
+!.env.example
+backups/
+logs/
+ai-service/.venv/
+ai-service/.cache/
+__pycache__/
+.pytest_cache/
 
 .gradle/
 build/

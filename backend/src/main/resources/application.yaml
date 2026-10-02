@@ -1,4 +1,8 @@
 spring:
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 11MB
   application:
     name: job-recommendation-backend
   datasource:
@@ -14,7 +18,22 @@ spring:
       hibernate.default_batch_fetch_size: 100
   flyway:
     enabled: true
+logging:
+  pattern:
+    level: '%5p [request_id=%X{requestId:-}]'
 onfit:
+  extraction:
+    ocr-command: ${ONFIT_OCR_COMMAND:tesseract}
+    ocr-enabled: ${ONFIT_OCR_ENABLED:true}
+  ai:
+    enabled: ${ONFIT_AI_ENABLED:false}
+    url: ${ONFIT_AI_URL:http://127.0.0.1:8001/v1/semantic-score}
+    token: ${ONFIT_AI_TOKEN:}
+    timeout-ms: ${ONFIT_AI_TIMEOUT_MS:5000}
+    include-project-descriptions: ${ONFIT_AI_INCLUDE_PROJECT_DESCRIPTIONS:false}
+  recommendation:
+    retention-days: ${ONFIT_RECOMMENDATION_RETENTION_DAYS:30}
+    cleanup-enabled: ${ONFIT_RECOMMENDATION_CLEANUP_ENABLED:true}
   seed:
     enabled: ${ONFIT_SEED_ENABLED:true}
   # Deadlines are judged in this zone. Set ONFIT_FIXED_DATE (yyyy-MM-dd) to pin "today" for demos.

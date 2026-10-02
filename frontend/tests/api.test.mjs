@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { toProfileRequest, fromProfileResponse, toDisplayJob, saveProfile } from '../src/api.js';
+import { toProfileRequest, fromProfileResponse, toDisplayJob, saveProfile, extractJobText } from '../src/api.js';
 
 test('profile form converts to backend schema', () => {
   const request = toProfileRequest({ role: '백엔드 개발자', location: '서울', projects: [
@@ -59,6 +59,25 @@ test('server problem details reach the user instead of a generic message', async
     globalThis.fetch = async () => new Response('{"error":"Backend unavailable"}', { status: 502 });
     await assert.rejects(saveProfile({ role: '백엔드 개발자', location: '', projects: [{ name: 'A', description: '', stack: 'Java' }] }),
       { message: /백엔드에 연결할 수 없습니다/ });
+  } finally {
+    globalThis.fetch = original;
+  }
+});
+
+test('file extraction uploads multipart bytes and exposes server errors', async () => {
+  const original = globalThis.fetch;
+  const file = new File(['%PDF-1.4'], 'posting.pdf', { type: 'application/pdf' });
+  globalThis.fetch = async (url, options) => {
+    assert.equal(url, '/api/job-text/extract');
+    assert.equal(options.method, 'POST');
+    assert.equal(options.headers['Content-Type'], undefined);
+    assert.equal(options.body.get('file').name, 'posting.pdf');
+    return Response.json({ text: 'Java Spring Boot 채용공고', method: 'PDF_TEXT', pages: 1, truncated: false });
+  };
+  try {
+    assert.equal((await extractJobText(file)).method, 'PDF_TEXT');
+    globalThis.fetch = async () => Response.json({ detail: '손상된 PDF입니다.' }, { status: 422 });
+    await assert.rejects(extractJobText(file), { message: '손상된 PDF입니다.' });
   } finally {
     globalThis.fetch = original;
   }

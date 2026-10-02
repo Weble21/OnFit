@@ -1,9 +1,9 @@
 package com.doggeon.jobrecommendation.recommendation;
 
-import java.util.List;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -17,8 +17,9 @@ public class JobController {
     }
 
     @GetMapping
-    public List<JobResponse> list() {
-        return service.listOpen();
+    public JobPageResponse list(@RequestParam(defaultValue = "0") int page,
+                                @RequestParam(defaultValue = "20") int size) {
+        return service.listOpen(page, size);
     }
 
     @GetMapping("/{jobId}")

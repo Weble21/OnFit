@@ -6,6 +6,8 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Set;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.Query;
 
 public interface JobPostingRepository extends JpaRepository<JobPosting, Long> {
@@ -14,4 +16,6 @@ public interface JobPostingRepository extends JpaRepository<JobPosting, Long> {
     long countBySeedKeyIsNotNull();
     List<JobPosting> findByStatusAndDeadlineGreaterThanEqualOrderByIdAsc(
             JobPostingStatus status, LocalDate deadline);
+    Page<JobPosting> findByStatusAndDeadlineGreaterThanEqualOrderByIdAsc(
+            JobPostingStatus status, LocalDate deadline, Pageable pageable);
 }

@@ -8,5 +8,7 @@ spring:
     hibernate:
       ddl-auto: validate
 onfit:
+  recommendation:
+    cleanup-enabled: false
   # Seed deadlines are fixed calendar dates, so tests pin "today" to keep the open-job count stable.
   fixed-date: 2026-09-29

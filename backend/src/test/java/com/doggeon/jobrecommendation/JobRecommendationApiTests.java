@@ -41,10 +41,21 @@ class JobRecommendationApiTests {
                 "SELECT id FROM job_postings WHERE seed_key = 'onfit-038'", Integer.class);
         mvc.perform(get("/api/jobs"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(36))
-                .andExpect(jsonPath("$[0].industry").value("클라우드"))
-                .andExpect(jsonPath("$[0].companySize").value(org.hamcrest.Matchers.nullValue()))
-                .andExpect(jsonPath("$[0].requiredSkills[0]").value("Java"));
+                .andExpect(jsonPath("$.content.length()").value(20))
+                .andExpect(jsonPath("$.totalElements").value(36))
+                .andExpect(jsonPath("$.hasNext").value(true))
+                .andExpect(jsonPath("$.content[0].industry").value("클라우드"))
+                .andExpect(jsonPath("$.content[0].companySize").value(org.hamcrest.Matchers.nullValue()))
+                .andExpect(jsonPath("$.content[0].requiredSkills[0]").value("Java"));
+        mvc.perform(get("/api/jobs?page=1&size=20"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content.length()").value(16))
+                .andExpect(jsonPath("$.hasNext").value(false));
+        mvc.perform(get("/api/jobs?page=2"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.content").isEmpty());
+        for (String query : new String[]{"page=-1", "size=0", "size=101", "page=abc"}) {
+            mvc.perform(get("/api/jobs?" + query)).andExpect(status().isBadRequest());
+        }
         mvc.perform(get("/api/jobs/{id}", closedId))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("CLOSED"));
