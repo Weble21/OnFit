@@ -67,6 +67,21 @@ public class JobPosting {
     @Column(name = "seed_key", length = 80, unique = true)
     private String seedKey;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 16)
+    private JobOrigin origin = JobOrigin.LEGACY;
+
+    @Column(name = "source_name", length = 80)
+    private String sourceName;
+    @Column(name = "external_id", length = 200)
+    private String externalId;
+    @Column(name = "collected_at")
+    private Instant collectedAt;
+    @Column(name = "last_seen_at")
+    private Instant lastSeenAt;
+    @Column(name = "content_hash", length = 64)
+    private String contentHash;
+
     @ElementCollection
     @CollectionTable(name = "job_required_skills", joinColumns = @JoinColumn(name = "job_id"))
     @OrderColumn(name = "sort_order")
@@ -108,6 +123,7 @@ public class JobPosting {
                                     List<String> preferredSkills) {
         JobPosting job = new JobPosting(companyName, title, roleName, responsibilities, location, deadline, status);
         job.seedKey = seedKey;
+        job.origin = JobOrigin.SYNTHETIC;
         job.industry = industry;
         job.companySize = companySize;
         job.careerLevel = careerLevel;
@@ -131,6 +147,46 @@ public class JobPosting {
     public JobPostingStatus getStatus() { return status; }
     public String getSourceUrl() { return sourceUrl; }
     public String getSeedKey() { return seedKey; }
+    public JobOrigin getOrigin() { return origin; }
+    public String getSourceName() { return sourceName; }
+    public String getExternalId() { return externalId; }
+    public Instant getCollectedAt() { return collectedAt; }
+    public Instant getLastSeenAt() { return lastSeenAt; }
+    public String getContentHash() { return contentHash; }
+
+    public static JobPosting imported(String sourceName, String externalId, Instant collectedAt) {
+        JobPosting job = new JobPosting();
+        job.origin = JobOrigin.REAL;
+        job.sourceName = sourceName;
+        job.externalId = externalId;
+        job.collectedAt = collectedAt;
+        return job;
+    }
+
+    public void updateImported(String sourceUrl, String companyName, String title, String roleName,
+                               String industry, String companySize, String careerLevel, String description,
+                               String responsibilities, String location, LocalDate deadline, JobPostingStatus status,
+                               List<String> requiredSkills, List<String> preferredSkills, String hash) {
+        this.sourceUrl = sourceUrl;
+        this.companyName = companyName;
+        this.title = title;
+        this.roleName = roleName;
+        this.industry = industry;
+        this.companySize = companySize;
+        this.careerLevel = careerLevel;
+        this.description = description;
+        this.responsibilities = responsibilities;
+        this.location = location;
+        this.deadline = deadline;
+        this.status = status;
+        this.requiredSkills.clear();
+        this.requiredSkills.addAll(requiredSkills);
+        this.preferredSkills.clear();
+        this.preferredSkills.addAll(preferredSkills);
+        this.contentHash = hash;
+    }
+
+    public void markSeen(Instant observedAt) { this.lastSeenAt = observedAt; }
     public List<String> getRequiredSkills() { return requiredSkills; }
     public List<String> getPreferredSkills() { return preferredSkills; }
     public Instant getCreatedAt() { return createdAt; }

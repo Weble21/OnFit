@@ -12,8 +12,11 @@ import org.slf4j.MDC;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 import org.springframework.web.servlet.HandlerMapping;
+import org.springframework.core.annotation.Order;
+import org.springframework.core.Ordered;
 
 @Component
+@Order(Ordered.HIGHEST_PRECEDENCE)
 public class RequestLogFilter extends OncePerRequestFilter {
     private static final Logger log = LoggerFactory.getLogger(RequestLogFilter.class);
 

@@ -37,12 +37,15 @@ try {
     throw new Error('Timed out waiting for: '+expression);
   };
   const click=async(selector)=>{await evaluate('document.querySelector('+JSON.stringify(selector)+').click()');await wait();};
-  const route=async(hash)=>{await evaluate('location.hash='+JSON.stringify(hash));await wait();};
+  // Screens are lazy-loaded and switched in a transition, so wait until the menu shows the new screen as active.
+  const route=async(hash)=>{await evaluate('location.hash='+JSON.stringify(hash));await waitFor('document.querySelector(".side-nav a.active")?.getAttribute("href")==='+JSON.stringify('#'+hash)+' || !!document.querySelector("#app > .landing")');await wait();};
   const screenshot=async(name)=>{const shot=await call('Page.captureScreenshot',{format:'png',captureBeyondViewport:true});await writeFile(path.join(out,name+'.png'),Buffer.from(shot.data,'base64'));};
+  // React ignores `field.value = x` (it tracks that setter), so simulated typing goes through the native one.
+  const setValueJs='(field,value)=>Object.getOwnPropertyDescriptor(Object.getPrototypeOf(field),"value").set.call(field,value)';
   const noOverflow=async()=>assert.equal(await evaluate('document.documentElement.scrollWidth <= innerWidth'),true,'Horizontal overflow');
   await call('Runtime.enable');await call('Page.enable');
   await call('Emulation.setDeviceMetricsOverride',{width:1440,height:1000,deviceScaleFactor:1,mobile:false});
-  await call('Page.navigate',{url:'http://localhost:5173'});
+  await call('Page.navigate',{url:process.env.ONFIT_URL||'http://localhost:5173'});
   await new Promise(r=>setTimeout(r,800));
   await evaluate('localStorage.clear()');
   await call('Page.reload'); await new Promise(r=>setTimeout(r,500));
@@ -52,6 +55,8 @@ try {
   await click('[data-action="login"]');
   assert.equal(await evaluate('document.querySelectorAll(".oauth:disabled").length'),3);
   await click('[data-action="blank-demo"]');
+  // Starting the demo first asks the server for an existing profile.
+  await waitFor('!!document.querySelector(".app-shell")');
   await route('/profile');
   assert.ok(await evaluate('document.querySelector("#profile-form") !== null'));
   await evaluate("document.querySelector('[name=projectName]').value='브라우저 테스트 프로젝트';document.querySelector('[name=projectDescription]').value='Java API와 PostgreSQL 데이터베이스를 설계하고 AWS에 배포했습니다.';document.querySelector('[name=projectStack]').value='Java, Spring Boot, PostgreSQL, Docker, AWS';document.querySelector('[name=types][value=핀테크]').checked=true");
@@ -84,20 +89,21 @@ try {
   assert.ok(await evaluate('document.querySelectorAll(".job-card").length > 0'));
   await screenshot('recommendations-desktop');
   const koreanSearch = await evaluate(`(() => {
+    const setValue = ${setValueJs};
     const field = document.querySelector('#company-search');
     field.focus();
     field.dispatchEvent(new CompositionEvent('compositionstart', { bubbles: true }));
-    field.value = 'ㄱ';
+    setValue(field, 'ㄱ');
     field.dispatchEvent(new InputEvent('input', { bubbles: true, isComposing: true, data: 'ㄱ' }));
     const sameDuringComposition = document.querySelector('#company-search') === field;
-    field.value = '가온';
+    setValue(field, '가온');
     field.dispatchEvent(new InputEvent('input', { bubbles: true, isComposing: true, data: '가온' }));
     field.dispatchEvent(new CompositionEvent('compositionend', { bubbles: true, data: '가온' }));
     field.dispatchEvent(new InputEvent('input', { bubbles: true, data: '가온' }));
     const result = { sameDuringComposition, sameAfterComposition: document.querySelector('#company-search') === field,
       value: field.value, count: document.querySelectorAll('.job-card').length,
-      company: document.querySelector('.job-card .company-line h3')?.textContent };
-    field.value = '';
+      companies: [...document.querySelectorAll('.job-card .company-line h3')].map(h => h.textContent) };
+    setValue(field, '');
     field.dispatchEvent(new InputEvent('input', { bubbles: true }));
     return result;
   })()`);
@@ -105,7 +111,7 @@ try {
   assert.equal(koreanSearch.sameAfterComposition, true);
   assert.equal(koreanSearch.value, '가온');
   assert.ok(koreanSearch.count > 0);
-  assert.ok(koreanSearch.company.includes('가온'));
+  assert.ok(koreanSearch.companies.every(company => company.includes('가온')), 'Search filters the cards');
   await click('[data-action="favorite"]');
   await route('/favorites');
   assert.equal(await evaluate('document.querySelectorAll(".job-card").length'),1);
@@ -131,7 +137,7 @@ try {
   assert.equal(await evaluate('document.querySelector(".image-preview img").naturalWidth>0'),true);
   assert.equal(await evaluate('document.querySelector("#jd-text").value'),'');
   assert.equal(await evaluate('document.querySelector("#analyze-button").disabled'),true);
-  await evaluate('document.querySelector("#jd-text").value="자격요건: Java, Spring Boot, PostgreSQL을 사용한 개발 경험";document.querySelector("#jd-text").dispatchEvent(new Event("input",{bubbles:true}))');
+  await evaluate('('+setValueJs+')(document.querySelector("#jd-text"),"자격요건: Java, Spring Boot, PostgreSQL을 사용한 개발 경험");document.querySelector("#jd-text").dispatchEvent(new Event("input",{bubbles:true}))');
   assert.equal(await evaluate('document.querySelector("#analyze-button").disabled'),true);
   await click('[data-action="confirm-text"]');
   await evaluate('document.querySelector("#analysis-form").requestSubmit()');

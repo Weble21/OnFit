@@ -1,7 +1,7 @@
 ﻿# 온핏 프론트엔드
 
 따뜻한 크림·테라코타·세이지 색상의 반응형 SPA 프로토타입입니다.
-별도 패키지 설치 없이 Node.js로 실행합니다. 공고·추천 화면에는 PostgreSQL과
+React 19와 Vite로 만들었습니다. 공고·추천 화면에는 PostgreSQL과
 Spring Boot 백엔드가 필요합니다.
 
 ## 실행
@@ -14,18 +14,36 @@ cd backend
 .\gradlew.bat bootRun
 ```
 
-별도 터미널에서 프로젝트 루트로 돌아와 프론트엔드를 실행합니다.
+별도 터미널에서 프로젝트 루트로 돌아와 의존성을 설치하고(처음 한 번) 개발 서버를 실행합니다.
 
 ```powershell
+npm.cmd install --prefix frontend
 npm.cmd run dev --prefix frontend
 ```
 
-브라우저에서 http://localhost:5173 접속.
+브라우저에서 http://localhost:5173 접속. 코드를 저장하면 화면이 바로 갱신됩니다(Vite HMR).
 다른 포트는 PowerShell에서 `$env:PORT = '5174'` 설정 후 실행하세요.
 
-프론트 개발 서버가 `/api/*`를 `http://127.0.0.1:8080`으로 전달합니다.
+개발 서버가 `/api/*`를 `http://127.0.0.1:8080`으로 전달합니다(`vite.config.js`).
 백엔드 주소를 바꾸려면 `BACKEND_URL` 환경변수를 설정하세요. Live Server에는
 이 프록시가 없어 API 화면이 동작하지 않습니다.
+
+배포용 빌드를 확인하려면 빌드 후 운영 서버로 실행합니다. `server.mjs`가 `dist/`를
+brotli/gzip으로 압축해 제공하고, 해시가 붙은 `assets/` 파일은 1년 캐시하며, `/api/*`를 같은 방식으로 전달합니다.
+
+```powershell
+npm.cmd run build --prefix frontend
+npm.cmd start --prefix frontend
+```
+
+개발 모드는 React StrictMode라서 화면 진입 시 프로필 조회(GET)가 두 번 보일 수 있습니다. 운영 빌드에서는 한 번입니다.
+
+빌드는 두 가지 로딩 최적화를 포함합니다.
+
+- **랜딩 미리 렌더링:** `npm run build`가 `src/prerender.jsx`로 랜딩 화면 HTML을 만들어 `dist/index.html`에 넣습니다(`scripts/prerender.mjs`). JS가 도착하기 전에 첫 화면이 보이고, React가 실행되면 같은 화면으로 교체합니다. `#/profile`처럼 다른 화면 주소로 들어오면 `index.html`의 작은 인라인 스크립트가 미리 렌더링된 랜딩을 숨깁니다.
+- **화면별 코드 분할:** 추천·프로필·분석 화면은 `React.lazy`로 별도 파일이 되고, 데모에 들어가면 백그라운드에서 미리 받습니다. 화면 전환은 `startTransition`으로 처리해 새 화면이 준비될 때까지 이전 화면을 유지합니다.
+
+Lighthouse 성능 점수는 개발 서버가 아니라 운영 빌드로, 시크릿 창에서 측정하세요.
 
 ## 화면
 
@@ -41,7 +59,7 @@ npm.cmd run dev --prefix frontend
 
 ## 구현 범위
 
-- 순수 JavaScript ES modules, CSS, 해시 라우팅을 사용합니다.
+- React 컴포넌트, 기존 CSS(`src/styles.css`), 해시 라우팅(`#/profile` 등, 라우터 라이브러리 없음)을 사용합니다.
 - OAuth 버튼은 미연결 상태로 비활성화되어 있습니다. Google·카카오·네이버 실제 인증은 구현하지 않았습니다.
 - 기업·공고는 모두 가상 데이터입니다.
 - 공고의 업종(`industry`)과 기업 규모(`companySize`)는 별도 값입니다. 규모를 알 수 없으면 화면에 표시하지 않습니다.
@@ -55,27 +73,38 @@ npm.cmd run dev --prefix frontend
 ## 검증
 
 ```powershell
-npm.cmd run check --prefix frontend
-npm.cmd test --prefix frontend
+npm.cmd run check --prefix frontend   # 빌드 확인
+npm.cmd test --prefix frontend        # api·data·upload 단위 테스트
 ```
+
+## 파일 구조
+
+- `src/main.jsx`: React 진입점
+- `src/App.jsx`: 화면 전환, 데모 세션·프로필·추천·관심 기업 상태, 모달 관리
+- `src/pages/`: 화면 4개(`Landing`, `Recommendations`, `ProfilePage`, `AnalyzePage`)
+- `src/components/`: 공통 UI(`ui.jsx`의 아이콘·알약·빈 화면 등), `Shell`(사이드바·상단바), `Modal`, 로그인·공고 상세 모달, `Toast`
+- `src/hooks/`: `useHashRoute`(해시 라우팅), `useJobAnalysis`(공고 분석·첨부 파일 상태)
+- `src/api.js`: 프로필·공고·추천 API 연결 및 화면 데이터 변환 (화면과 무관하게 단위 테스트)
+- `src/data.js`: 프로필 직무·지역 선택지와 자유 텍스트 JD 분석 데모 (아직 서버 AI 분석 아님)
+- `src/storage.js`: localStorage에 남기는 브라우저 전용 설정
 
 ## 백엔드 연결 위치
 
-- `src/api.js`: 프로필·공고·추천 API 연결 및 화면 데이터 변환
-- `src/data.js`: 프로필 직무·지역 선택지와 자유 텍스트 JD 분석 데모 (아직 서버 AI 분석 아님)
-- `src/app.js`: 인증 전 임시 데모 사용자와 브라우저 전용 설정을 관리
-- `openLogin()`: OAuth 제공자별 백엔드 로그인 URL 연결
+- `src/App.jsx`: 인증 전 임시 데모 사용자(`startDemo`)와 브라우저 전용 설정을 관리
+- `src/components/LoginModal.jsx`: OAuth 제공자별 백엔드 로그인 URL 연결 위치
 - OAuth 완료 후 프로필 유무에 따라 프로필 설정 또는 추천 화면으로 이동
 
-개발 서버는 로컬 미리보기 용도입니다. 배포 시 정적 호스팅 또는 Spring Boot 정적 리소스로 제공하세요.
+배포 시에는 `npm run build`로 만든 `dist/`를 정적 호스팅이나 Spring Boot 정적 리소스로 제공하세요.
 
-
-실제 브라우저 흐름 검증은 개발 서버 실행 후 다음 명령으로 확인할 수 있습니다.
+실제 브라우저 흐름 검증은 개발 서버(또는 빌드 후 운영 서버) 실행 후 다음 명령으로 확인할 수 있습니다.
+React는 `input.value = ...`로 넣은 값을 사용자 입력으로 보지 않으므로, 테스트는 브라우저 기본 setter로 값을 넣습니다.
 Windows 기본 경로에 설치된 Google Chrome을 사용하며 별도 테스트 브라우저 프로필로 실행합니다.
 
 ```powershell
 node frontend/tests/browser-smoke.mjs
 ```
+
+기본 주소는 http://localhost:5173 입니다. 다른 주소의 서버를 검사하려면 `$env:ONFIT_URL = 'http://localhost:4173'`처럼 지정하세요.
 
 결과 스크린샷과 테스트 브라우저 프로필은 Git에서 제외된 `frontend/.preview/`에 생성됩니다.
 
@@ -100,4 +129,4 @@ node frontend/tests/browser-smoke.mjs
 4. 추출한 텍스트를 프론트 검토 입력란에 반환하여 사용자가 오인식된 기술명 등을 수정하게 합니다.
 5. 사용자가 확인한 텍스트로 공고 구조화와 적합도 분석을 요청합니다.
 
-`src/upload.js`는 파일 형식 검사, `src/app.js`의 `selectAttachment()`는 첨부 상태 관리, `attachmentText`는 파일별 검토 텍스트를 담당합니다. OCR API가 추가되면 첨부 요청 순서 확인 및 취소 처리를 유지하면서 추출 결과를 연결하세요.
+`src/upload.js`는 파일 형식 검사, `src/hooks/useJobAnalysis.js`의 `selectFiles()`는 첨부 상태 관리, `file.text`는 파일별 검토 텍스트를 담당합니다. OCR API가 추가되면 첨부 요청 순서 확인 및 취소 처리를 유지하면서 추출 결과를 연결하세요.

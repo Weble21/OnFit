@@ -19,28 +19,29 @@ import org.springframework.web.server.ResponseStatusException;
 
 @Service
 public class ProfileService {
-    // Phase 1 uses one local demo identity. Replace this with the authenticated principal later.
-    private static final String DEMO_EMAIL = "demo@onfit.local";
+    private final CurrentUser currentUser;
 
     private final UserRepository userRepository;
     private final UserProfileRepository profileRepository;
     private final EntityManager entityManager;
 
     public ProfileService(UserRepository userRepository, UserProfileRepository profileRepository,
-                          EntityManager entityManager) {
+                          EntityManager entityManager, CurrentUser currentUser) {
         this.userRepository = userRepository;
         this.profileRepository = profileRepository;
         this.entityManager = entityManager;
+        this.currentUser = currentUser;
     }
 
     @Transactional
     public ProfileResponse create(ProfileRequest request) {
         validateDates(request);
         List<Skill> skills = buildSkills(request.skills());
-        User user = userRepository.findByEmail(DEMO_EMAIL)
-                .orElseGet(() -> userRepository.save(new User(DEMO_EMAIL, "OnFit Demo")));
+        String identity = currentUser.identity();
+        User user = userRepository.findByEmail(identity)
+                .orElseGet(() -> userRepository.save(new User(identity, "OnFit User")));
         if (profileRepository.existsByUserId(user.getId())) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "데모 사용자 프로필이 이미 있습니다.");
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "사용자 프로필이 이미 있습니다.");
         }
 
         UserProfile profile = new UserProfile(user);
@@ -76,9 +77,9 @@ public class ProfileService {
     }
 
     private UserProfile findMine() {
-        return profileRepository.findByUserEmail(DEMO_EMAIL)
+        return profileRepository.findByUserEmail(currentUser.identity())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
-                        "데모 사용자 프로필이 없습니다."));
+                        "사용자 프로필이 없습니다."));
     }
 
     private void fillProfile(UserProfile profile, ProfileRequest request, List<Skill> skills) {

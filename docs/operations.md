@@ -10,7 +10,7 @@
 - `.github/workflows/ci.yml`: push/PR마다 위 테스트를 실행하고 백엔드 결과를 artifact로 보관한다. 브랜치 보호의 필수 상태 검사는 저장소 설정에서 `backend`, `frontend`를 지정한다.
 
 PostgreSQL 테스트는 일회용 컨테이너 안에 사례별 스키마를 만든다. 실제 개발/운영 DB에 접속하지 않는다.
-새 DB 및 V1~V5에서 출발한 DB마다 최신 V7까지 마이그레이션하고 Hibernate 매핑을 검증한다.
+새 DB 및 V1~V7에서 출발한 DB마다 최신 V8까지 마이그레이션하고 Hibernate 매핑을 검증한다.
 기존 프로필·공고·추천·기술 누락·근거 데이터를 보존하며 V3 기술 목록 backfill의 연속 순서,
 V4 업종 보정, V5 업종/규모 분리를 확인한다. 이후 프로필 저장/조회/수정, 목록/상세,
 추천 생성/상세/재사용/변경 이력, 시드 중복·DB 유일성, 재시작, 보존 기간 삭제까지 검증한다.
@@ -64,8 +64,9 @@ V4 업종 보정, V5 업종/규모 분리를 확인한다. 이후 프로필 저�
 - 운영 DB는 private network에 둔다. DB URL은 배포 환경에 맞는 TLS 검증(`sslmode=verify-full`)을 적용한다.
 - 마이그레이션용 DDL 계정과 실행용 최소 권한 계정을 배포 단계에서 분리한다. 현재 로컬 시작 방식은 한 계정이다.
 - 비밀값 노출 시 로그/커밋을 지우는 것으로 끝내지 않고 즉시 폐기·교체한다. 운영 비밀값은 주기적 교체를 설정한다.
-- prod 설정만으로 인증이 구현되지는 않는다. 현재 API는 데모 사용자 한 명을 사용한다.
-  사용자별 인증/권한 및 TLS, 백업·알림 연결 전에는 공개 배포하지 않는다.
+- `prod`에서는 OIDC 접근 토큰의 서명·issuer·audience·만료를 검증하고 사용자별 프로필·추천을 분리한다.
+  `ONFIT_AUTH_ISSUER`, `ONFIT_AUTH_AUDIENCE`를 설정한다. 관리자 수집에는 `jobs:import` scope가 필요하다.
+  프론트 실제 로그인과 TLS, 백업·알림 연결 전에는 공개 배포하지 않는다. 상세는 [deployment.md](deployment.md).
 
 ## 백업·복원 정책
 
@@ -81,7 +82,8 @@ V4 업종 보정, V5 업종/규모 분리를 확인한다. 이후 프로필 저�
   → API smoke test → DB 연결 전환 → 트래픽 재개. 기존 DB/볼륨을 검증 전에 삭제하지 않는다.
 - 되돌리기는 과거 SQL 파일 수정이나 Flyway clean으로 처리하지 않는다. 새 forward migration을 만들거나
   백업을 새 DB에 복원한다. 적용된 V1~V5의 내용과 체크섬은 변경하지 않는다.
-- 백업 스케줄러, 암호화 저장소, 모니터링 서비스는 실제 배포 환경이 정해지는 P3 단계에서 연결한다.
+- 백업·격리 복원 점검·상태 검사는 `infra/backup.sh`, `infra/restore-check.sh`, `infra/monitor.sh`로 실행한다.
+  실제 배포 환경에서 스케줄러·암호화 저장소·알림 채널을 연결한다. [배포 리허설](deployment.md)을 참고한다.
 
 참고: 저장소 Spring Boot 버전에 맞춘 [Spring Boot Testcontainers 문서](https://docs.spring.io/spring-boot/reference/testing/testcontainers.html),
 [Testcontainers PostgreSQL 모듈](https://java.testcontainers.org/modules/databases/postgres/).

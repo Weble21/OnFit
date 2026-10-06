@@ -1,0 +1,73 @@
+name: onfit-release-rehearsal
+services:
+  postgres:
+    image: postgres:17.6-alpine
+    environment:
+      POSTGRES_DB: onfit
+      POSTGRES_USER: onfit
+      POSTGRES_PASSWORD_FILE: /run/secrets/DB_PASSWORD
+    secrets:
+      - source: db_password
+        target: DB_PASSWORD
+    volumes:
+      - release_postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -U onfit -d onfit']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+  backend:
+    build:
+      context: ..
+      dockerfile: infra/backend.Dockerfile
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      SPRING_CONFIG_IMPORT: configtree:/run/secrets/
+      DB_URL: jdbc:postgresql://postgres:5432/onfit
+      DB_USERNAME: onfit
+      ONFIT_AUTH_ISSUER: ${ONFIT_AUTH_ISSUER:?Set the OIDC issuer URL}
+      ONFIT_AUTH_AUDIENCE: ${ONFIT_AUTH_AUDIENCE:?Set the API access token audience}
+    secrets:
+      - source: db_password
+        target: DB_PASSWORD
+    ports:
+      - '127.0.0.1:8080:8080'
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+  frontend:
+    profiles: [preview]
+    build:
+      context: ..
+      dockerfile: infra/frontend.Dockerfile
+    environment:
+      BACKEND_URL: http://backend:8080
+    ports:
+      - '127.0.0.1:5173:5173'
+    depends_on: [backend]
+  backup:
+    profiles: [ops]
+    image: postgres:17.6-alpine
+    environment:
+      PGHOST: postgres
+      PGUSER: onfit
+      PGDATABASE: onfit
+    secrets:
+      - source: db_password
+        target: DB_PASSWORD
+    volumes:
+      - ./backup.sh:/ops/backup.sh:ro
+      - ./restore-check.sh:/ops/restore-check.sh:ro
+      - ${ONFIT_BACKUP_DIR:?Set an encrypted backup directory}:/backups
+    entrypoint: [/bin/sh]
+    command: [/ops/backup.sh]
+    depends_on:
+      postgres:
+        condition: service_healthy
+secrets:
+  db_password:
+    file: ${ONFIT_DB_PASSWORD_FILE:?Set the path of the database password secret file}
+volumes:
+  release_postgres:

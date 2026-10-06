@@ -8,14 +8,16 @@
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='12' fill='%23b9573f'/%3E%3Ctext x='20' y='28' text-anchor='middle' font-size='29' fill='white'%3Eo%3C/text%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="./src/styles.css">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700;800&display=swap" media="print" onload="this.media='all'">
 <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700;800&display=swap"></noscript>
-<link rel="modulepreload" href="./src/data.js">
-<link rel="modulepreload" href="./src/api.js">
-<link rel="modulepreload" href="./src/upload.js">
-<script type="module" src="./src/app.js"></script>
+<script>
+  // The build puts the landing page in #app; hide it when the URL opens another screen ("#/profile") until React renders.
+  if (location.hash.length > 2) document.documentElement.classList.add('deep-link');
+</script>
+<style>.deep-link .prerendered { visibility: hidden; }</style>
+<script type="module" src="/src/main.jsx"></script>
 </head>
-<body><div id="app"></div><div id="modal-root"></div><div id="toast" role="status" aria-live="polite"></div>
+<!-- #app is the React root; the modal renders into #modal-root so #app can be made inert behind it. -->
+<body><div id="app"></div><div id="modal-root"></div>
 <noscript>온핏을 사용하려면 JavaScript를 활성화해 주세요.</noscript></body>
 </html>

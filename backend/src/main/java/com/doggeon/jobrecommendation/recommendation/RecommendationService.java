@@ -4,6 +4,7 @@ import com.doggeon.jobrecommendation.domain.JobPosting;
 import com.doggeon.jobrecommendation.domain.Recommendation;
 import com.doggeon.jobrecommendation.domain.UserProfile;
 import com.doggeon.jobrecommendation.profile.UserProfileRepository;
+import com.doggeon.jobrecommendation.profile.CurrentUser;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -18,7 +19,7 @@ import org.springframework.web.server.ResponseStatusException;
 @Service
 public class RecommendationService {
 
-    private static final String DEMO_EMAIL = "demo@onfit.local";
+    private final CurrentUser currentUser;
     private final UserProfileRepository profiles;
     private final JobService jobs;
     private final RecommendationRepository recommendations;
@@ -29,13 +30,14 @@ public class RecommendationService {
     public RecommendationService(UserProfileRepository profiles, JobService jobs,
                                  RecommendationRepository recommendations,
                                  RecommendationCalculator calculator, RecommendationRetention retention,
-                                 SemanticScoreProvider semantic) {
+                                 SemanticScoreProvider semantic, CurrentUser currentUser) {
         this.profiles = profiles;
         this.jobs = jobs;
         this.recommendations = recommendations;
         this.calculator = calculator;
         this.retention = retention;
         this.semantic = semantic;
+        this.currentUser = currentUser;
     }
 
     /** {@code created} is false when every result reused an identical earlier snapshot. */
@@ -44,9 +46,9 @@ public class RecommendationService {
 
     @Transactional
     public Result create() {
-        UserProfile profile = profiles.findByUserEmail(DEMO_EMAIL)
+        UserProfile profile = profiles.findByUserEmail(currentUser.identity())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
-                        "먼저 데모 프로필을 만들어 주세요."));
+                        "먼저 프로필을 만들어 주세요."));
         // One query for every job's latest snapshot instead of one lookup per job.
         Map<Long, Recommendation> latest = recommendations.findLatestPerJob(profile.getUser().getId(), retention.cutoff())
                 .stream().collect(Collectors.toMap(r -> r.getJobPosting().getId(), Function.identity()));
@@ -73,7 +75,7 @@ public class RecommendationService {
 
     @Transactional(readOnly = true)
     public RecommendationResponse get(Long id) {
-        return recommendations.findByIdAndUserEmailAndCreatedAtGreaterThanEqual(id, DEMO_EMAIL, retention.cutoff())
+        return recommendations.findByIdAndUserEmailAndCreatedAtGreaterThanEqual(id, currentUser.identity(), retention.cutoff())
                 .map(RecommendationResponse::from)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
                         "추천 결과를 찾을 수 없습니다."));

@@ -19,6 +19,7 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
+import org.springframework.dao.DataIntegrityViolationException;
 
 /**
  * Returns RFC 9457 problem details whose {@code detail} the frontend can show as is.
@@ -27,6 +28,13 @@ import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExcep
 @RestControllerAdvice
 public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
     private static final Logger log = LoggerFactory.getLogger(ApiExceptionHandler.class);
+
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<Object> handleConflict(DataIntegrityViolationException ex, WebRequest request) {
+        var body = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT,
+                "동시에 변경된 데이터가 있습니다. 최신 상태를 확인한 뒤 다시 시도해 주세요.");
+        return handleExceptionInternal(ex, body, new HttpHeaders(), HttpStatus.CONFLICT, request);
+    }
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Object> handleUnexpected(Exception ex, WebRequest request) {

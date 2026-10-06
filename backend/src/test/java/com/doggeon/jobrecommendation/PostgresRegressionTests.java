@@ -32,6 +32,8 @@ import org.springframework.web.context.WebApplicationContext;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
+import org.testcontainers.utility.MountableFile;
+import org.testcontainers.images.builder.Transferable;
 
 /** Required suite: missing Docker fails this task instead of silently skipping the acceptance gate. */
 @Tag("postgres")
@@ -46,7 +48,7 @@ class PostgresRegressionTests {
             """;
 
     @ParameterizedTest(name = "DB at V{0} upgrades and passes core APIs")
-    @ValueSource(ints = {0, 1, 2, 3, 4, 5})
+    @ValueSource(ints = {0, 1, 2, 3, 4, 5, 6, 7})
     void freshAndHistoricalDatabasesPassMigrationAndApis(int previousVersion) throws Exception {
         String schema = "regression_v" + previousVersion;
         var admin = new JdbcTemplate(new DriverManagerDataSource(
@@ -81,7 +83,7 @@ class PostgresRegressionTests {
             var mvc = MockMvcBuilders.webAppContextSetup((WebApplicationContext) context)
                     .addFilters(context.getBean(com.doggeon.jobrecommendation.config.RequestLogFilter.class)).build();
             assertThat(jdbc.queryForList("SELECT version FROM flyway_schema_history WHERE success ORDER BY installed_rank",
-                    String.class)).containsExactly("1", "2", "3", "4", "5", "6", "7");
+                    String.class)).containsExactly("1", "2", "3", "4", "5", "6", "7", "8");
             assertThat(context.getBean(Flyway.class).migrate().migrationsExecuted).isZero();
             assertThat(context.getBean(JobSeedService.class).seed()).isZero();
             assertThat(context.getBean(JobSeedService.class).seed()).isZero();
@@ -182,11 +184,12 @@ class PostgresRegressionTests {
             var mvc = MockMvcBuilders.webAppContextSetup((WebApplicationContext) restarted).build();
             mvc.perform(post("/api/recommendations")).andExpect(status().isOk());
             assertThat(jdbc.queryForObject("SELECT count(*) FROM recommendations", Long.class)).isEqualTo(beforeRestart);
+            verifySourceImport(restarted, mvc);
         }
     }
 
     @Test
-    void productionProfileMigratesWithoutInsertingDemoData() {
+    void productionProfileMigratesWithoutInsertingDemoData() throws Exception {
         var admin = new JdbcTemplate(new DriverManagerDataSource(
                 postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword()));
         admin.execute("CREATE SCHEMA production_defaults");
@@ -194,6 +197,8 @@ class PostgresRegressionTests {
                 + "currentSchema=production_defaults";
         try (var context = new SpringApplicationBuilder(JobRecommendationBackendApplication.class).run(
                 "--spring.profiles.active=prod", "--server.port=0", "--spring.datasource.url=" + url,
+                "--spring.security.oauth2.resourceserver.jwt.issuer-uri=https://issuer.example.test",
+                "--spring.security.oauth2.resourceserver.jwt.audiences=onfit-test",
                 "--spring.datasource.username=" + postgres.getUsername(),
                 "--spring.datasource.password=" + postgres.getPassword(),
                 "--spring.flyway.default-schema=production_defaults", "--onfit.recommendation.cleanup-enabled=false",
@@ -202,12 +207,71 @@ class PostgresRegressionTests {
             assertThat(jdbc.queryForObject("SELECT count(*) FROM job_postings", Long.class)).isZero();
             assertThat(jdbc.queryForObject("SELECT count(*) FROM app_users", Long.class)).isZero();
             assertThat(context.getEnvironment().getProperty("onfit.fixed-date")).isEmpty();
+            var mvc = MockMvcBuilders.webAppContextSetup((WebApplicationContext) context)
+                    .addFilters(context.getBean(com.doggeon.jobrecommendation.config.RequestLogFilter.class),
+                            context.getBean("springSecurityFilterChain", jakarta.servlet.Filter.class)).build();
+            mvc.perform(get("/api/jobs")).andExpect(status().isOk());
+            mvc.perform(get("/api/profiles/me")).andExpect(status().isUnauthorized());
         }
+    }
+
+    private void verifySourceImport(org.springframework.context.ConfigurableApplicationContext context, MockMvc mvc)
+            throws Exception {
+        var policies = context.getBean(com.doggeon.jobrecommendation.ingestion.IngestionProperties.class);
+        policies.setEnabled(true);
+        policies.setSources(Map.of("fixture", new com.doggeon.jobrecommendation.ingestion.IngestionProperties.SourcePolicy(
+                "jobs.example.test", "https://jobs.example.test/terms", java.time.LocalDate.parse("2026-09-01"),
+                "Synthetic integration fixture only")));
+        String request = JobImportTests.request("fixture", "https://jobs.example.test/jobs/1",
+                "2026-09-28T01:00:00Z", "OPEN", null);
+        String body = mvc.perform(post("/api/admin/jobs/import").contentType(MediaType.APPLICATION_JSON).content(request))
+                .andExpect(status().isCreated()).andExpect(jsonPath("$.job.origin").value("REAL"))
+                .andReturn().getResponse().getContentAsString();
+        long id = JsonPath.<Number>read(body, "$.job.id").longValue();
+        mvc.perform(post("/api/admin/jobs/import").contentType(MediaType.APPLICATION_JSON).content(request))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.changed").value(false));
+        mvc.perform(post("/api/admin/jobs/import").contentType(MediaType.APPLICATION_JSON)
+                .content(request.replace("2026-09-28T01", "2026-09-28T02").replace("\"OPEN\"", "\"CLOSED\"")))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.job.id").value(id))
+                .andExpect(jsonPath("$.job.status").value("CLOSED"));
+        mvc.perform(get("/api/admin/jobs/{id}/revisions", id)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(2));
+        var jdbc = context.getBean(JdbcTemplate.class);
+        assertThatThrownBy(() -> jdbc.update("UPDATE job_postings SET source_name='fixture', external_id='job-1' "
+                + "WHERE seed_key='onfit-002'")).isInstanceOf(DataIntegrityViolationException.class);
     }
 
     private void migrateTo(String url, String schema, int version) {
         Flyway.configure().dataSource(url, postgres.getUsername(), postgres.getPassword())
                 .defaultSchema(schema).target(Integer.toString(version)).load().migrate();
+    }
+
+    @Test
+    void backupAndRestoreScriptsWorkAgainstDisposablePostgres() throws Exception {
+        assertThat(postgres.execInContainer("createdb", "-U", postgres.getUsername(), "backup_fixture").getExitCode()).isZero();
+        String url = postgres.getJdbcUrl().replace("/" + postgres.getDatabaseName(), "/backup_fixture");
+        Flyway.configure().dataSource(url, postgres.getUsername(), postgres.getPassword()).load().migrate();
+        var jdbc = new JdbcTemplate(new DriverManagerDataSource(url, postgres.getUsername(), postgres.getPassword()));
+        jdbc.update("""
+                INSERT INTO job_postings(company_name,title,role_name,responsibilities,location,status)
+                VALUES ('Backup fixture','Backup job','Developer','API','Seoul','OPEN')
+                """);
+        assertThat(postgres.execInContainer("mkdir", "-p", "/ops", "/run/secrets", "/backups").getExitCode()).isZero();
+        postgres.copyFileToContainer(MountableFile.forHostPath("../infra/backup.sh"), "/ops/backup.sh");
+        postgres.copyFileToContainer(MountableFile.forHostPath("../infra/restore-check.sh"), "/ops/restore-check.sh");
+        postgres.copyFileToContainer(Transferable.of(postgres.getPassword().getBytes(java.nio.charset.StandardCharsets.UTF_8), 0600),
+                "/run/secrets/DB_PASSWORD");
+        var backup = postgres.execInContainer("env", "PGUSER=" + postgres.getUsername(), "PGDATABASE=backup_fixture",
+                "sh", "/ops/backup.sh");
+        assertThat(backup.getExitCode()).withFailMessage(backup.getStderr()).isZero();
+        assertThat(backup.getStdout()).contains("backup_success");
+        String file = postgres.execInContainer("find", "/backups/daily", "-name", "onfit-*.dump").getStdout().trim();
+        var restored = postgres.execInContainer("env", "PGUSER=" + postgres.getUsername(), "PGDATABASE=backup_fixture",
+                "sh", "/ops/restore-check.sh", file);
+        assertThat(restored.getExitCode()).withFailMessage(restored.getStderr()).isZero();
+        assertThat(restored.getStdout()).contains("restore_archive_check_success", "postings", "recommendations");
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM pg_database WHERE datname LIKE 'onfit_restore_check_%'", Long.class)).isZero();
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM job_postings", Long.class)).isEqualTo(1);
     }
 
     private void verifyPagination(MockMvc mvc, int total) throws Exception {

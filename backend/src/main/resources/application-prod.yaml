@@ -1,4 +1,10 @@
 spring:
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${ONFIT_AUTH_ISSUER}
+          audiences: ${ONFIT_AUTH_AUDIENCE}
   datasource:
     url: ${DB_URL}
     username: ${DB_USERNAME}

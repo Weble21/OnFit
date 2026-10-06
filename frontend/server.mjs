@@ -1,13 +1,22 @@
+// Production server for the built app (`npm run build` first). During development use `npm run dev` (Vite).
 import http from 'node:http';
+import { existsSync } from 'node:fs';
 import { readFile, stat } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { brotliCompressSync, gzipSync } from 'node:zlib';
 import path from 'node:path';
-const root = fileURLToPath(new URL('.', import.meta.url));
+const dist = fileURLToPath(new URL('./dist', import.meta.url));
 const port = Number(process.env.PORT || 5173);
+const host = process.env.HOST || '127.0.0.1';
 const backend = new URL(process.env.BACKEND_URL || 'http://127.0.0.1:8080');
-const types = { '.html': 'text/html', '.css': 'text/css', '.js': 'text/javascript' };
-const assets = new Set(['index.html', 'src/app.js', 'src/data.js', 'src/api.js', 'src/upload.js', 'src/styles.css']);
+const types = {
+  '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8',
+  '.svg': 'image/svg+xml', '.png': 'image/png', '.ico': 'image/x-icon', '.json': 'application/json', '.woff2': 'font/woff2',
+};
+if (!existsSync(path.join(dist, 'index.html'))) {
+  console.error('dist/ is missing. Run "npm run build" first, or use "npm run dev" for development.');
+  process.exit(1);
+}
 // Brotli at its default quality costs tens of milliseconds per file, so reuse each encoding until the file changes.
 const cache = new Map();
 async function encoded(file, encoding) {
@@ -34,16 +43,21 @@ http.createServer(async (req, res) => {
       return;
     }
     const relative = url.pathname === '/' ? 'index.html' : decodeURIComponent(url.pathname).replace(/^\/+/, '');
-    if (!assets.has(relative)) {
+    const file = path.resolve(dist, relative);
+    // Only files inside dist/ with a known type are served.
+    const type = types[path.extname(file)];
+    if (!file.startsWith(dist + path.sep) || !type || !(await stat(file).catch(() => null))?.isFile()) {
       res.writeHead(404); res.end('Not found'); return;
     }
-    const file = path.resolve(root, relative);
-    const headers = { 'Content-Type': types[path.extname(file)] + '; charset=utf-8', 'Cache-Control': 'no-cache', 'Vary': 'Accept-Encoding' };
+    // Vite puts a content hash in every file name under assets/, so those never change in place.
+    const cacheControl = relative.startsWith('assets/') ? 'public, max-age=31536000, immutable' : 'no-cache';
+    const headers = { 'Content-Type': type, 'Cache-Control': cacheControl, 'Vary': 'Accept-Encoding' };
     const accepted = req.headers['accept-encoding'] || '';
-    const encoding = /\bbr\b/.test(accepted) ? 'br' : /\bgzip\b/.test(accepted) ? 'gzip' : null;
+    const compressible = type.startsWith('text/') || type === 'image/svg+xml' || type === 'application/json';
+    const encoding = !compressible ? null : /\bbr\b/.test(accepted) ? 'br' : /\bgzip\b/.test(accepted) ? 'gzip' : null;
     if (encoding) headers['Content-Encoding'] = encoding;
     const body = await encoded(file, encoding);
     res.writeHead(200, headers);
     res.end(body);
-  } catch { res.writeHead(404); res.end('Not found'); }
-}).listen(port, '127.0.0.1', () => console.log('Onfit: http://localhost:' + port));
+  } catch { if (!res.headersSent) res.writeHead(404); res.end('Not found'); }
+}).listen(port, host, () => console.log('Onfit: http://localhost:' + port));
