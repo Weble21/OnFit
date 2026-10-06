@@ -6,8 +6,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.doggeon.jobrecommendation.config.ApiExceptionHandler;
-import com.doggeon.jobrecommendation.config.RequestLogFilter;
+import com.donggeon.jobrecommendation.config.ApiExceptionHandler;
+import com.donggeon.jobrecommendation.config.RequestLogFilter;
 import com.jayway.jsonpath.JsonPath;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.TestComponent;

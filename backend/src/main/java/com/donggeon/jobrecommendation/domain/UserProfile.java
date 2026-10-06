@@ -1,4 +1,4 @@
-package com.doggeon.jobrecommendation.domain;
+package com.donggeon.jobrecommendation.domain;
 
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.CollectionTable;

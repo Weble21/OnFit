@@ -1,4 +1,4 @@
-package com.doggeon.jobrecommendation.profile;
+package com.donggeon.jobrecommendation.profile;
 
 import jakarta.validation.Valid;
 import java.net.URI;
@@ -19,17 +19,20 @@ public class ProfileController {
         this.service = service;
     }
 
+    // 계정 생성 - POST 요청
     @PostMapping
     public ResponseEntity<ProfileResponse> create(@Valid @RequestBody ProfileRequest request) {
         return ResponseEntity.created(URI.create("/api/profiles/me"))
                 .body(service.create(request));
     }
 
+    // 기존 내 프로필 조회 - GET 요청
     @GetMapping("/me")
     public ProfileResponse getMine() {
         return service.getMine();
     }
 
+    // 프로필 업데이트- PUT 요청
     @PutMapping("/me")
     public ProfileResponse updateMine(@Valid @RequestBody ProfileRequest request) {
         return service.updateMine(request);
