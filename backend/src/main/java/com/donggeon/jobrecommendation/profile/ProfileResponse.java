@@ -1,13 +1,14 @@
-package com.doggeon.jobrecommendation.profile;
+package com.donggeon.jobrecommendation.profile;
 
-import com.doggeon.jobrecommendation.domain.Certificate;
-import com.doggeon.jobrecommendation.domain.Experience;
-import com.doggeon.jobrecommendation.domain.Project;
-import com.doggeon.jobrecommendation.domain.Skill;
-import com.doggeon.jobrecommendation.domain.UserProfile;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
+
+import com.donggeon.jobrecommendation.domain.Certificate;
+import com.donggeon.jobrecommendation.domain.Experience;
+import com.donggeon.jobrecommendation.domain.Project;
+import com.donggeon.jobrecommendation.domain.Skill;
+import com.donggeon.jobrecommendation.domain.UserProfile;
 
 public record ProfileResponse(
         Long id,

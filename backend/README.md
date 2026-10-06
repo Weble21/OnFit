@@ -152,14 +152,17 @@ AI 연동을 켜고 정상 응답을 받으면 의미 유사도에 따라 최고
 "마감일이 지나지 않음"은 `Asia/Seoul` 날짜 기준입니다(`ONFIT_TIME_ZONE`). 가상 공고의 마감일은
 고정 날짜이므로 시연이나 테스트에서는 `ONFIT_FIXED_DATE=2026-09-29`처럼 기준 날짜를
 고정할 수 있습니다. 테스트 프로필은 이 값을 고정해 두었습니다.
-실제 사용자별 접근 제어가 아니며, 운영 전 인증이 필요합니다.
+로컬·테스트 프로필은 공용 데모 계정을 사용합니다. `prod`는 OIDC 접근 토큰과 사용자별 접근 제어를 사용하며
+`ONFIT_AUTH_ISSUER`, `ONFIT_AUTH_AUDIENCE`가 필요합니다. [운영 연결 절차](../docs/deployment.md)를 참고하세요.
 
 | 메서드 | 경로 | 결과 |
 | --- | --- | --- |
 | GET | `/api/jobs?page=0&size=20` | 열린 공고를 페이지 객체로 반환 (content, page, size, totalElements, totalPages, hasNext) |
 | GET | `/api/jobs/{jobId}` | 공고 상세 (마감 공고도 조회 가능) |
-| POST | `/api/recommendations` | 데모 프로필로 열린 공고 전체를 계산해 점수순 목록 반환 |
-| GET | `/api/recommendations/{recommendationId}` | 데모 사용자의 저장된 추천 상세 |
+| POST | `/api/recommendations` | 현재 사용자 프로필로 열린 공고 전체를 계산해 점수순 목록 반환 |
+| GET | `/api/recommendations/{recommendationId}` | 현재 사용자의 저장된 추천 상세 |
+| POST | `/api/admin/jobs/import` | 승인된 출처의 공고 등록·갱신 (기본 비활성화, 운영에서 jobs:import 권한 필요) |
+| GET | `/api/admin/jobs/{jobId}/revisions` | 수집 원문·상태 변경 이력 (관리자) |
 
 프로필이 없으면 추천 생성은 404를 반환합니다. `POST` 응답에는 공고, 전체·부분
 점수, `matchedRequiredSkills`, `matchedPreferredSkills`, `matchedEvidence`, `missingSkills`가 포함됩니다. 같은 사용자·공고에서
@@ -176,3 +179,7 @@ V4는 업종 칸에 있던 "스타트업" 2건을 "클라우드"로 바로잡고
 Invoke-RestMethod 'http://localhost:8080/api/jobs?page=0&size=20'
 Invoke-RestMethod -Method Post http://localhost:8080/api/recommendations
 ```
+
+공고 응답에는 `origin`(SYNTHETIC/REAL/LEGACY), 출처·원문 URL·최초 수집·최근 확인 시각도 포함됩니다.
+V8은 기존 시드를 구분하고 실제 공고의 중복·변경 이력을 보존합니다.
+[등록 계약](../docs/job-ingestion.md)과 [검증 결과](../docs/roadmap.md)를 참고하세요.
