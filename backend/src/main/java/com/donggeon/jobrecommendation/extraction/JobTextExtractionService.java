@@ -1,4 +1,4 @@
-package com.doggeon.jobrecommendation.extraction;
+package com.donggeon.jobrecommendation.extraction;
 
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;

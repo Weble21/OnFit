@@ -4,7 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.doggeon.jobrecommendation.evaluation.RecommendationEvaluation;
-import com.doggeon.jobrecommendation.recommendation.RecommendationWeights;
+import com.donggeon.jobrecommendation.recommendation.RecommendationWeights;
+
 import java.math.BigDecimal;
 import java.nio.file.Path;
 import java.util.ArrayList;

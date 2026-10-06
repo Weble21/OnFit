@@ -1,8 +1,5 @@
 package com.doggeon.jobrecommendation.evaluation;
 
-import com.doggeon.jobrecommendation.domain.*;
-import com.doggeon.jobrecommendation.profile.SkillNormalizer;
-import com.doggeon.jobrecommendation.recommendation.*;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
@@ -11,6 +8,11 @@ import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.time.LocalDate;
 import java.util.*;
+
+import com.donggeon.jobrecommendation.domain.*;
+import com.donggeon.jobrecommendation.profile.SkillNormalizer;
+import com.donggeon.jobrecommendation.recommendation.*;
+
 import tools.jackson.databind.json.JsonMapper;
 
 /** DB-free benchmark using the actual production calculator, never a second implementation of it. */

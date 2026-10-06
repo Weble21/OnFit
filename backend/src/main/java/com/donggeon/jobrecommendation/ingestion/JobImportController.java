@@ -1,4 +1,4 @@
-package com.doggeon.jobrecommendation.ingestion;
+package com.donggeon.jobrecommendation.ingestion;
 
 import jakarta.validation.Valid;
 import java.util.List;

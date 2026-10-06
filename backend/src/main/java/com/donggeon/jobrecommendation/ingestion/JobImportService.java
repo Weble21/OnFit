@@ -1,9 +1,5 @@
-package com.doggeon.jobrecommendation.ingestion;
+package com.donggeon.jobrecommendation.ingestion;
 
-import com.doggeon.jobrecommendation.domain.JobPosting;
-import com.doggeon.jobrecommendation.domain.JobPostingStatus;
-import com.doggeon.jobrecommendation.recommendation.JobResponse;
-import com.doggeon.jobrecommendation.seed.JobPostingRepository;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -18,6 +14,12 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
+
+import com.donggeon.jobrecommendation.domain.JobPosting;
+import com.donggeon.jobrecommendation.domain.JobPostingStatus;
+import com.donggeon.jobrecommendation.recommendation.JobResponse;
+import com.donggeon.jobrecommendation.seed.JobPostingRepository;
+
 import tools.jackson.databind.json.JsonMapper;
 
 @Service

@@ -1,4 +1,4 @@
-package com.doggeon.jobrecommendation.profile;
+package com.donggeon.jobrecommendation.profile;
 
 import java.io.IOException;
 import java.io.InputStream;

@@ -1,4 +1,4 @@
-package com.doggeon.jobrecommendation.config;
+package com.donggeon.jobrecommendation.config;
 
 import java.util.Map;
 import org.slf4j.Logger;

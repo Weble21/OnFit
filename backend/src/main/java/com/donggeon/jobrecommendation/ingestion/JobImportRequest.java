@@ -1,6 +1,5 @@
-package com.doggeon.jobrecommendation.ingestion;
+package com.donggeon.jobrecommendation.ingestion;
 
-import com.doggeon.jobrecommendation.domain.JobPostingStatus;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -8,6 +7,8 @@ import jakarta.validation.constraints.Size;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
+
+import com.donggeon.jobrecommendation.domain.JobPostingStatus;
 
 public record JobImportRequest(
         @NotBlank @Size(max = 80) String sourceName,

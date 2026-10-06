@@ -1,8 +1,9 @@
-package com.doggeon.jobrecommendation.recommendation;
+package com.donggeon.jobrecommendation.recommendation;
 
-import com.doggeon.jobrecommendation.domain.Recommendation;
 import java.math.BigDecimal;
 import java.util.List;
+
+import com.donggeon.jobrecommendation.domain.Recommendation;
 
 public record RecommendationResponse(Long id, JobResponse job, BigDecimal totalScore,
                                      BigDecimal requiredScore, BigDecimal preferredScore,

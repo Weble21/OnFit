@@ -1,4 +1,4 @@
-package com.doggeon.jobrecommendation.profile;
+package com.donggeon.jobrecommendation.profile;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;

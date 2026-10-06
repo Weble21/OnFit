@@ -1,10 +1,5 @@
-package com.doggeon.jobrecommendation.recommendation;
+package com.donggeon.jobrecommendation.recommendation;
 
-import com.doggeon.jobrecommendation.domain.JobPosting;
-import com.doggeon.jobrecommendation.domain.Recommendation;
-import com.doggeon.jobrecommendation.domain.UserProfile;
-import com.doggeon.jobrecommendation.profile.UserProfileRepository;
-import com.doggeon.jobrecommendation.profile.CurrentUser;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -15,6 +10,12 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
+
+import com.donggeon.jobrecommendation.domain.JobPosting;
+import com.donggeon.jobrecommendation.domain.Recommendation;
+import com.donggeon.jobrecommendation.domain.UserProfile;
+import com.donggeon.jobrecommendation.profile.CurrentUser;
+import com.donggeon.jobrecommendation.profile.UserProfileRepository;
 
 @Service
 public class RecommendationService {

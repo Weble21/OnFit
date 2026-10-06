@@ -1,10 +1,11 @@
-package com.doggeon.jobrecommendation.recommendation;
+package com.donggeon.jobrecommendation.recommendation;
 
-import com.doggeon.jobrecommendation.domain.JobPosting;
-import com.doggeon.jobrecommendation.domain.UserProfile;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
+
+import com.donggeon.jobrecommendation.domain.JobPosting;
+import com.donggeon.jobrecommendation.domain.UserProfile;
 
 public interface SemanticScoreProvider {
     String RULES_VERSION = "rules-only-v1";

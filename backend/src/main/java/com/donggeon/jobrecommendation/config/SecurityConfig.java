@@ -1,4 +1,4 @@
-package com.doggeon.jobrecommendation.config;
+package com.donggeon.jobrecommendation.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

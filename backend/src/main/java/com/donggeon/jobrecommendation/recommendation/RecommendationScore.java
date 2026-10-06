@@ -1,10 +1,11 @@
-package com.doggeon.jobrecommendation.recommendation;
+package com.donggeon.jobrecommendation.recommendation;
 
-import com.doggeon.jobrecommendation.domain.JobPosting;
-import com.doggeon.jobrecommendation.domain.Recommendation;
-import com.doggeon.jobrecommendation.domain.User;
 import java.math.BigDecimal;
 import java.util.List;
+
+import com.donggeon.jobrecommendation.domain.JobPosting;
+import com.donggeon.jobrecommendation.domain.Recommendation;
+import com.donggeon.jobrecommendation.domain.User;
 
 public record RecommendationScore(BigDecimal totalScore, BigDecimal requiredScore,
                                   BigDecimal preferredScore, BigDecimal semanticScore,

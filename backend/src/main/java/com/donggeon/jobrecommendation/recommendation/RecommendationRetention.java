@@ -1,4 +1,4 @@
-package com.doggeon.jobrecommendation.recommendation;
+package com.donggeon.jobrecommendation.recommendation;
 
 import java.time.Duration;
 import java.time.Instant;

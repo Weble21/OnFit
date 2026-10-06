@@ -1,8 +1,5 @@
-package com.doggeon.jobrecommendation.recommendation;
+package com.donggeon.jobrecommendation.recommendation;
 
-import com.doggeon.jobrecommendation.domain.JobPosting;
-import com.doggeon.jobrecommendation.domain.JobPostingStatus;
-import com.doggeon.jobrecommendation.seed.JobPostingRepository;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.util.List;
@@ -11,6 +8,10 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
+
+import com.donggeon.jobrecommendation.domain.JobPosting;
+import com.donggeon.jobrecommendation.domain.JobPostingStatus;
+import com.donggeon.jobrecommendation.seed.JobPostingRepository;
 
 @Service
 public class JobService {

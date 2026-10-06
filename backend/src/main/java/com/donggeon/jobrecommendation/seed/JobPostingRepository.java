@@ -1,7 +1,5 @@
-package com.doggeon.jobrecommendation.seed;
+package com.donggeon.jobrecommendation.seed;
 
-import com.doggeon.jobrecommendation.domain.JobPosting;
-import com.doggeon.jobrecommendation.domain.JobPostingStatus;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Set;
@@ -12,6 +10,9 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.Query;
+
+import com.donggeon.jobrecommendation.domain.JobPosting;
+import com.donggeon.jobrecommendation.domain.JobPostingStatus;
 
 public interface JobPostingRepository extends JpaRepository<JobPosting, Long> {
     @Query("select j.seedKey from JobPosting j where j.seedKey is not null")

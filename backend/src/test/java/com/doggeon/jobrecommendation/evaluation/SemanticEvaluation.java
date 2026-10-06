@@ -1,9 +1,5 @@
 package com.doggeon.jobrecommendation.evaluation;
 
-import com.doggeon.jobrecommendation.domain.JobPosting;
-import com.doggeon.jobrecommendation.domain.JobPostingStatus;
-import com.doggeon.jobrecommendation.recommendation.HttpSemanticScoreProvider;
-import com.doggeon.jobrecommendation.recommendation.RecommendationWeights;
 import java.math.BigDecimal;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -13,6 +9,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.springframework.test.util.ReflectionTestUtils;
+
+import com.donggeon.jobrecommendation.domain.JobPosting;
+import com.donggeon.jobrecommendation.domain.JobPostingStatus;
+import com.donggeon.jobrecommendation.recommendation.HttpSemanticScoreProvider;
+import com.donggeon.jobrecommendation.recommendation.RecommendationWeights;
+
 import tools.jackson.databind.json.JsonMapper;
 
 /** Calls the real pinned model through the same HTTP client used by the recommendation API. */

@@ -8,8 +8,9 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.doggeon.jobrecommendation.recommendation.RecommendationRetention;
-import com.doggeon.jobrecommendation.seed.JobSeedService;
+import com.donggeon.jobrecommendation.JobRecommendationBackendApplication;
+import com.donggeon.jobrecommendation.recommendation.RecommendationRetention;
+import com.donggeon.jobrecommendation.seed.JobSeedService;
 import com.jayway.jsonpath.JsonPath;
 import java.sql.Timestamp;
 import java.time.Instant;
@@ -81,7 +82,7 @@ class PostgresRegressionTests {
                 "--onfit.seed.enabled=true", "--onfit.fixed-date=2026-09-29",
                 "--onfit.recommendation.retention-days=30", "--onfit.recommendation.cleanup-enabled=false")) {
             var mvc = MockMvcBuilders.webAppContextSetup((WebApplicationContext) context)
-                    .addFilters(context.getBean(com.doggeon.jobrecommendation.config.RequestLogFilter.class)).build();
+                    .addFilters(context.getBean(com.donggeon.jobrecommendation.config.RequestLogFilter.class)).build();
             assertThat(jdbc.queryForList("SELECT version FROM flyway_schema_history WHERE success ORDER BY installed_rank",
                     String.class)).containsExactly("1", "2", "3", "4", "5", "6", "7", "8");
             assertThat(context.getBean(Flyway.class).migrate().migrationsExecuted).isZero();
@@ -208,7 +209,7 @@ class PostgresRegressionTests {
             assertThat(jdbc.queryForObject("SELECT count(*) FROM app_users", Long.class)).isZero();
             assertThat(context.getEnvironment().getProperty("onfit.fixed-date")).isEmpty();
             var mvc = MockMvcBuilders.webAppContextSetup((WebApplicationContext) context)
-                    .addFilters(context.getBean(com.doggeon.jobrecommendation.config.RequestLogFilter.class),
+                    .addFilters(context.getBean(com.donggeon.jobrecommendation.config.RequestLogFilter.class),
                             context.getBean("springSecurityFilterChain", jakarta.servlet.Filter.class)).build();
             mvc.perform(get("/api/jobs")).andExpect(status().isOk());
             mvc.perform(get("/api/profiles/me")).andExpect(status().isUnauthorized());
@@ -217,9 +218,9 @@ class PostgresRegressionTests {
 
     private void verifySourceImport(org.springframework.context.ConfigurableApplicationContext context, MockMvc mvc)
             throws Exception {
-        var policies = context.getBean(com.doggeon.jobrecommendation.ingestion.IngestionProperties.class);
+        var policies = context.getBean(com.donggeon.jobrecommendation.ingestion.IngestionProperties.class);
         policies.setEnabled(true);
-        policies.setSources(Map.of("fixture", new com.doggeon.jobrecommendation.ingestion.IngestionProperties.SourcePolicy(
+        policies.setSources(Map.of("fixture", new com.donggeon.jobrecommendation.ingestion.IngestionProperties.SourcePolicy(
                 "jobs.example.test", "https://jobs.example.test/terms", java.time.LocalDate.parse("2026-09-01"),
                 "Synthetic integration fixture only")));
         String request = JobImportTests.request("fixture", "https://jobs.example.test/jobs/1",

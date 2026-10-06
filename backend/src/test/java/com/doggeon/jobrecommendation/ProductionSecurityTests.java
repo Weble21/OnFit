@@ -4,7 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-import com.doggeon.jobrecommendation.config.RequestLogFilter;
+import com.donggeon.jobrecommendation.config.RequestLogFilter;
 import com.jayway.jsonpath.JsonPath;
 import com.nimbusds.jose.JOSEObjectType;
 import com.nimbusds.jose.JWSAlgorithm;

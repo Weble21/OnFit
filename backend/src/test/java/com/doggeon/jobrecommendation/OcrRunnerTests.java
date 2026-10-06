@@ -2,7 +2,6 @@ package com.doggeon.jobrecommendation;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.doggeon.jobrecommendation.extraction.OcrRunner;
 import java.awt.Color;
 import java.awt.Font;
 import java.awt.image.BufferedImage;
@@ -11,6 +10,8 @@ import java.nio.charset.StandardCharsets;
 import javax.imageio.ImageIO;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
+
+import com.donggeon.jobrecommendation.extraction.OcrRunner;
 
 class OcrRunnerTests {
     @Test

@@ -1,12 +1,13 @@
-package com.doggeon.jobrecommendation.config;
+package com.donggeon.jobrecommendation.config;
 
-import com.doggeon.jobrecommendation.recommendation.RecommendationRetention;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.annotation.Scheduled;
+
+import com.donggeon.jobrecommendation.recommendation.RecommendationRetention;
 
 @Configuration(proxyBeanMethods = false)
 @EnableScheduling

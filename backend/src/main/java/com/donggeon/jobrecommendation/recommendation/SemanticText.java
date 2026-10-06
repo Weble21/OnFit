@@ -1,9 +1,10 @@
-package com.doggeon.jobrecommendation.recommendation;
+package com.donggeon.jobrecommendation.recommendation;
 
-import com.doggeon.jobrecommendation.domain.JobPosting;
-import com.doggeon.jobrecommendation.domain.UserProfile;
-import com.doggeon.jobrecommendation.profile.SkillNormalizer;
 import java.util.stream.Collectors;
+
+import com.donggeon.jobrecommendation.domain.JobPosting;
+import com.donggeon.jobrecommendation.domain.UserProfile;
+import com.donggeon.jobrecommendation.profile.SkillNormalizer;
 
 /** The only profile/job fields allowed to cross into the private AI service. */
 public final class SemanticText {

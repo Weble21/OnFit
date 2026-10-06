@@ -28,7 +28,7 @@ public record ProfileResponse(
                 profile.getUser().getId(),
                 List.copyOf(profile.getTargetRoles()),
                 List.copyOf(profile.getPreferredLocations()),
-                profile.getSkills().stream().map(Skill::getName).toList(),
+                @NotNull profile.getSkills().stream().map(Skill::getName).toList(),
                 profile.getCertificates().stream().map(Certificate::getName).toList(),
                 profile.getProjects().stream().map(ProjectView::from).toList(),
                 profile.getExperiences().stream().map(ExperienceView::from).toList(),

@@ -1,4 +1,4 @@
-package com.doggeon.jobrecommendation.domain;
+package com.donggeon.jobrecommendation.domain;
 
 import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
@@ -33,10 +33,10 @@ public class JobPosting {
     @Column(nullable = false, length = 200)
     private String title;
 
-    @Column(name = "role_name", nullable = false, length = 120)
+    @Column(name = "role_name", nullable = false, length = 150)
     private String roleName;
 
-    @Column(length = 100)
+    @Column(length = 200)
     private String industry;
 
     @Column(name = "company_size", length = 100)

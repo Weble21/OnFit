@@ -7,16 +7,16 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.doggeon.jobrecommendation.domain.JobPosting;
-import com.doggeon.jobrecommendation.domain.JobPostingStatus;
-import com.doggeon.jobrecommendation.domain.Project;
-import com.doggeon.jobrecommendation.domain.Skill;
-import com.doggeon.jobrecommendation.domain.User;
-import com.doggeon.jobrecommendation.domain.UserProfile;
-import com.doggeon.jobrecommendation.recommendation.HttpSemanticScoreProvider;
-import com.doggeon.jobrecommendation.recommendation.RecommendationCalculator;
-import com.doggeon.jobrecommendation.recommendation.SemanticScoreProvider;
-import com.doggeon.jobrecommendation.recommendation.SemanticText;
+import com.donggeon.jobrecommendation.domain.JobPosting;
+import com.donggeon.jobrecommendation.domain.JobPostingStatus;
+import com.donggeon.jobrecommendation.domain.Project;
+import com.donggeon.jobrecommendation.domain.Skill;
+import com.donggeon.jobrecommendation.domain.User;
+import com.donggeon.jobrecommendation.domain.UserProfile;
+import com.donggeon.jobrecommendation.recommendation.HttpSemanticScoreProvider;
+import com.donggeon.jobrecommendation.recommendation.RecommendationCalculator;
+import com.donggeon.jobrecommendation.recommendation.SemanticScoreProvider;
+import com.donggeon.jobrecommendation.recommendation.SemanticText;
 import com.jayway.jsonpath.JsonPath;
 import com.sun.net.httpserver.HttpServer;
 import java.math.BigDecimal;

@@ -1,4 +1,4 @@
-package com.doggeon.jobrecommendation.extraction;
+package com.donggeon.jobrecommendation.extraction;
 
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.PostMapping;

@@ -1,7 +1,5 @@
-package com.doggeon.jobrecommendation.seed;
+package com.donggeon.jobrecommendation.seed;
 
-import com.doggeon.jobrecommendation.domain.JobPosting;
-import com.doggeon.jobrecommendation.domain.JobPostingStatus;
 import java.io.IOException;
 import java.time.LocalDate;
 import java.util.HashSet;
@@ -10,6 +8,10 @@ import java.util.Set;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import com.donggeon.jobrecommendation.domain.JobPosting;
+import com.donggeon.jobrecommendation.domain.JobPostingStatus;
+
 import tools.jackson.databind.json.JsonMapper;
 
 @Service

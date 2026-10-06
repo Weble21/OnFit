@@ -2,13 +2,6 @@ package com.doggeon.jobrecommendation;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.doggeon.jobrecommendation.domain.JobPosting;
-import com.doggeon.jobrecommendation.domain.JobPostingStatus;
-import com.doggeon.jobrecommendation.domain.Recommendation;
-import com.doggeon.jobrecommendation.domain.Skill;
-import com.doggeon.jobrecommendation.domain.User;
-import com.doggeon.jobrecommendation.domain.UserProfile;
-import com.doggeon.jobrecommendation.recommendation.RecommendationCalculator;
 import jakarta.persistence.EntityManager;
 import java.time.LocalDate;
 import org.junit.jupiter.api.Test;
@@ -16,6 +9,14 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
+
+import com.donggeon.jobrecommendation.domain.JobPosting;
+import com.donggeon.jobrecommendation.domain.JobPostingStatus;
+import com.donggeon.jobrecommendation.domain.Recommendation;
+import com.donggeon.jobrecommendation.domain.Skill;
+import com.donggeon.jobrecommendation.domain.User;
+import com.donggeon.jobrecommendation.domain.UserProfile;
+import com.donggeon.jobrecommendation.recommendation.RecommendationCalculator;
 
 @SpringBootTest
 @ActiveProfiles("test")

@@ -1,11 +1,5 @@
-package com.doggeon.jobrecommendation.profile;
+package com.donggeon.jobrecommendation.profile;
 
-import com.doggeon.jobrecommendation.domain.Certificate;
-import com.doggeon.jobrecommendation.domain.Experience;
-import com.doggeon.jobrecommendation.domain.Project;
-import com.doggeon.jobrecommendation.domain.Skill;
-import com.doggeon.jobrecommendation.domain.User;
-import com.doggeon.jobrecommendation.domain.UserProfile;
 import jakarta.persistence.EntityManager;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -16,6 +10,13 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
+
+import com.donggeon.jobrecommendation.domain.Certificate;
+import com.donggeon.jobrecommendation.domain.Experience;
+import com.donggeon.jobrecommendation.domain.Project;
+import com.donggeon.jobrecommendation.domain.Skill;
+import com.donggeon.jobrecommendation.domain.User;
+import com.donggeon.jobrecommendation.domain.UserProfile;
 
 @Service
 public class ProfileService {

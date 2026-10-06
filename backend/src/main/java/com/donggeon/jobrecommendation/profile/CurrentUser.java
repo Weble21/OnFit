@@ -1,4 +1,4 @@
-package com.doggeon.jobrecommendation.profile;
+package com.donggeon.jobrecommendation.profile;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;

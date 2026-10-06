@@ -1,4 +1,4 @@
-package com.doggeon.jobrecommendation.domain;
+package com.donggeon.jobrecommendation.domain;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;

@@ -1,4 +1,4 @@
-package com.doggeon.jobrecommendation.seed;
+package com.donggeon.jobrecommendation.seed;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

@@ -2,18 +2,19 @@ package com.doggeon.jobrecommendation;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.doggeon.jobrecommendation.domain.Experience;
-import com.doggeon.jobrecommendation.domain.JobPosting;
-import com.doggeon.jobrecommendation.domain.JobPostingStatus;
-import com.doggeon.jobrecommendation.domain.Project;
-import com.doggeon.jobrecommendation.domain.Skill;
-import com.doggeon.jobrecommendation.domain.User;
-import com.doggeon.jobrecommendation.domain.UserProfile;
-import com.doggeon.jobrecommendation.profile.SkillNormalizer;
-import com.doggeon.jobrecommendation.recommendation.RecommendationCalculator;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import org.junit.jupiter.api.Test;
+
+import com.donggeon.jobrecommendation.domain.Experience;
+import com.donggeon.jobrecommendation.domain.JobPosting;
+import com.donggeon.jobrecommendation.domain.JobPostingStatus;
+import com.donggeon.jobrecommendation.domain.Project;
+import com.donggeon.jobrecommendation.domain.Skill;
+import com.donggeon.jobrecommendation.domain.User;
+import com.donggeon.jobrecommendation.domain.UserProfile;
+import com.donggeon.jobrecommendation.profile.SkillNormalizer;
+import com.donggeon.jobrecommendation.recommendation.RecommendationCalculator;
 
 class RecommendationCalculatorTests {
 

@@ -2,11 +2,6 @@ package com.doggeon.jobrecommendation;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.doggeon.jobrecommendation.domain.JobPosting;
-import com.doggeon.jobrecommendation.domain.JobPostingStatus;
-import com.doggeon.jobrecommendation.recommendation.JobResponse;
-import com.doggeon.jobrecommendation.seed.JobPostingRepository;
-import com.doggeon.jobrecommendation.seed.JobSeedService;
 import java.io.IOException;
 import java.time.LocalDate;
 import java.util.List;
@@ -15,6 +10,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
+
+import com.donggeon.jobrecommendation.domain.JobPosting;
+import com.donggeon.jobrecommendation.domain.JobPostingStatus;
+import com.donggeon.jobrecommendation.recommendation.JobResponse;
+import com.donggeon.jobrecommendation.seed.JobPostingRepository;
+import com.donggeon.jobrecommendation.seed.JobSeedService;
 
 @SpringBootTest
 @ActiveProfiles("test")

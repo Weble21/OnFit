@@ -1,4 +1,4 @@
-package com.doggeon.jobrecommendation.config;
+package com.donggeon.jobrecommendation.config;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;

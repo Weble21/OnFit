@@ -1,11 +1,12 @@
-package com.doggeon.jobrecommendation.recommendation;
+package com.donggeon.jobrecommendation.recommendation;
 
-import com.doggeon.jobrecommendation.domain.JobPosting;
-import com.doggeon.jobrecommendation.domain.JobPostingStatus;
-import com.doggeon.jobrecommendation.domain.JobOrigin;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
+
+import com.donggeon.jobrecommendation.domain.JobOrigin;
+import com.donggeon.jobrecommendation.domain.JobPosting;
+import com.donggeon.jobrecommendation.domain.JobPostingStatus;
 
 public record JobResponse(Long id, String companyName, String title, String roleName,
                           String industry, String companySize, String careerLevel, String description,

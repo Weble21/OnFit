@@ -1,4 +1,4 @@
-package com.doggeon.jobrecommendation.extraction;
+package com.donggeon.jobrecommendation.extraction;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;

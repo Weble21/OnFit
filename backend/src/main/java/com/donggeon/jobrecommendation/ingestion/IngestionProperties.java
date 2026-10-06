@@ -1,4 +1,4 @@
-package com.doggeon.jobrecommendation.ingestion;
+package com.donggeon.jobrecommendation.ingestion;
 
 import java.time.LocalDate;
 import java.util.Map;
