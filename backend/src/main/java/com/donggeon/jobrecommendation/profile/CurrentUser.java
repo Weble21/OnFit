@@ -17,7 +17,7 @@ public class CurrentUser {
     private final boolean production;
 
     public CurrentUser(Environment environment) {
-        production = environment.acceptsProfiles(Profiles.of("prod"));
+        production = environment.acceptsProfiles(Profiles.of("!test | prod | auth"));
     }
 
     public String identity() {

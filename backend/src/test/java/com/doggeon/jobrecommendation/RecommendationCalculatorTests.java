@@ -1,4 +1,4 @@
-package com.doggeon.jobrecommendation;
+package com.donggeon.jobrecommendation;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -70,7 +70,7 @@ class RecommendationCalculatorTests {
         var result = calculator.calculate(profile, job);
 
         assertThat(result.experienceScore()).isEqualByComparingTo("100.00");
-        assertThat(result.matchedEvidence()).containsExactly("프로젝트 기술 연관: 배포 자동화");
+        assertThat(result.matchedEvidence()).containsExactly("연관 프로젝트: 배포 자동화");
     }
 
     @Test
@@ -103,7 +103,7 @@ class RecommendationCalculatorTests {
         assertThat(result.totalScore()).isEqualByComparingTo("20.00");
         assertThat(result.missingSkills()).containsExactly("Java", "Spring Boot");
         assertThat(result.matchedEvidence()).containsExactly(
-                "프로젝트 기술 연관: 예약 API", "희망 지역 일치: 서울");
+                "연관 프로젝트: 예약 API", "희망 지역 일치: 서울");
     }
 
     @Test

@@ -13,10 +13,18 @@ public record ProfileRequest(
         @NotEmpty @Size(max = 20) List<@NotBlank @Size(max = 120) String> targetRoles,
         @NotNull @Size(max = 20) List<@NotBlank @Size(max = 120) String> preferredLocations,
         @NotNull @Size(max = 100) List<@NotBlank @Size(max = 120) String> skills,
-        @NotNull @Size(max = 50) List<@NotBlank @Size(max = 200) String> certificates,
+        @NotNull @Size(max = 50) List<@NotNull @Valid CertificateInput> certificates,
         @Size(max = 50) List<@NotNull @Valid ProjectInput> projects,
         @Size(max = 50) List<@NotNull @Valid ExperienceInput> experiences
 ) {
+    public record CertificateInput(
+            @NotBlank @Size(max = 200) String name,
+            @Size(max = 200) String issuer,
+            LocalDate acquiredOn,
+            @Size(max = 50) String score
+    ) {
+    }
+
     public record ProjectInput(
             @NotBlank @Size(max = 200) String name,
             String description,

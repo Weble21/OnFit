@@ -32,13 +32,18 @@ public class Certificate {
     @Column(name = "acquired_on")
     private LocalDate acquiredOn;
 
+    // Score or grade as written on the certificate ("900", "IH", "최종합격").
+    @Column(length = 50)
+    private String score;
+
     protected Certificate() {
     }
 
-    public Certificate(String name, String issuer, LocalDate acquiredOn) {
+    public Certificate(String name, String issuer, LocalDate acquiredOn, String score) {
         this.name = name;
         this.issuer = issuer;
         this.acquiredOn = acquiredOn;
+        this.score = score;
     }
 
     void setProfile(UserProfile profile) { this.profile = profile; }
@@ -48,4 +53,5 @@ public class Certificate {
     public String getName() { return name; }
     public String getIssuer() { return issuer; }
     public LocalDate getAcquiredOn() { return acquiredOn; }
+    public String getScore() { return score; }
 }

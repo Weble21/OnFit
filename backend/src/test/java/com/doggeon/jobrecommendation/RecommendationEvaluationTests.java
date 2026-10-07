@@ -1,9 +1,9 @@
-package com.doggeon.jobrecommendation;
+package com.donggeon.jobrecommendation;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import com.doggeon.jobrecommendation.evaluation.RecommendationEvaluation;
+import com.donggeon.jobrecommendation.evaluation.RecommendationEvaluation;
 import com.donggeon.jobrecommendation.recommendation.RecommendationWeights;
 
 import java.math.BigDecimal;

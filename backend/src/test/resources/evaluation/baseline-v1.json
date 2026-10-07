@@ -23,7 +23,7 @@
         "preferenceScore" : 100.00,
         "matchedRequiredSkills" : [ "Java", "Spring Boot", "PostgreSQL" ],
         "matchedPreferredSkills" : [ "AWS", "Docker" ],
-        "matchedEvidence" : [ "필수 기술 일치: Java", "필수 기술 일치: Spring Boot", "필수 기술 일치: PostgreSQL", "우대 기술 일치: AWS", "우대 기술 일치: Docker", "프로젝트 기술 연관: 예약 API", "희망 직무 일치: 백엔드 개발자", "희망 지역 일치: 서울" ],
+        "matchedEvidence" : [ "필수 기술 일치: Java", "필수 기술 일치: Spring Boot", "필수 기술 일치: PostgreSQL", "우대 기술 일치: AWS", "우대 기술 일치: Docker", "연관 프로젝트: 예약 API", "희망 직무 일치: 백엔드 개발자", "희망 지역 일치: 서울" ],
         "missingSkills" : [ ]
       }
     }, {
@@ -53,7 +53,7 @@
         "preferenceScore" : 100.00,
         "matchedRequiredSkills" : [ "Java", "Spring Boot" ],
         "matchedPreferredSkills" : [ ],
-        "matchedEvidence" : [ "필수 기술 일치: Java", "필수 기술 일치: Spring Boot", "프로젝트 기술 연관: 예약 API", "희망 직무 일치: 백엔드 개발자", "희망 지역 일치: 서울" ],
+        "matchedEvidence" : [ "필수 기술 일치: Java", "필수 기술 일치: Spring Boot", "연관 프로젝트: 예약 API", "희망 직무 일치: 백엔드 개발자", "희망 지역 일치: 서울" ],
         "missingSkills" : [ "MySQL" ]
       }
     }, {
@@ -83,7 +83,7 @@
         "preferenceScore" : 50.00,
         "matchedRequiredSkills" : [ "Spring Boot", "PostgreSQL" ],
         "matchedPreferredSkills" : [ "AWS" ],
-        "matchedEvidence" : [ "필수 기술 일치: Spring Boot", "필수 기술 일치: PostgreSQL", "우대 기술 일치: AWS", "프로젝트 기술 연관: 예약 API", "희망 직무 일치: 백엔드 개발자" ],
+        "matchedEvidence" : [ "필수 기술 일치: Spring Boot", "필수 기술 일치: PostgreSQL", "우대 기술 일치: AWS", "연관 프로젝트: 예약 API", "희망 직무 일치: 백엔드 개발자" ],
         "missingSkills" : [ "Kotlin" ]
       }
     }, {
@@ -113,7 +113,7 @@
         "preferenceScore" : 100.00,
         "matchedRequiredSkills" : [ "Java", "Spring Boot" ],
         "matchedPreferredSkills" : [ ],
-        "matchedEvidence" : [ "필수 기술 일치: Java", "필수 기술 일치: Spring Boot", "프로젝트 기술 연관: 예약 API", "희망 직무 일치: 백엔드 개발자", "희망 지역 일치: 서울" ],
+        "matchedEvidence" : [ "필수 기술 일치: Java", "필수 기술 일치: Spring Boot", "연관 프로젝트: 예약 API", "희망 직무 일치: 백엔드 개발자", "희망 지역 일치: 서울" ],
         "missingSkills" : [ "JPA" ]
       }
     }, {
@@ -158,7 +158,7 @@
         "preferenceScore" : 0.00,
         "matchedRequiredSkills" : [ "Java" ],
         "matchedPreferredSkills" : [ ],
-        "matchedEvidence" : [ "필수 기술 일치: Java", "프로젝트 기술 연관: 예약 API" ],
+        "matchedEvidence" : [ "필수 기술 일치: Java", "연관 프로젝트: 예약 API" ],
         "missingSkills" : [ "Selenium", "API Testing" ]
       }
     }, {
@@ -173,7 +173,7 @@
         "preferenceScore" : 50.00,
         "matchedRequiredSkills" : [ "Java", "Spring Boot" ],
         "matchedPreferredSkills" : [ "Docker", "AWS" ],
-        "matchedEvidence" : [ "필수 기술 일치: Java", "필수 기술 일치: Spring Boot", "우대 기술 일치: Docker", "우대 기술 일치: AWS", "프로젝트 기술 연관: 예약 API", "희망 직무 일치: 백엔드 개발자" ],
+        "matchedEvidence" : [ "필수 기술 일치: Java", "필수 기술 일치: Spring Boot", "우대 기술 일치: Docker", "우대 기술 일치: AWS", "연관 프로젝트: 예약 API", "희망 직무 일치: 백엔드 개발자" ],
         "missingSkills" : [ "MySQL" ]
       }
     }, {
@@ -203,7 +203,7 @@
         "preferenceScore" : 50.00,
         "matchedRequiredSkills" : [ "PostgreSQL" ],
         "matchedPreferredSkills" : [ "Docker" ],
-        "matchedEvidence" : [ "필수 기술 일치: PostgreSQL", "우대 기술 일치: Docker", "프로젝트 기술 연관: 예약 API", "희망 직무 일치: 백엔드 개발자" ],
+        "matchedEvidence" : [ "필수 기술 일치: PostgreSQL", "우대 기술 일치: Docker", "연관 프로젝트: 예약 API", "희망 직무 일치: 백엔드 개발자" ],
         "missingSkills" : [ "C#", "Redis" ]
       }
     }, {
@@ -233,7 +233,7 @@
         "preferenceScore" : 50.00,
         "matchedRequiredSkills" : [ "Java", "Spring Boot", "PostgreSQL" ],
         "matchedPreferredSkills" : [ "Docker" ],
-        "matchedEvidence" : [ "필수 기술 일치: Java", "필수 기술 일치: Spring Boot", "필수 기술 일치: PostgreSQL", "우대 기술 일치: Docker", "프로젝트 기술 연관: 예약 API", "희망 직무 일치: 백엔드 개발자" ],
+        "matchedEvidence" : [ "필수 기술 일치: Java", "필수 기술 일치: Spring Boot", "필수 기술 일치: PostgreSQL", "우대 기술 일치: Docker", "연관 프로젝트: 예약 API", "희망 직무 일치: 백엔드 개발자" ],
         "missingSkills" : [ ]
       }
     }, {
@@ -263,7 +263,7 @@
         "preferenceScore" : 100.00,
         "matchedRequiredSkills" : [ "Java", "PostgreSQL" ],
         "matchedPreferredSkills" : [ "Docker" ],
-        "matchedEvidence" : [ "필수 기술 일치: Java", "필수 기술 일치: PostgreSQL", "우대 기술 일치: Docker", "프로젝트 기술 연관: 예약 API", "희망 직무 일치: 백엔드 개발자", "희망 지역 일치: 서울" ],
+        "matchedEvidence" : [ "필수 기술 일치: Java", "필수 기술 일치: PostgreSQL", "우대 기술 일치: Docker", "연관 프로젝트: 예약 API", "희망 직무 일치: 백엔드 개발자", "희망 지역 일치: 서울" ],
         "missingSkills" : [ "Spring Security" ]
       }
     }, {
@@ -293,7 +293,7 @@
         "preferenceScore" : 50.00,
         "matchedRequiredSkills" : [ "Java", "Spring Boot" ],
         "matchedPreferredSkills" : [ ],
-        "matchedEvidence" : [ "필수 기술 일치: Java", "필수 기술 일치: Spring Boot", "프로젝트 기술 연관: 예약 API", "희망 직무 일치: 백엔드 개발자" ],
+        "matchedEvidence" : [ "필수 기술 일치: Java", "필수 기술 일치: Spring Boot", "연관 프로젝트: 예약 API", "희망 직무 일치: 백엔드 개발자" ],
         "missingSkills" : [ "MySQL" ]
       }
     }, {
@@ -323,7 +323,7 @@
         "preferenceScore" : 100.00,
         "matchedRequiredSkills" : [ "Java", "Spring Boot" ],
         "matchedPreferredSkills" : [ ],
-        "matchedEvidence" : [ "필수 기술 일치: Java", "필수 기술 일치: Spring Boot", "프로젝트 기술 연관: 예약 API", "희망 직무 일치: 백엔드 개발자", "희망 지역 일치: 서울" ],
+        "matchedEvidence" : [ "필수 기술 일치: Java", "필수 기술 일치: Spring Boot", "연관 프로젝트: 예약 API", "희망 직무 일치: 백엔드 개발자", "희망 지역 일치: 서울" ],
         "missingSkills" : [ "Oracle" ]
       }
     }, {
@@ -353,7 +353,7 @@
         "preferenceScore" : 50.00,
         "matchedRequiredSkills" : [ "Java", "Spring Boot", "PostgreSQL" ],
         "matchedPreferredSkills" : [ "AWS" ],
-        "matchedEvidence" : [ "필수 기술 일치: Java", "필수 기술 일치: Spring Boot", "필수 기술 일치: PostgreSQL", "우대 기술 일치: AWS", "프로젝트 기술 연관: 예약 API", "희망 직무 일치: 백엔드 개발자" ],
+        "matchedEvidence" : [ "필수 기술 일치: Java", "필수 기술 일치: Spring Boot", "필수 기술 일치: PostgreSQL", "우대 기술 일치: AWS", "연관 프로젝트: 예약 API", "희망 직무 일치: 백엔드 개발자" ],
         "missingSkills" : [ ]
       }
     }, {
@@ -383,7 +383,7 @@
         "preferenceScore" : 50.00,
         "matchedRequiredSkills" : [ "PostgreSQL" ],
         "matchedPreferredSkills" : [ "Docker" ],
-        "matchedEvidence" : [ "필수 기술 일치: PostgreSQL", "우대 기술 일치: Docker", "프로젝트 기술 연관: 예약 API", "희망 직무 일치: 백엔드 개발자" ],
+        "matchedEvidence" : [ "필수 기술 일치: PostgreSQL", "우대 기술 일치: Docker", "연관 프로젝트: 예약 API", "희망 직무 일치: 백엔드 개발자" ],
         "missingSkills" : [ "Python", "FastAPI" ]
       }
     }, {
@@ -413,7 +413,7 @@
         "preferenceScore" : 50.00,
         "matchedRequiredSkills" : [ "Java", "Spring Boot" ],
         "matchedPreferredSkills" : [ "Docker" ],
-        "matchedEvidence" : [ "필수 기술 일치: Java", "필수 기술 일치: Spring Boot", "우대 기술 일치: Docker", "프로젝트 기술 연관: 예약 API", "희망 직무 일치: 백엔드 개발자" ],
+        "matchedEvidence" : [ "필수 기술 일치: Java", "필수 기술 일치: Spring Boot", "우대 기술 일치: Docker", "연관 프로젝트: 예약 API", "희망 직무 일치: 백엔드 개발자" ],
         "missingSkills" : [ "Oracle" ]
       }
     }, {
@@ -443,7 +443,7 @@
         "preferenceScore" : 100.00,
         "matchedRequiredSkills" : [ "Java", "Spring Boot", "PostgreSQL" ],
         "matchedPreferredSkills" : [ ],
-        "matchedEvidence" : [ "필수 기술 일치: Java", "필수 기술 일치: Spring Boot", "필수 기술 일치: PostgreSQL", "프로젝트 기술 연관: 예약 API", "희망 직무 일치: 백엔드 개발자", "희망 지역 일치: 서울" ],
+        "matchedEvidence" : [ "필수 기술 일치: Java", "필수 기술 일치: Spring Boot", "필수 기술 일치: PostgreSQL", "연관 프로젝트: 예약 API", "희망 직무 일치: 백엔드 개발자", "희망 지역 일치: 서울" ],
         "missingSkills" : [ ]
       }
     }, {
@@ -473,7 +473,7 @@
         "preferenceScore" : 50.00,
         "matchedRequiredSkills" : [ "Java", "Spring Boot", "PostgreSQL" ],
         "matchedPreferredSkills" : [ "AWS" ],
-        "matchedEvidence" : [ "필수 기술 일치: Java", "필수 기술 일치: Spring Boot", "필수 기술 일치: PostgreSQL", "우대 기술 일치: AWS", "프로젝트 기술 연관: 예약 API", "희망 직무 일치: 백엔드 개발자" ],
+        "matchedEvidence" : [ "필수 기술 일치: Java", "필수 기술 일치: Spring Boot", "필수 기술 일치: PostgreSQL", "우대 기술 일치: AWS", "연관 프로젝트: 예약 API", "희망 직무 일치: 백엔드 개발자" ],
         "missingSkills" : [ ]
       }
     }, {
@@ -518,7 +518,7 @@
         "preferenceScore" : 50.00,
         "matchedRequiredSkills" : [ "PostgreSQL", "Docker" ],
         "matchedPreferredSkills" : [ ],
-        "matchedEvidence" : [ "필수 기술 일치: PostgreSQL", "필수 기술 일치: Docker", "프로젝트 기술 연관: 예약 API", "희망 직무 일치: 백엔드 개발자" ],
+        "matchedEvidence" : [ "필수 기술 일치: PostgreSQL", "필수 기술 일치: Docker", "연관 프로젝트: 예약 API", "희망 직무 일치: 백엔드 개발자" ],
         "missingSkills" : [ "Go" ]
       }
     }, {
@@ -533,7 +533,7 @@
         "preferenceScore" : 100.00,
         "matchedRequiredSkills" : [ "Java", "Spring Boot" ],
         "matchedPreferredSkills" : [ "Docker" ],
-        "matchedEvidence" : [ "필수 기술 일치: Java", "필수 기술 일치: Spring Boot", "우대 기술 일치: Docker", "프로젝트 기술 연관: 예약 API", "희망 직무 일치: 백엔드 개발자", "희망 지역 일치: 서울" ],
+        "matchedEvidence" : [ "필수 기술 일치: Java", "필수 기술 일치: Spring Boot", "우대 기술 일치: Docker", "연관 프로젝트: 예약 API", "희망 직무 일치: 백엔드 개발자", "희망 지역 일치: 서울" ],
         "missingSkills" : [ "MySQL" ]
       }
     }, {
@@ -563,7 +563,7 @@
         "preferenceScore" : 100.00,
         "matchedRequiredSkills" : [ "Java", "Spring Boot" ],
         "matchedPreferredSkills" : [ "AWS" ],
-        "matchedEvidence" : [ "필수 기술 일치: Java", "필수 기술 일치: Spring Boot", "우대 기술 일치: AWS", "프로젝트 기술 연관: 예약 API", "희망 직무 일치: 백엔드 개발자", "희망 지역 일치: 서울" ],
+        "matchedEvidence" : [ "필수 기술 일치: Java", "필수 기술 일치: Spring Boot", "우대 기술 일치: AWS", "연관 프로젝트: 예약 API", "희망 직무 일치: 백엔드 개발자", "희망 지역 일치: 서울" ],
         "missingSkills" : [ "MySQL" ]
       }
     }, {
@@ -593,7 +593,7 @@
         "preferenceScore" : 50.00,
         "matchedRequiredSkills" : [ "Java", "Spring Boot", "PostgreSQL" ],
         "matchedPreferredSkills" : [ "Docker" ],
-        "matchedEvidence" : [ "필수 기술 일치: Java", "필수 기술 일치: Spring Boot", "필수 기술 일치: PostgreSQL", "우대 기술 일치: Docker", "프로젝트 기술 연관: 예약 API", "희망 직무 일치: 백엔드 개발자" ],
+        "matchedEvidence" : [ "필수 기술 일치: Java", "필수 기술 일치: Spring Boot", "필수 기술 일치: PostgreSQL", "우대 기술 일치: Docker", "연관 프로젝트: 예약 API", "희망 직무 일치: 백엔드 개발자" ],
         "missingSkills" : [ ]
       }
     }, {
@@ -665,7 +665,7 @@
         "preferenceScore" : 100.00,
         "matchedRequiredSkills" : [ "Java", "Spring Boot", "PostgreSQL" ],
         "matchedPreferredSkills" : [ "AWS", "Docker" ],
-        "matchedEvidence" : [ "필수 기술 일치: Java", "필수 기술 일치: Spring Boot", "필수 기술 일치: PostgreSQL", "우대 기술 일치: AWS", "우대 기술 일치: Docker", "프로젝트 기술 연관: 예약 API", "희망 직무 일치: 백엔드 개발자", "희망 지역 일치: 서울" ],
+        "matchedEvidence" : [ "필수 기술 일치: Java", "필수 기술 일치: Spring Boot", "필수 기술 일치: PostgreSQL", "우대 기술 일치: AWS", "우대 기술 일치: Docker", "연관 프로젝트: 예약 API", "희망 직무 일치: 백엔드 개발자", "희망 지역 일치: 서울" ],
         "missingSkills" : [ ]
       }
     }, {
@@ -695,7 +695,7 @@
         "preferenceScore" : 100.00,
         "matchedRequiredSkills" : [ "Java", "Spring Boot" ],
         "matchedPreferredSkills" : [ ],
-        "matchedEvidence" : [ "필수 기술 일치: Java", "필수 기술 일치: Spring Boot", "프로젝트 기술 연관: 예약 API", "희망 직무 일치: 백엔드 개발자", "희망 지역 일치: 서울" ],
+        "matchedEvidence" : [ "필수 기술 일치: Java", "필수 기술 일치: Spring Boot", "연관 프로젝트: 예약 API", "희망 직무 일치: 백엔드 개발자", "희망 지역 일치: 서울" ],
         "missingSkills" : [ "MySQL" ]
       }
     }, {
@@ -725,7 +725,7 @@
         "preferenceScore" : 50.00,
         "matchedRequiredSkills" : [ "Spring Boot", "PostgreSQL" ],
         "matchedPreferredSkills" : [ "AWS" ],
-        "matchedEvidence" : [ "필수 기술 일치: Spring Boot", "필수 기술 일치: PostgreSQL", "우대 기술 일치: AWS", "프로젝트 기술 연관: 예약 API", "희망 직무 일치: 백엔드 개발자" ],
+        "matchedEvidence" : [ "필수 기술 일치: Spring Boot", "필수 기술 일치: PostgreSQL", "우대 기술 일치: AWS", "연관 프로젝트: 예약 API", "희망 직무 일치: 백엔드 개발자" ],
         "missingSkills" : [ "Kotlin" ]
       }
     }, {
@@ -755,7 +755,7 @@
         "preferenceScore" : 100.00,
         "matchedRequiredSkills" : [ "Java", "Spring Boot" ],
         "matchedPreferredSkills" : [ ],
-        "matchedEvidence" : [ "필수 기술 일치: Java", "필수 기술 일치: Spring Boot", "프로젝트 기술 연관: 예약 API", "희망 직무 일치: 백엔드 개발자", "희망 지역 일치: 서울" ],
+        "matchedEvidence" : [ "필수 기술 일치: Java", "필수 기술 일치: Spring Boot", "연관 프로젝트: 예약 API", "희망 직무 일치: 백엔드 개발자", "희망 지역 일치: 서울" ],
         "missingSkills" : [ "JPA" ]
       }
     }, {
@@ -800,7 +800,7 @@
         "preferenceScore" : 0.00,
         "matchedRequiredSkills" : [ "Java" ],
         "matchedPreferredSkills" : [ ],
-        "matchedEvidence" : [ "필수 기술 일치: Java", "프로젝트 기술 연관: 예약 API" ],
+        "matchedEvidence" : [ "필수 기술 일치: Java", "연관 프로젝트: 예약 API" ],
         "missingSkills" : [ "Selenium", "API Testing" ]
       }
     }, {
@@ -815,7 +815,7 @@
         "preferenceScore" : 50.00,
         "matchedRequiredSkills" : [ "Java", "Spring Boot" ],
         "matchedPreferredSkills" : [ "Docker", "AWS" ],
-        "matchedEvidence" : [ "필수 기술 일치: Java", "필수 기술 일치: Spring Boot", "우대 기술 일치: Docker", "우대 기술 일치: AWS", "프로젝트 기술 연관: 예약 API", "희망 직무 일치: 백엔드 개발자" ],
+        "matchedEvidence" : [ "필수 기술 일치: Java", "필수 기술 일치: Spring Boot", "우대 기술 일치: Docker", "우대 기술 일치: AWS", "연관 프로젝트: 예약 API", "희망 직무 일치: 백엔드 개발자" ],
         "missingSkills" : [ "MySQL" ]
       }
     }, {
@@ -845,7 +845,7 @@
         "preferenceScore" : 50.00,
         "matchedRequiredSkills" : [ "PostgreSQL" ],
         "matchedPreferredSkills" : [ "Docker" ],
-        "matchedEvidence" : [ "필수 기술 일치: PostgreSQL", "우대 기술 일치: Docker", "프로젝트 기술 연관: 예약 API", "희망 직무 일치: 백엔드 개발자" ],
+        "matchedEvidence" : [ "필수 기술 일치: PostgreSQL", "우대 기술 일치: Docker", "연관 프로젝트: 예약 API", "희망 직무 일치: 백엔드 개발자" ],
         "missingSkills" : [ "C#", "Redis" ]
       }
     }, {
@@ -875,7 +875,7 @@
         "preferenceScore" : 50.00,
         "matchedRequiredSkills" : [ "Java", "Spring Boot", "PostgreSQL" ],
         "matchedPreferredSkills" : [ "Docker" ],
-        "matchedEvidence" : [ "필수 기술 일치: Java", "필수 기술 일치: Spring Boot", "필수 기술 일치: PostgreSQL", "우대 기술 일치: Docker", "프로젝트 기술 연관: 예약 API", "희망 직무 일치: 백엔드 개발자" ],
+        "matchedEvidence" : [ "필수 기술 일치: Java", "필수 기술 일치: Spring Boot", "필수 기술 일치: PostgreSQL", "우대 기술 일치: Docker", "연관 프로젝트: 예약 API", "희망 직무 일치: 백엔드 개발자" ],
         "missingSkills" : [ ]
       }
     }, {
@@ -905,7 +905,7 @@
         "preferenceScore" : 100.00,
         "matchedRequiredSkills" : [ "Java", "PostgreSQL" ],
         "matchedPreferredSkills" : [ "Docker" ],
-        "matchedEvidence" : [ "필수 기술 일치: Java", "필수 기술 일치: PostgreSQL", "우대 기술 일치: Docker", "프로젝트 기술 연관: 예약 API", "희망 직무 일치: 백엔드 개발자", "희망 지역 일치: 서울" ],
+        "matchedEvidence" : [ "필수 기술 일치: Java", "필수 기술 일치: PostgreSQL", "우대 기술 일치: Docker", "연관 프로젝트: 예약 API", "희망 직무 일치: 백엔드 개발자", "희망 지역 일치: 서울" ],
         "missingSkills" : [ "Spring Security" ]
       }
     }, {
@@ -935,7 +935,7 @@
         "preferenceScore" : 50.00,
         "matchedRequiredSkills" : [ "Java", "Spring Boot" ],
         "matchedPreferredSkills" : [ ],
-        "matchedEvidence" : [ "필수 기술 일치: Java", "필수 기술 일치: Spring Boot", "프로젝트 기술 연관: 예약 API", "희망 직무 일치: 백엔드 개발자" ],
+        "matchedEvidence" : [ "필수 기술 일치: Java", "필수 기술 일치: Spring Boot", "연관 프로젝트: 예약 API", "희망 직무 일치: 백엔드 개발자" ],
         "missingSkills" : [ "MySQL" ]
       }
     }, {
@@ -965,7 +965,7 @@
         "preferenceScore" : 100.00,
         "matchedRequiredSkills" : [ "Java", "Spring Boot" ],
         "matchedPreferredSkills" : [ ],
-        "matchedEvidence" : [ "필수 기술 일치: Java", "필수 기술 일치: Spring Boot", "프로젝트 기술 연관: 예약 API", "희망 직무 일치: 백엔드 개발자", "희망 지역 일치: 서울" ],
+        "matchedEvidence" : [ "필수 기술 일치: Java", "필수 기술 일치: Spring Boot", "연관 프로젝트: 예약 API", "희망 직무 일치: 백엔드 개발자", "희망 지역 일치: 서울" ],
         "missingSkills" : [ "Oracle" ]
       }
     }, {
@@ -995,7 +995,7 @@
         "preferenceScore" : 50.00,
         "matchedRequiredSkills" : [ "Java", "Spring Boot", "PostgreSQL" ],
         "matchedPreferredSkills" : [ "AWS" ],
-        "matchedEvidence" : [ "필수 기술 일치: Java", "필수 기술 일치: Spring Boot", "필수 기술 일치: PostgreSQL", "우대 기술 일치: AWS", "프로젝트 기술 연관: 예약 API", "희망 직무 일치: 백엔드 개발자" ],
+        "matchedEvidence" : [ "필수 기술 일치: Java", "필수 기술 일치: Spring Boot", "필수 기술 일치: PostgreSQL", "우대 기술 일치: AWS", "연관 프로젝트: 예약 API", "희망 직무 일치: 백엔드 개발자" ],
         "missingSkills" : [ ]
       }
     }, {
@@ -1025,7 +1025,7 @@
         "preferenceScore" : 50.00,
         "matchedRequiredSkills" : [ "PostgreSQL" ],
         "matchedPreferredSkills" : [ "Docker" ],
-        "matchedEvidence" : [ "필수 기술 일치: PostgreSQL", "우대 기술 일치: Docker", "프로젝트 기술 연관: 예약 API", "희망 직무 일치: 백엔드 개발자" ],
+        "matchedEvidence" : [ "필수 기술 일치: PostgreSQL", "우대 기술 일치: Docker", "연관 프로젝트: 예약 API", "희망 직무 일치: 백엔드 개발자" ],
         "missingSkills" : [ "Python", "FastAPI" ]
       }
     }, {
@@ -1055,7 +1055,7 @@
         "preferenceScore" : 50.00,
         "matchedRequiredSkills" : [ "Java", "Spring Boot" ],
         "matchedPreferredSkills" : [ "Docker" ],
-        "matchedEvidence" : [ "필수 기술 일치: Java", "필수 기술 일치: Spring Boot", "우대 기술 일치: Docker", "프로젝트 기술 연관: 예약 API", "희망 직무 일치: 백엔드 개발자" ],
+        "matchedEvidence" : [ "필수 기술 일치: Java", "필수 기술 일치: Spring Boot", "우대 기술 일치: Docker", "연관 프로젝트: 예약 API", "희망 직무 일치: 백엔드 개발자" ],
         "missingSkills" : [ "Oracle" ]
       }
     }, {
@@ -1085,7 +1085,7 @@
         "preferenceScore" : 100.00,
         "matchedRequiredSkills" : [ "Java", "Spring Boot", "PostgreSQL" ],
         "matchedPreferredSkills" : [ ],
-        "matchedEvidence" : [ "필수 기술 일치: Java", "필수 기술 일치: Spring Boot", "필수 기술 일치: PostgreSQL", "프로젝트 기술 연관: 예약 API", "희망 직무 일치: 백엔드 개발자", "희망 지역 일치: 서울" ],
+        "matchedEvidence" : [ "필수 기술 일치: Java", "필수 기술 일치: Spring Boot", "필수 기술 일치: PostgreSQL", "연관 프로젝트: 예약 API", "희망 직무 일치: 백엔드 개발자", "희망 지역 일치: 서울" ],
         "missingSkills" : [ ]
       }
     }, {
@@ -1115,7 +1115,7 @@
         "preferenceScore" : 50.00,
         "matchedRequiredSkills" : [ "Java", "Spring Boot", "PostgreSQL" ],
         "matchedPreferredSkills" : [ "AWS" ],
-        "matchedEvidence" : [ "필수 기술 일치: Java", "필수 기술 일치: Spring Boot", "필수 기술 일치: PostgreSQL", "우대 기술 일치: AWS", "프로젝트 기술 연관: 예약 API", "희망 직무 일치: 백엔드 개발자" ],
+        "matchedEvidence" : [ "필수 기술 일치: Java", "필수 기술 일치: Spring Boot", "필수 기술 일치: PostgreSQL", "우대 기술 일치: AWS", "연관 프로젝트: 예약 API", "희망 직무 일치: 백엔드 개발자" ],
         "missingSkills" : [ ]
       }
     }, {
@@ -1160,7 +1160,7 @@
         "preferenceScore" : 50.00,
         "matchedRequiredSkills" : [ "PostgreSQL", "Docker" ],
         "matchedPreferredSkills" : [ ],
-        "matchedEvidence" : [ "필수 기술 일치: PostgreSQL", "필수 기술 일치: Docker", "프로젝트 기술 연관: 예약 API", "희망 직무 일치: 백엔드 개발자" ],
+        "matchedEvidence" : [ "필수 기술 일치: PostgreSQL", "필수 기술 일치: Docker", "연관 프로젝트: 예약 API", "희망 직무 일치: 백엔드 개발자" ],
         "missingSkills" : [ "Go" ]
       }
     }, {
@@ -1175,7 +1175,7 @@
         "preferenceScore" : 100.00,
         "matchedRequiredSkills" : [ "Java", "Spring Boot" ],
         "matchedPreferredSkills" : [ "Docker" ],
-        "matchedEvidence" : [ "필수 기술 일치: Java", "필수 기술 일치: Spring Boot", "우대 기술 일치: Docker", "프로젝트 기술 연관: 예약 API", "희망 직무 일치: 백엔드 개발자", "희망 지역 일치: 서울" ],
+        "matchedEvidence" : [ "필수 기술 일치: Java", "필수 기술 일치: Spring Boot", "우대 기술 일치: Docker", "연관 프로젝트: 예약 API", "희망 직무 일치: 백엔드 개발자", "희망 지역 일치: 서울" ],
         "missingSkills" : [ "MySQL" ]
       }
     }, {
@@ -1205,7 +1205,7 @@
         "preferenceScore" : 100.00,
         "matchedRequiredSkills" : [ "Java", "Spring Boot" ],
         "matchedPreferredSkills" : [ "AWS" ],
-        "matchedEvidence" : [ "필수 기술 일치: Java", "필수 기술 일치: Spring Boot", "우대 기술 일치: AWS", "프로젝트 기술 연관: 예약 API", "희망 직무 일치: 백엔드 개발자", "희망 지역 일치: 서울" ],
+        "matchedEvidence" : [ "필수 기술 일치: Java", "필수 기술 일치: Spring Boot", "우대 기술 일치: AWS", "연관 프로젝트: 예약 API", "희망 직무 일치: 백엔드 개발자", "희망 지역 일치: 서울" ],
         "missingSkills" : [ "MySQL" ]
       }
     }, {
@@ -1235,7 +1235,7 @@
         "preferenceScore" : 50.00,
         "matchedRequiredSkills" : [ "Java", "Spring Boot", "PostgreSQL" ],
         "matchedPreferredSkills" : [ "Docker" ],
-        "matchedEvidence" : [ "필수 기술 일치: Java", "필수 기술 일치: Spring Boot", "필수 기술 일치: PostgreSQL", "우대 기술 일치: Docker", "프로젝트 기술 연관: 예약 API", "희망 직무 일치: 백엔드 개발자" ],
+        "matchedEvidence" : [ "필수 기술 일치: Java", "필수 기술 일치: Spring Boot", "필수 기술 일치: PostgreSQL", "우대 기술 일치: Docker", "연관 프로젝트: 예약 API", "희망 직무 일치: 백엔드 개발자" ],
         "missingSkills" : [ ]
       }
     }, {
@@ -1442,7 +1442,7 @@
         "preferenceScore" : 0.00,
         "matchedRequiredSkills" : [ "Java" ],
         "matchedPreferredSkills" : [ ],
-        "matchedEvidence" : [ "필수 기술 일치: Java", "프로젝트 기술 연관: 결제 API" ],
+        "matchedEvidence" : [ "필수 기술 일치: Java", "연관 프로젝트: 결제 API" ],
         "missingSkills" : [ "Selenium", "API Testing" ]
       }
     }, {
@@ -2054,7 +2054,7 @@
         "preferenceScore" : 50.00,
         "matchedRequiredSkills" : [ "TypeScript", "React", "CSS" ],
         "matchedPreferredSkills" : [ "Next.js", "Playwright" ],
-        "matchedEvidence" : [ "필수 기술 일치: TypeScript", "필수 기술 일치: React", "필수 기술 일치: CSS", "우대 기술 일치: Next.js", "우대 기술 일치: Playwright", "프로젝트 기술 연관: 반응형 웹", "희망 직무 일치: 프론트엔드 개발자" ],
+        "matchedEvidence" : [ "필수 기술 일치: TypeScript", "필수 기술 일치: React", "필수 기술 일치: CSS", "우대 기술 일치: Next.js", "우대 기술 일치: Playwright", "연관 프로젝트: 반응형 웹", "희망 직무 일치: 프론트엔드 개발자" ],
         "missingSkills" : [ ]
       }
     }, {
@@ -2114,7 +2114,7 @@
         "preferenceScore" : 100.00,
         "matchedRequiredSkills" : [ "TypeScript", "React" ],
         "matchedPreferredSkills" : [ "Next.js", "Jest" ],
-        "matchedEvidence" : [ "필수 기술 일치: TypeScript", "필수 기술 일치: React", "우대 기술 일치: Next.js", "우대 기술 일치: Jest", "프로젝트 기술 연관: 반응형 웹", "희망 직무 일치: 프론트엔드 개발자", "희망 지역 일치: 부산" ],
+        "matchedEvidence" : [ "필수 기술 일치: TypeScript", "필수 기술 일치: React", "우대 기술 일치: Next.js", "우대 기술 일치: Jest", "연관 프로젝트: 반응형 웹", "희망 직무 일치: 프론트엔드 개발자", "희망 지역 일치: 부산" ],
         "missingSkills" : [ "HTML" ]
       }
     }, {
@@ -2384,7 +2384,7 @@
         "preferenceScore" : 50.00,
         "matchedRequiredSkills" : [ "TypeScript", "React" ],
         "matchedPreferredSkills" : [ "Next.js", "Jest" ],
-        "matchedEvidence" : [ "필수 기술 일치: TypeScript", "필수 기술 일치: React", "우대 기술 일치: Next.js", "우대 기술 일치: Jest", "프로젝트 기술 연관: 반응형 웹", "희망 직무 일치: 프론트엔드 개발자" ],
+        "matchedEvidence" : [ "필수 기술 일치: TypeScript", "필수 기술 일치: React", "우대 기술 일치: Next.js", "우대 기술 일치: Jest", "연관 프로젝트: 반응형 웹", "희망 직무 일치: 프론트엔드 개발자" ],
         "missingSkills" : [ "Map API" ]
       }
     }, {
@@ -2504,7 +2504,7 @@
         "preferenceScore" : 50.00,
         "matchedRequiredSkills" : [ "TypeScript", "React", "CSS" ],
         "matchedPreferredSkills" : [ "Next.js", "Jest" ],
-        "matchedEvidence" : [ "필수 기술 일치: TypeScript", "필수 기술 일치: React", "필수 기술 일치: CSS", "우대 기술 일치: Next.js", "우대 기술 일치: Jest", "프로젝트 기술 연관: 반응형 웹", "희망 직무 일치: 프론트엔드 개발자" ],
+        "matchedEvidence" : [ "필수 기술 일치: TypeScript", "필수 기술 일치: React", "필수 기술 일치: CSS", "우대 기술 일치: Next.js", "우대 기술 일치: Jest", "연관 프로젝트: 반응형 웹", "희망 직무 일치: 프론트엔드 개발자" ],
         "missingSkills" : [ ]
       }
     }, {
@@ -2627,7 +2627,7 @@
         "preferenceScore" : 100.00,
         "matchedRequiredSkills" : [ "SQL", "Python", "Pandas" ],
         "matchedPreferredSkills" : [ "Tableau" ],
-        "matchedEvidence" : [ "필수 기술 일치: SQL", "필수 기술 일치: Python", "필수 기술 일치: Pandas", "우대 기술 일치: Tableau", "프로젝트 기술 연관: 매출 분석", "희망 직무 일치: 데이터 분석가", "희망 지역 일치: 서울" ],
+        "matchedEvidence" : [ "필수 기술 일치: SQL", "필수 기술 일치: Python", "필수 기술 일치: Pandas", "우대 기술 일치: Tableau", "연관 프로젝트: 매출 분석", "희망 직무 일치: 데이터 분석가", "희망 지역 일치: 서울" ],
         "missingSkills" : [ ]
       }
     }, {
@@ -2702,7 +2702,7 @@
         "preferenceScore" : 0.00,
         "matchedRequiredSkills" : [ "Python", "SQL" ],
         "matchedPreferredSkills" : [ ],
-        "matchedEvidence" : [ "필수 기술 일치: Python", "필수 기술 일치: SQL", "프로젝트 기술 연관: 매출 분석" ],
+        "matchedEvidence" : [ "필수 기술 일치: Python", "필수 기술 일치: SQL", "연관 프로젝트: 매출 분석" ],
         "missingSkills" : [ "Airflow" ]
       }
     }, {
@@ -2807,7 +2807,7 @@
         "preferenceScore" : 50.00,
         "matchedRequiredSkills" : [ "SQL", "Python", "Excel" ],
         "matchedPreferredSkills" : [ "Pandas", "Tableau" ],
-        "matchedEvidence" : [ "필수 기술 일치: SQL", "필수 기술 일치: Python", "필수 기술 일치: Excel", "우대 기술 일치: Pandas", "우대 기술 일치: Tableau", "프로젝트 기술 연관: 매출 분석", "희망 직무 일치: 데이터 분석가" ],
+        "matchedEvidence" : [ "필수 기술 일치: SQL", "필수 기술 일치: Python", "필수 기술 일치: Excel", "우대 기술 일치: Pandas", "우대 기술 일치: Tableau", "연관 프로젝트: 매출 분석", "희망 직무 일치: 데이터 분석가" ],
         "missingSkills" : [ ]
       }
     }, {
@@ -2867,7 +2867,7 @@
         "preferenceScore" : 0.00,
         "matchedRequiredSkills" : [ "Python", "SQL" ],
         "matchedPreferredSkills" : [ ],
-        "matchedEvidence" : [ "필수 기술 일치: Python", "필수 기술 일치: SQL", "프로젝트 기술 연관: 매출 분석" ],
+        "matchedEvidence" : [ "필수 기술 일치: Python", "필수 기술 일치: SQL", "연관 프로젝트: 매출 분석" ],
         "missingSkills" : [ "PyTorch" ]
       }
     }, {
@@ -2897,7 +2897,7 @@
         "preferenceScore" : 100.00,
         "matchedRequiredSkills" : [ "SQL", "Python", "Statistics" ],
         "matchedPreferredSkills" : [ "Pandas" ],
-        "matchedEvidence" : [ "필수 기술 일치: SQL", "필수 기술 일치: Python", "필수 기술 일치: Statistics", "우대 기술 일치: Pandas", "프로젝트 기술 연관: 매출 분석", "희망 직무 일치: 데이터 분석가", "희망 지역 일치: 서울" ],
+        "matchedEvidence" : [ "필수 기술 일치: SQL", "필수 기술 일치: Python", "필수 기술 일치: Statistics", "우대 기술 일치: Pandas", "연관 프로젝트: 매출 분석", "희망 직무 일치: 데이터 분석가", "희망 지역 일치: 서울" ],
         "missingSkills" : [ ]
       }
     }, {
@@ -2942,7 +2942,7 @@
         "preferenceScore" : 0.00,
         "matchedRequiredSkills" : [ "Python" ],
         "matchedPreferredSkills" : [ ],
-        "matchedEvidence" : [ "필수 기술 일치: Python", "프로젝트 기술 연관: 매출 분석" ],
+        "matchedEvidence" : [ "필수 기술 일치: Python", "연관 프로젝트: 매출 분석" ],
         "missingSkills" : [ "FastAPI", "PostgreSQL" ]
       }
     }, {
@@ -2957,7 +2957,7 @@
         "preferenceScore" : 0.00,
         "matchedRequiredSkills" : [ "Python", "Pandas" ],
         "matchedPreferredSkills" : [ "SQL" ],
-        "matchedEvidence" : [ "필수 기술 일치: Python", "필수 기술 일치: Pandas", "우대 기술 일치: SQL", "프로젝트 기술 연관: 매출 분석" ],
+        "matchedEvidence" : [ "필수 기술 일치: Python", "필수 기술 일치: Pandas", "우대 기술 일치: SQL", "연관 프로젝트: 매출 분석" ],
         "missingSkills" : [ "PyTorch" ]
       }
     }, {
@@ -2987,7 +2987,7 @@
         "preferenceScore" : 0.00,
         "matchedRequiredSkills" : [ "Python", "SQL" ],
         "matchedPreferredSkills" : [ ],
-        "matchedEvidence" : [ "필수 기술 일치: Python", "필수 기술 일치: SQL", "프로젝트 기술 연관: 매출 분석" ],
+        "matchedEvidence" : [ "필수 기술 일치: Python", "필수 기술 일치: SQL", "연관 프로젝트: 매출 분석" ],
         "missingSkills" : [ "Kafka" ]
       }
     }, {
@@ -3047,7 +3047,7 @@
         "preferenceScore" : 50.00,
         "matchedRequiredSkills" : [ "Python", "SQL", "Pandas" ],
         "matchedPreferredSkills" : [ "Statistics", "Tableau" ],
-        "matchedEvidence" : [ "필수 기술 일치: Python", "필수 기술 일치: SQL", "필수 기술 일치: Pandas", "우대 기술 일치: Statistics", "우대 기술 일치: Tableau", "프로젝트 기술 연관: 매출 분석", "희망 직무 일치: 데이터 분석가" ],
+        "matchedEvidence" : [ "필수 기술 일치: Python", "필수 기술 일치: SQL", "필수 기술 일치: Pandas", "우대 기술 일치: Statistics", "우대 기술 일치: Tableau", "연관 프로젝트: 매출 분석", "희망 직무 일치: 데이터 분석가" ],
         "missingSkills" : [ ]
       }
     }, {
@@ -3107,7 +3107,7 @@
         "preferenceScore" : 50.00,
         "matchedRequiredSkills" : [ "Python" ],
         "matchedPreferredSkills" : [ ],
-        "matchedEvidence" : [ "필수 기술 일치: Python", "프로젝트 기술 연관: 매출 분석", "희망 지역 일치: 서울" ],
+        "matchedEvidence" : [ "필수 기술 일치: Python", "연관 프로젝트: 매출 분석", "희망 지역 일치: 서울" ],
         "missingSkills" : [ "PyTorch", "NLP" ]
       }
     }, {
@@ -3167,7 +3167,7 @@
         "preferenceScore" : 50.00,
         "matchedRequiredSkills" : [ "SQL", "Python", "Excel" ],
         "matchedPreferredSkills" : [ "Pandas", "Tableau" ],
-        "matchedEvidence" : [ "필수 기술 일치: SQL", "필수 기술 일치: Python", "필수 기술 일치: Excel", "우대 기술 일치: Pandas", "우대 기술 일치: Tableau", "프로젝트 기술 연관: 매출 분석", "희망 직무 일치: 데이터 분석가" ],
+        "matchedEvidence" : [ "필수 기술 일치: SQL", "필수 기술 일치: Python", "필수 기술 일치: Excel", "우대 기술 일치: Pandas", "우대 기술 일치: Tableau", "연관 프로젝트: 매출 분석", "희망 직무 일치: 데이터 분석가" ],
         "missingSkills" : [ ]
       }
     } ],
@@ -3269,7 +3269,7 @@
         "preferenceScore" : 50.00,
         "matchedRequiredSkills" : [ "SQL", "Python", "Pandas" ],
         "matchedPreferredSkills" : [ ],
-        "matchedEvidence" : [ "필수 기술 일치: SQL", "필수 기술 일치: Python", "필수 기술 일치: Pandas", "프로젝트 기술 연관: 문서 분류", "희망 지역 일치: 서울" ],
+        "matchedEvidence" : [ "필수 기술 일치: SQL", "필수 기술 일치: Python", "필수 기술 일치: Pandas", "연관 프로젝트: 문서 분류", "희망 지역 일치: 서울" ],
         "missingSkills" : [ ]
       }
     }, {
@@ -3344,7 +3344,7 @@
         "preferenceScore" : 0.00,
         "matchedRequiredSkills" : [ "Python", "SQL" ],
         "matchedPreferredSkills" : [ ],
-        "matchedEvidence" : [ "필수 기술 일치: Python", "필수 기술 일치: SQL", "프로젝트 기술 연관: 문서 분류" ],
+        "matchedEvidence" : [ "필수 기술 일치: Python", "필수 기술 일치: SQL", "연관 프로젝트: 문서 분류" ],
         "missingSkills" : [ "Airflow" ]
       }
     }, {
@@ -3449,7 +3449,7 @@
         "preferenceScore" : 0.00,
         "matchedRequiredSkills" : [ "SQL", "Python" ],
         "matchedPreferredSkills" : [ "Pandas" ],
-        "matchedEvidence" : [ "필수 기술 일치: SQL", "필수 기술 일치: Python", "우대 기술 일치: Pandas", "프로젝트 기술 연관: 문서 분류" ],
+        "matchedEvidence" : [ "필수 기술 일치: SQL", "필수 기술 일치: Python", "우대 기술 일치: Pandas", "연관 프로젝트: 문서 분류" ],
         "missingSkills" : [ "Excel" ]
       }
     }, {
@@ -3509,7 +3509,7 @@
         "preferenceScore" : 50.00,
         "matchedRequiredSkills" : [ "Python", "PyTorch", "SQL" ],
         "matchedPreferredSkills" : [ ],
-        "matchedEvidence" : [ "필수 기술 일치: Python", "필수 기술 일치: PyTorch", "필수 기술 일치: SQL", "프로젝트 기술 연관: 문서 분류", "희망 직무 일치: AI 엔지니어" ],
+        "matchedEvidence" : [ "필수 기술 일치: Python", "필수 기술 일치: PyTorch", "필수 기술 일치: SQL", "연관 프로젝트: 문서 분류", "희망 직무 일치: AI 엔지니어" ],
         "missingSkills" : [ ]
       }
     }, {
@@ -3539,7 +3539,7 @@
         "preferenceScore" : 50.00,
         "matchedRequiredSkills" : [ "SQL", "Python" ],
         "matchedPreferredSkills" : [ "Pandas" ],
-        "matchedEvidence" : [ "필수 기술 일치: SQL", "필수 기술 일치: Python", "우대 기술 일치: Pandas", "프로젝트 기술 연관: 문서 분류", "희망 지역 일치: 서울" ],
+        "matchedEvidence" : [ "필수 기술 일치: SQL", "필수 기술 일치: Python", "우대 기술 일치: Pandas", "연관 프로젝트: 문서 분류", "희망 지역 일치: 서울" ],
         "missingSkills" : [ "Statistics" ]
       }
     }, {
@@ -3584,7 +3584,7 @@
         "preferenceScore" : 0.00,
         "matchedRequiredSkills" : [ "Python", "FastAPI" ],
         "matchedPreferredSkills" : [ ],
-        "matchedEvidence" : [ "필수 기술 일치: Python", "필수 기술 일치: FastAPI", "프로젝트 기술 연관: 문서 분류" ],
+        "matchedEvidence" : [ "필수 기술 일치: Python", "필수 기술 일치: FastAPI", "연관 프로젝트: 문서 분류" ],
         "missingSkills" : [ "PostgreSQL" ]
       }
     }, {
@@ -3599,7 +3599,7 @@
         "preferenceScore" : 50.00,
         "matchedRequiredSkills" : [ "Python", "Pandas", "PyTorch" ],
         "matchedPreferredSkills" : [ "SQL" ],
-        "matchedEvidence" : [ "필수 기술 일치: Python", "필수 기술 일치: Pandas", "필수 기술 일치: PyTorch", "우대 기술 일치: SQL", "프로젝트 기술 연관: 문서 분류", "희망 직무 일치: AI 엔지니어" ],
+        "matchedEvidence" : [ "필수 기술 일치: Python", "필수 기술 일치: Pandas", "필수 기술 일치: PyTorch", "우대 기술 일치: SQL", "연관 프로젝트: 문서 분류", "희망 직무 일치: AI 엔지니어" ],
         "missingSkills" : [ ]
       }
     }, {
@@ -3629,7 +3629,7 @@
         "preferenceScore" : 0.00,
         "matchedRequiredSkills" : [ "Python", "SQL" ],
         "matchedPreferredSkills" : [ ],
-        "matchedEvidence" : [ "필수 기술 일치: Python", "필수 기술 일치: SQL", "프로젝트 기술 연관: 문서 분류" ],
+        "matchedEvidence" : [ "필수 기술 일치: Python", "필수 기술 일치: SQL", "연관 프로젝트: 문서 분류" ],
         "missingSkills" : [ "Kafka" ]
       }
     }, {
@@ -3689,7 +3689,7 @@
         "preferenceScore" : 0.00,
         "matchedRequiredSkills" : [ "Python", "SQL", "Pandas" ],
         "matchedPreferredSkills" : [ ],
-        "matchedEvidence" : [ "필수 기술 일치: Python", "필수 기술 일치: SQL", "필수 기술 일치: Pandas", "프로젝트 기술 연관: 문서 분류" ],
+        "matchedEvidence" : [ "필수 기술 일치: Python", "필수 기술 일치: SQL", "필수 기술 일치: Pandas", "연관 프로젝트: 문서 분류" ],
         "missingSkills" : [ ]
       }
     }, {
@@ -3749,7 +3749,7 @@
         "preferenceScore" : 100.00,
         "matchedRequiredSkills" : [ "Python", "PyTorch", "NLP" ],
         "matchedPreferredSkills" : [ "OCR", "FastAPI" ],
-        "matchedEvidence" : [ "필수 기술 일치: Python", "필수 기술 일치: PyTorch", "필수 기술 일치: NLP", "우대 기술 일치: OCR", "우대 기술 일치: FastAPI", "프로젝트 기술 연관: 문서 분류", "희망 직무 일치: AI 엔지니어", "희망 지역 일치: 서울" ],
+        "matchedEvidence" : [ "필수 기술 일치: Python", "필수 기술 일치: PyTorch", "필수 기술 일치: NLP", "우대 기술 일치: OCR", "우대 기술 일치: FastAPI", "연관 프로젝트: 문서 분류", "희망 직무 일치: AI 엔지니어", "희망 지역 일치: 서울" ],
         "missingSkills" : [ ]
       }
     }, {
@@ -3809,7 +3809,7 @@
         "preferenceScore" : 0.00,
         "matchedRequiredSkills" : [ "SQL", "Python" ],
         "matchedPreferredSkills" : [ "Pandas" ],
-        "matchedEvidence" : [ "필수 기술 일치: SQL", "필수 기술 일치: Python", "우대 기술 일치: Pandas", "프로젝트 기술 연관: 문서 분류" ],
+        "matchedEvidence" : [ "필수 기술 일치: SQL", "필수 기술 일치: Python", "우대 기술 일치: Pandas", "연관 프로젝트: 문서 분류" ],
         "missingSkills" : [ "Excel" ]
       }
     } ],
@@ -3872,7 +3872,7 @@
         "preferenceScore" : 100.00,
         "matchedRequiredSkills" : [ "Linux", "Docker", "AWS" ],
         "matchedPreferredSkills" : [ "Kubernetes", "Terraform" ],
-        "matchedEvidence" : [ "필수 기술 일치: Linux", "필수 기술 일치: Docker", "필수 기술 일치: AWS", "우대 기술 일치: Kubernetes", "우대 기술 일치: Terraform", "프로젝트 기술 연관: 배포 자동화", "희망 직무 일치: DevOps 엔지니어", "희망 지역 일치: 서울" ],
+        "matchedEvidence" : [ "필수 기술 일치: Linux", "필수 기술 일치: Docker", "필수 기술 일치: AWS", "우대 기술 일치: Kubernetes", "우대 기술 일치: Terraform", "연관 프로젝트: 배포 자동화", "희망 직무 일치: DevOps 엔지니어", "희망 지역 일치: 서울" ],
         "missingSkills" : [ ]
       }
     }, {
@@ -4112,7 +4112,7 @@
         "preferenceScore" : 50.00,
         "matchedRequiredSkills" : [ "AWS", "Linux" ],
         "matchedPreferredSkills" : [ "Terraform", "Python" ],
-        "matchedEvidence" : [ "필수 기술 일치: AWS", "필수 기술 일치: Linux", "우대 기술 일치: Terraform", "우대 기술 일치: Python", "프로젝트 기술 연관: 배포 자동화", "희망 지역 일치: 서울" ],
+        "matchedEvidence" : [ "필수 기술 일치: AWS", "필수 기술 일치: Linux", "우대 기술 일치: Terraform", "우대 기술 일치: Python", "연관 프로젝트: 배포 자동화", "희망 지역 일치: 서울" ],
         "missingSkills" : [ "Network" ]
       }
     }, {
@@ -4337,7 +4337,7 @@
         "preferenceScore" : 0.00,
         "matchedRequiredSkills" : [ "Linux" ],
         "matchedPreferredSkills" : [ "Python" ],
-        "matchedEvidence" : [ "필수 기술 일치: Linux", "우대 기술 일치: Python", "프로젝트 기술 연관: 배포 자동화" ],
+        "matchedEvidence" : [ "필수 기술 일치: Linux", "우대 기술 일치: Python", "연관 프로젝트: 배포 자동화" ],
         "missingSkills" : [ "C++", "ROS2" ]
       }
     }, {
@@ -4352,7 +4352,7 @@
         "preferenceScore" : 0.00,
         "matchedRequiredSkills" : [ "Docker" ],
         "matchedPreferredSkills" : [ "Kubernetes" ],
-        "matchedEvidence" : [ "필수 기술 일치: Docker", "우대 기술 일치: Kubernetes", "프로젝트 기술 연관: 배포 자동화" ],
+        "matchedEvidence" : [ "필수 기술 일치: Docker", "우대 기술 일치: Kubernetes", "연관 프로젝트: 배포 자동화" ],
         "missingSkills" : [ "Go", "PostgreSQL" ]
       }
     }, {
@@ -5123,7 +5123,7 @@
         "preferenceScore" : 100.00,
         "matchedRequiredSkills" : [ ],
         "matchedPreferredSkills" : [ ],
-        "matchedEvidence" : [ "프로젝트 기술 연관: 예약 API", "희망 직무 일치: 백엔드 개발자", "희망 지역 일치: 서울" ],
+        "matchedEvidence" : [ "연관 프로젝트: 예약 API", "희망 직무 일치: 백엔드 개발자", "희망 지역 일치: 서울" ],
         "missingSkills" : [ "Java", "Spring Boot", "PostgreSQL" ]
       }
     }, {
@@ -5153,7 +5153,7 @@
         "preferenceScore" : 100.00,
         "matchedRequiredSkills" : [ ],
         "matchedPreferredSkills" : [ ],
-        "matchedEvidence" : [ "프로젝트 기술 연관: 예약 API", "희망 직무 일치: 백엔드 개발자", "희망 지역 일치: 서울" ],
+        "matchedEvidence" : [ "연관 프로젝트: 예약 API", "희망 직무 일치: 백엔드 개발자", "희망 지역 일치: 서울" ],
         "missingSkills" : [ "Java", "Spring Boot", "MySQL" ]
       }
     }, {
@@ -5183,7 +5183,7 @@
         "preferenceScore" : 50.00,
         "matchedRequiredSkills" : [ ],
         "matchedPreferredSkills" : [ ],
-        "matchedEvidence" : [ "프로젝트 기술 연관: 예약 API", "희망 직무 일치: 백엔드 개발자" ],
+        "matchedEvidence" : [ "연관 프로젝트: 예약 API", "희망 직무 일치: 백엔드 개발자" ],
         "missingSkills" : [ "Kotlin", "Spring Boot", "PostgreSQL" ]
       }
     }, {
@@ -5213,7 +5213,7 @@
         "preferenceScore" : 100.00,
         "matchedRequiredSkills" : [ ],
         "matchedPreferredSkills" : [ ],
-        "matchedEvidence" : [ "프로젝트 기술 연관: 예약 API", "희망 직무 일치: 백엔드 개발자", "희망 지역 일치: 서울" ],
+        "matchedEvidence" : [ "연관 프로젝트: 예약 API", "희망 직무 일치: 백엔드 개발자", "희망 지역 일치: 서울" ],
         "missingSkills" : [ "Java", "Spring Boot", "JPA" ]
       }
     }, {
@@ -5258,7 +5258,7 @@
         "preferenceScore" : 0.00,
         "matchedRequiredSkills" : [ ],
         "matchedPreferredSkills" : [ ],
-        "matchedEvidence" : [ "프로젝트 기술 연관: 예약 API" ],
+        "matchedEvidence" : [ "연관 프로젝트: 예약 API" ],
         "missingSkills" : [ "Java", "Selenium", "API Testing" ]
       }
     }, {
@@ -5273,7 +5273,7 @@
         "preferenceScore" : 50.00,
         "matchedRequiredSkills" : [ ],
         "matchedPreferredSkills" : [ ],
-        "matchedEvidence" : [ "프로젝트 기술 연관: 예약 API", "희망 직무 일치: 백엔드 개발자" ],
+        "matchedEvidence" : [ "연관 프로젝트: 예약 API", "희망 직무 일치: 백엔드 개발자" ],
         "missingSkills" : [ "Java", "Spring Boot", "MySQL" ]
       }
     }, {
@@ -5303,7 +5303,7 @@
         "preferenceScore" : 50.00,
         "matchedRequiredSkills" : [ ],
         "matchedPreferredSkills" : [ ],
-        "matchedEvidence" : [ "프로젝트 기술 연관: 예약 API", "희망 직무 일치: 백엔드 개발자" ],
+        "matchedEvidence" : [ "연관 프로젝트: 예약 API", "희망 직무 일치: 백엔드 개발자" ],
         "missingSkills" : [ "C#", "Redis", "PostgreSQL" ]
       }
     }, {
@@ -5333,7 +5333,7 @@
         "preferenceScore" : 50.00,
         "matchedRequiredSkills" : [ ],
         "matchedPreferredSkills" : [ ],
-        "matchedEvidence" : [ "프로젝트 기술 연관: 예약 API", "희망 직무 일치: 백엔드 개발자" ],
+        "matchedEvidence" : [ "연관 프로젝트: 예약 API", "희망 직무 일치: 백엔드 개발자" ],
         "missingSkills" : [ "Java", "Spring Boot", "PostgreSQL" ]
       }
     }, {
@@ -5363,7 +5363,7 @@
         "preferenceScore" : 100.00,
         "matchedRequiredSkills" : [ ],
         "matchedPreferredSkills" : [ ],
-        "matchedEvidence" : [ "프로젝트 기술 연관: 예약 API", "희망 직무 일치: 백엔드 개발자", "희망 지역 일치: 서울" ],
+        "matchedEvidence" : [ "연관 프로젝트: 예약 API", "희망 직무 일치: 백엔드 개발자", "희망 지역 일치: 서울" ],
         "missingSkills" : [ "Java", "Spring Security", "PostgreSQL" ]
       }
     }, {
@@ -5393,7 +5393,7 @@
         "preferenceScore" : 50.00,
         "matchedRequiredSkills" : [ ],
         "matchedPreferredSkills" : [ ],
-        "matchedEvidence" : [ "프로젝트 기술 연관: 예약 API", "희망 직무 일치: 백엔드 개발자" ],
+        "matchedEvidence" : [ "연관 프로젝트: 예약 API", "희망 직무 일치: 백엔드 개발자" ],
         "missingSkills" : [ "Java", "Spring Boot", "MySQL" ]
       }
     }, {
@@ -5423,7 +5423,7 @@
         "preferenceScore" : 100.00,
         "matchedRequiredSkills" : [ ],
         "matchedPreferredSkills" : [ ],
-        "matchedEvidence" : [ "프로젝트 기술 연관: 예약 API", "희망 직무 일치: 백엔드 개발자", "희망 지역 일치: 서울" ],
+        "matchedEvidence" : [ "연관 프로젝트: 예약 API", "희망 직무 일치: 백엔드 개발자", "희망 지역 일치: 서울" ],
         "missingSkills" : [ "Java", "Spring Boot", "Oracle" ]
       }
     }, {
@@ -5453,7 +5453,7 @@
         "preferenceScore" : 50.00,
         "matchedRequiredSkills" : [ ],
         "matchedPreferredSkills" : [ ],
-        "matchedEvidence" : [ "프로젝트 기술 연관: 예약 API", "희망 직무 일치: 백엔드 개발자" ],
+        "matchedEvidence" : [ "연관 프로젝트: 예약 API", "희망 직무 일치: 백엔드 개발자" ],
         "missingSkills" : [ "Java", "Spring Boot", "PostgreSQL" ]
       }
     }, {
@@ -5483,7 +5483,7 @@
         "preferenceScore" : 50.00,
         "matchedRequiredSkills" : [ ],
         "matchedPreferredSkills" : [ ],
-        "matchedEvidence" : [ "프로젝트 기술 연관: 예약 API", "희망 직무 일치: 백엔드 개발자" ],
+        "matchedEvidence" : [ "연관 프로젝트: 예약 API", "희망 직무 일치: 백엔드 개발자" ],
         "missingSkills" : [ "Python", "FastAPI", "PostgreSQL" ]
       }
     }, {
@@ -5513,7 +5513,7 @@
         "preferenceScore" : 50.00,
         "matchedRequiredSkills" : [ ],
         "matchedPreferredSkills" : [ ],
-        "matchedEvidence" : [ "프로젝트 기술 연관: 예약 API", "희망 직무 일치: 백엔드 개발자" ],
+        "matchedEvidence" : [ "연관 프로젝트: 예약 API", "희망 직무 일치: 백엔드 개발자" ],
         "missingSkills" : [ "Java", "Spring Boot", "Oracle" ]
       }
     }, {
@@ -5543,7 +5543,7 @@
         "preferenceScore" : 100.00,
         "matchedRequiredSkills" : [ ],
         "matchedPreferredSkills" : [ ],
-        "matchedEvidence" : [ "프로젝트 기술 연관: 예약 API", "희망 직무 일치: 백엔드 개발자", "희망 지역 일치: 서울" ],
+        "matchedEvidence" : [ "연관 프로젝트: 예약 API", "희망 직무 일치: 백엔드 개발자", "희망 지역 일치: 서울" ],
         "missingSkills" : [ "Java", "Spring Boot", "PostgreSQL" ]
       }
     }, {
@@ -5573,7 +5573,7 @@
         "preferenceScore" : 50.00,
         "matchedRequiredSkills" : [ ],
         "matchedPreferredSkills" : [ ],
-        "matchedEvidence" : [ "프로젝트 기술 연관: 예약 API", "희망 직무 일치: 백엔드 개발자" ],
+        "matchedEvidence" : [ "연관 프로젝트: 예약 API", "희망 직무 일치: 백엔드 개발자" ],
         "missingSkills" : [ "Java", "Spring Boot", "PostgreSQL" ]
       }
     }, {
@@ -5618,7 +5618,7 @@
         "preferenceScore" : 50.00,
         "matchedRequiredSkills" : [ ],
         "matchedPreferredSkills" : [ ],
-        "matchedEvidence" : [ "프로젝트 기술 연관: 예약 API", "희망 직무 일치: 백엔드 개발자" ],
+        "matchedEvidence" : [ "연관 프로젝트: 예약 API", "희망 직무 일치: 백엔드 개발자" ],
         "missingSkills" : [ "Go", "PostgreSQL", "Docker" ]
       }
     }, {
@@ -5633,7 +5633,7 @@
         "preferenceScore" : 100.00,
         "matchedRequiredSkills" : [ ],
         "matchedPreferredSkills" : [ ],
-        "matchedEvidence" : [ "프로젝트 기술 연관: 예약 API", "희망 직무 일치: 백엔드 개발자", "희망 지역 일치: 서울" ],
+        "matchedEvidence" : [ "연관 프로젝트: 예약 API", "희망 직무 일치: 백엔드 개발자", "희망 지역 일치: 서울" ],
         "missingSkills" : [ "Java", "Spring Boot", "MySQL" ]
       }
     }, {
@@ -5663,7 +5663,7 @@
         "preferenceScore" : 100.00,
         "matchedRequiredSkills" : [ ],
         "matchedPreferredSkills" : [ ],
-        "matchedEvidence" : [ "프로젝트 기술 연관: 예약 API", "희망 직무 일치: 백엔드 개발자", "희망 지역 일치: 서울" ],
+        "matchedEvidence" : [ "연관 프로젝트: 예약 API", "희망 직무 일치: 백엔드 개발자", "희망 지역 일치: 서울" ],
         "missingSkills" : [ "Java", "Spring Boot", "MySQL" ]
       }
     }, {
@@ -5693,7 +5693,7 @@
         "preferenceScore" : 50.00,
         "matchedRequiredSkills" : [ ],
         "matchedPreferredSkills" : [ ],
-        "matchedEvidence" : [ "프로젝트 기술 연관: 예약 API", "희망 직무 일치: 백엔드 개발자" ],
+        "matchedEvidence" : [ "연관 프로젝트: 예약 API", "희망 직무 일치: 백엔드 개발자" ],
         "missingSkills" : [ "Java", "Spring Boot", "PostgreSQL" ]
       }
     }, {

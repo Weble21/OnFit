@@ -21,7 +21,6 @@ import com.donggeon.jobrecommendation.domain.UserProfile;
 @Service
 public class ProfileService {
     private final CurrentUser currentUser;
-
     private final UserRepository userRepository;
     private final UserProfileRepository profileRepository;
     private final EntityManager entityManager;
@@ -51,6 +50,7 @@ public class ProfileService {
         return ProfileResponse.from(profile);
     }
 
+    // 이 트랜잭션에서는 조회만 함 - DB를 수정할 필요가 없기 때문
     @Transactional(readOnly = true)
     public ProfileResponse getMine() {
         return ProfileResponse.from(findMine());
@@ -89,9 +89,10 @@ public class ProfileService {
         request.preferredLocations().stream().map(SkillNormalizer::displayName)
                 .forEach(profile.getPreferredLocations()::add);
         skills.forEach(profile::addSkill);
-        request.certificates().stream().map(SkillNormalizer::displayName)
-                .map(name -> new Certificate(name, null, null))
-                .forEach(profile::addCertificate);
+        for (ProfileRequest.CertificateInput input : request.certificates()) {
+            profile.addCertificate(new Certificate(SkillNormalizer.displayName(input.name()),
+                    optionalText(input.issuer()), input.acquiredOn(), optionalText(input.score())));
+        }
 
         for (ProfileRequest.ProjectInput input : optional(request.projects())) {
             profile.addProject(new Project(SkillNormalizer.displayName(input.name()),
@@ -134,6 +135,11 @@ public class ProfileService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                     "종료일은 시작일보다 빠를 수 없습니다.");
         }
+    }
+
+    // Blank optional text is stored as NULL, not as an empty string.
+    private static String optionalText(String value) {
+        return value == null || value.isBlank() ? null : SkillNormalizer.displayName(value);
     }
 
     private static <T> List<T> optional(List<T> values) {

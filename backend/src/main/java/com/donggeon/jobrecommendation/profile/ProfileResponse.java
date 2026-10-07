@@ -16,7 +16,7 @@ public record ProfileResponse(
         List<String> targetRoles,
         List<String> preferredLocations,
         List<String> skills,
-        List<String> certificates,
+        List<CertificateView> certificates,
         List<ProjectView> projects,
         List<ExperienceView> experiences,
         Instant createdAt,
@@ -28,13 +28,20 @@ public record ProfileResponse(
                 profile.getUser().getId(),
                 List.copyOf(profile.getTargetRoles()),
                 List.copyOf(profile.getPreferredLocations()),
-                @NotNull profile.getSkills().stream().map(Skill::getName).toList(),
-                profile.getCertificates().stream().map(Certificate::getName).toList(),
+                profile.getSkills().stream().map(Skill::getName).toList(),
+                profile.getCertificates().stream().map(CertificateView::from).toList(),
                 profile.getProjects().stream().map(ProjectView::from).toList(),
                 profile.getExperiences().stream().map(ExperienceView::from).toList(),
                 profile.getCreatedAt(),
                 profile.getUpdatedAt()
         );
+    }
+
+    public record CertificateView(Long id, String name, String issuer, LocalDate acquiredOn, String score) {
+        static CertificateView from(Certificate certificate) {
+            return new CertificateView(certificate.getId(), certificate.getName(), certificate.getIssuer(),
+                    certificate.getAcquiredOn(), certificate.getScore());
+        }
     }
 
     public record ProjectView(Long id, String name, String description, String techStack,

@@ -23,10 +23,12 @@ FastAPI 의미 점수 연동 설정·계약·평가 결과는 [의미 유사도 
 
 ## Run
 
-Start PostgreSQL from the repository root:
+Copy `.env.example` to `.env` in the repository root, set a local Keycloak admin
+password, then start PostgreSQL and Keycloak from that directory:
 
 ```powershell
-docker compose -f infra/compose.yaml up -d
+docker compose --env-file .env -f infra/compose.yaml up -d
+docker compose --env-file .env -f infra/compose.auth.yaml up -d
 ```
 
 The Compose file uses `onfit` / `onfit_local` for local development. Override
@@ -39,6 +41,14 @@ Then run from the `backend` directory:
 ```powershell
 ./gradlew.bat bootRun
 ```
+
+In Git Bash, use `./gradlew bootRun`. The default profile uses the local
+Keycloak issuer (`http://localhost:8081/realms/onfit`) and API audience
+(`onfit-api`). Start Keycloak first and leave port 8080 free. Override
+`ONFIT_AUTH_ISSUER` and `ONFIT_AUTH_AUDIENCE` when using another realm. For
+local `bootRun`, `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, and those two auth
+settings can be read from the ignored root `.env`; shell variables take precedence.
+Keycloak admin and social provider secrets are not passed to the backend process.
 
 Flyway creates the schema on startup. Hibernate validates it and does not alter
 tables automatically. PostgreSQL must be running for the API to start.

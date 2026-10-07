@@ -1,4 +1,4 @@
-package com.doggeon.jobrecommendation;
+package com.donggeon.jobrecommendation;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 

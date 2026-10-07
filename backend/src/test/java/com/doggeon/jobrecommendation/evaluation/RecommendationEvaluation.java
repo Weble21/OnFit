@@ -1,4 +1,4 @@
-package com.doggeon.jobrecommendation.evaluation;
+package com.donggeon.jobrecommendation.evaluation;
 
 import java.io.IOException;
 import java.math.BigDecimal;

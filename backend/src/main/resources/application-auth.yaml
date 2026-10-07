@@ -1,0 +1,7 @@
+spring:
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${ONFIT_AUTH_ISSUER:http://localhost:8081/realms/onfit}
+          audiences: ${ONFIT_AUTH_AUDIENCE:onfit-api}

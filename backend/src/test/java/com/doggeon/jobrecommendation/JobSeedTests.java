@@ -1,4 +1,4 @@
-package com.doggeon.jobrecommendation;
+package com.donggeon.jobrecommendation;
 
 import static org.assertj.core.api.Assertions.assertThat;
 

@@ -17,14 +17,14 @@ import java.io.IOException;
 @Configuration
 public class SecurityConfig {
     @Bean
-    @Profile("!prod")
+    @Profile("test & !prod & !auth")
     SecurityFilterChain demoSecurity(HttpSecurity http) throws Exception {
         return http.csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth.anyRequest().permitAll()).build();
     }
 
     @Bean
-    @Profile("prod")
+    @Profile("!test | prod | auth")
     SecurityFilterChain productionSecurity(HttpSecurity http, JsonMapper json) throws Exception {
         // The API accepts bearer tokens only; no cookie/session authentication is used.
         return http.csrf(csrf -> csrf.disable())

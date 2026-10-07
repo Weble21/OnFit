@@ -4,7 +4,7 @@ plugins {
 	id 'io.spring.dependency-management' version '1.1.7'
 }
 
-group = 'com.doggeon'
+group = 'com.donggeon'
 version = '0.0.1-SNAPSHOT'
 
 java {
@@ -45,6 +45,31 @@ dependencies {
 	testAnnotationProcessor 'org.projectlombok:lombok'
 }
 
+// Local bootRun reads only the backend settings from the ignored root .env.
+// Docker/production startup never uses this Gradle task.
+tasks.named('bootRun') {
+	doFirst {
+		def envFile = file('../.env')
+		if (!envFile.isFile()) return
+		def allowed = ['DB_URL', 'DB_USERNAME', 'DB_PASSWORD',
+			'ONFIT_AUTH_ISSUER', 'ONFIT_AUTH_AUDIENCE'] as Set
+		envFile.eachLine('UTF-8') { line, number ->
+			def entry = line.trim()
+			if (!entry || entry.startsWith('#')) return
+			def separator = entry.indexOf('=')
+			if (separator < 1) throw new GradleException("Invalid entry in root .env at line ${number}")
+			def key = entry.substring(0, separator).trim()
+			if (!allowed.contains(key) || System.getenv().containsKey(key)) return
+			def value = entry.substring(separator + 1).trim()
+			if (value.length() >= 2 && ((value.startsWith('"') && value.endsWith('"')) ||
+				(value.startsWith("'") && value.endsWith("'")))) {
+				value = value.substring(1, value.length() - 1)
+			}
+			if (value) environment key, value
+		}
+	}
+}
+
 tasks.named('test') {
 	useJUnitPlatform { excludeTags 'postgres' }
 	testLogging { exceptionFormat = 'full' }
@@ -66,7 +91,7 @@ tasks.register('recommendationEvaluation', JavaExec) {
 	group = 'verification'
 	dependsOn tasks.named('testClasses')
 	classpath = sourceSets.test.runtimeClasspath
-	mainClass = 'com.doggeon.jobrecommendation.evaluation.RecommendationEvaluation'
+	mainClass = 'com.donggeon.jobrecommendation.evaluation.RecommendationEvaluation'
 	args layout.buildDirectory.dir('reports/recommendation-evaluation').get().asFile.absolutePath
 	if (providers.gradleProperty('evaluationWeights').isPresent()) {
 		args file(providers.gradleProperty('evaluationWeights').get()).absolutePath
@@ -78,6 +103,6 @@ tasks.register('semanticEvaluation', JavaExec) {
 	group = 'verification'
 	dependsOn tasks.named('testClasses')
 	classpath = sourceSets.test.runtimeClasspath
-	mainClass = 'com.doggeon.jobrecommendation.evaluation.SemanticEvaluation'
+	mainClass = 'com.donggeon.jobrecommendation.evaluation.SemanticEvaluation'
 	args layout.buildDirectory.dir('reports/semantic-evaluation').get().asFile.absolutePath
 }

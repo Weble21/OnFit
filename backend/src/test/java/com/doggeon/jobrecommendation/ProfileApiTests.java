@@ -1,4 +1,4 @@
-package com.doggeon.jobrecommendation;
+package com.donggeon.jobrecommendation;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -47,7 +47,10 @@ class ProfileApiTests {
                   "targetRoles": ["백엔드 개발자"],
                   "preferredLocations": ["서울"],
                   "skills": ["Java", "Spring Boot", "PostgreSQL", "AWS", "Docker"],
-                  "certificates": ["정보처리기사", "ADsP"],
+                  "certificates": [
+                    {"name":"정보처리기사", "issuer":"한국산업인력공단", "acquiredOn":"2024-06-14", "score":"최종합격"},
+                    {"name":" ADsP ", "issuer":" ", "score":""}
+                  ],
                   "projects": [{"name":"추천 서비스", "description":"API 개발", "techStack":"Java, Spring Boot"}],
                   "experiences": [{"companyName":"테스트 기업", "roleName":"인턴", "startedOn":"2025-01-01"}]
                 }
@@ -62,7 +65,17 @@ class ProfileApiTests {
         mvc.perform(get("/api/profiles/me"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.targetRoles[0]").value("백엔드 개발자"))
-                .andExpect(jsonPath("$.certificates[1]").value("ADsP"));
+                .andExpect(jsonPath("$.certificates[0].name").value("정보처리기사"))
+                .andExpect(jsonPath("$.certificates[0].issuer").value("한국산업인력공단"))
+                .andExpect(jsonPath("$.certificates[0].acquiredOn").value("2024-06-14"))
+                .andExpect(jsonPath("$.certificates[0].score").value("최종합격"))
+                // Names are trimmed and blank optional fields are stored as NULL.
+                .andExpect(jsonPath("$.certificates[1].name").value("ADsP"))
+                .andExpect(jsonPath("$.certificates[1].issuer").value(org.hamcrest.Matchers.nullValue()))
+                .andExpect(jsonPath("$.certificates[1].score").value(org.hamcrest.Matchers.nullValue()));
+        assertEquals(1, jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM certificates WHERE issuer IS NULL AND score IS NULL AND acquired_on IS NULL",
+                Integer.class));
 
         mvc.perform(post("/api/profiles").contentType(MediaType.APPLICATION_JSON).content(original))
                 .andExpect(status().isConflict());
@@ -125,6 +138,13 @@ class ProfileApiTests {
         mvc.perform(post("/api/profiles").contentType(MediaType.APPLICATION_JSON).content(noProjectName))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.detail").value("프로젝트 1번의 이름 입력값을 확인해 주세요."));
+        String noCertificateName = """
+                {"targetRoles":["백엔드 개발자"],"preferredLocations":[],"skills":[],
+                 "certificates":[{"name":" ", "score":"900"}]}
+                """;
+        mvc.perform(post("/api/profiles").contentType(MediaType.APPLICATION_JSON).content(noCertificateName))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").value("자격증 1번의 이름 입력값을 확인해 주세요."));
         mvc.perform(post("/api/profiles").contentType(MediaType.APPLICATION_JSON).content("{\"skills\": ["))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.detail").value(org.hamcrest.Matchers.startsWith("요청 형식이 올바르지 않습니다.")));

@@ -69,6 +69,9 @@ public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
             Map.entry("projectUrl", "프로젝트 URL"),
             Map.entry("companyName", "회사명"),
             Map.entry("roleName", "담당 직무"),
+            Map.entry("issuer", "발급 기관"),
+            Map.entry("acquiredOn", "취득일"),
+            Map.entry("score", "점수·등급"),
             Map.entry("startedOn", "시작일"),
             Map.entry("endedOn", "종료일")
     );

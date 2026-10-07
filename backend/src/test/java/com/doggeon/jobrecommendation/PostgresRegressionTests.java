@@ -1,4 +1,4 @@
-package com.doggeon.jobrecommendation;
+package com.donggeon.jobrecommendation;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -45,11 +45,12 @@ class PostgresRegressionTests {
 
     private static final String PROFILE = """
             {"targetRoles":["백엔드 개발자"],"preferredLocations":["서울"],
-             "skills":["Java","Docker","AWS"],"certificates":[]}
+             "skills":["Java","Docker","AWS"],
+             "certificates":[{"name":"정보처리기사","acquiredOn":"2024-06-14","score":"최종합격"}]}
             """;
 
     @ParameterizedTest(name = "DB at V{0} upgrades and passes core APIs")
-    @ValueSource(ints = {0, 1, 2, 3, 4, 5, 6, 7})
+    @ValueSource(ints = {0, 1, 2, 3, 4, 5, 6, 7, 8})
     void freshAndHistoricalDatabasesPassMigrationAndApis(int previousVersion) throws Exception {
         String schema = "regression_v" + previousVersion;
         var admin = new JdbcTemplate(new DriverManagerDataSource(
@@ -74,7 +75,7 @@ class PostgresRegressionTests {
         // Use actual Spring startup (Flyway + Hibernate validate) for both a new DB and every upgrade.
         // Explicit command-line properties outrank local env vars, including DB_URL and demo dates.
         try (var context = new SpringApplicationBuilder(JobRecommendationBackendApplication.class).run(
-                "--server.port=0", "--spring.datasource.url=" + url,
+                "--spring.profiles.active=test", "--server.port=0", "--spring.datasource.url=" + url,
                 "--spring.datasource.username=" + postgres.getUsername(),
                 "--spring.datasource.password=" + postgres.getPassword(),
                 "--spring.datasource.driver-class-name=org.postgresql.Driver",
@@ -84,7 +85,7 @@ class PostgresRegressionTests {
             var mvc = MockMvcBuilders.webAppContextSetup((WebApplicationContext) context)
                     .addFilters(context.getBean(com.donggeon.jobrecommendation.config.RequestLogFilter.class)).build();
             assertThat(jdbc.queryForList("SELECT version FROM flyway_schema_history WHERE success ORDER BY installed_rank",
-                    String.class)).containsExactly("1", "2", "3", "4", "5", "6", "7", "8");
+                    String.class)).containsExactly("1", "2", "3", "4", "5", "6", "7", "8", "9");
             assertThat(context.getBean(Flyway.class).migrate().migrationsExecuted).isZero();
             assertThat(context.getBean(JobSeedService.class).seed()).isZero();
             assertThat(context.getBean(JobSeedService.class).seed()).isZero();
@@ -114,7 +115,8 @@ class PostgresRegressionTests {
                         .andExpect(status().isOk());
             }
             mvc.perform(get("/api/profiles/me")).andExpect(status().isOk())
-                    .andExpect(jsonPath("$.skills.length()").value(3));
+                    .andExpect(jsonPath("$.skills.length()").value(3))
+                    .andExpect(jsonPath("$.certificates[0].score").value("최종합격"));
             mvc.perform(post("/api/profiles").contentType(MediaType.APPLICATION_JSON).content(PROFILE))
                     .andExpect(status().isConflict());
             mvc.perform(put("/api/profiles/me").contentType(MediaType.APPLICATION_JSON)
@@ -173,7 +175,7 @@ class PostgresRegressionTests {
         // A second application startup must validate again and keep both the seed and all snapshots.
         long beforeRestart = jdbc.queryForObject("SELECT count(*) FROM recommendations", Long.class);
         try (var restarted = new SpringApplicationBuilder(JobRecommendationBackendApplication.class).run(
-                "--server.port=0", "--spring.datasource.url=" + url,
+                "--spring.profiles.active=test", "--server.port=0", "--spring.datasource.url=" + url,
                 "--spring.datasource.username=" + postgres.getUsername(),
                 "--spring.datasource.password=" + postgres.getPassword(),
                 "--spring.datasource.driver-class-name=org.postgresql.Driver",

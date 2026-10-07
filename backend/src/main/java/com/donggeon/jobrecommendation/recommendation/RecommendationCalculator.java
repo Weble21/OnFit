@@ -103,7 +103,7 @@ public class RecommendationCalculator {
             }
         }
         if (bestProject != null) {
-            evidence.add("프로젝트 기술 연관: " + bestProject);
+            evidence.add("연관 프로젝트: " + bestProject);
         }
         return best;
     }
