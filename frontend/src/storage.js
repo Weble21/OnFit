@@ -1,11 +1,13 @@
 // Browser-only settings. Profile fields the server does not keep (interests, department) live here too.
-export function read(key, fallback) {
-  try { return JSON.parse(localStorage.getItem('onfit.' + key)) ?? fallback; }
+export function read(key, fallback, account) {
+  if (!account) return fallback;
+  try { return JSON.parse(localStorage.getItem('onfit.' + account + '.' + key)) ?? fallback; }
   catch { return fallback; }
 }
 
-export function persist(key, value) {
-  try { localStorage.setItem('onfit.' + key, JSON.stringify(value)); return true; }
+export function persist(key, value, account) {
+  if (!account) return false;
+  try { localStorage.setItem('onfit.' + account + '.' + key, JSON.stringify(value)); return true; }
   catch { return false; }
 }
 

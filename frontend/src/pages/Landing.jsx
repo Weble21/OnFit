@@ -1,6 +1,6 @@
 import { Icon, Logo, Plant } from '../components/ui.jsx';
 
-export function Landing({ onLogin, onSampleDemo }) {
+export function Landing({ onLogin }) {
   return (
     <div className="landing">
       <header className="landing-header">
@@ -16,7 +16,6 @@ export function Landing({ onLogin, onSampleDemo }) {
             <p>어디에 지원할지 막막할 때,<br />나의 경험에서 시작하는 커리어 가이드, 온핏.</p>
             <div className="hero-actions">
               <button className="btn" data-action="login" onClick={onLogin}>나에게 맞는 기회 찾기 <Icon name="arrow" /></button>
-              <button className="btn text" data-action="sample-demo" onClick={onSampleDemo}>먼저 둘러보기</button>
             </div>
             <div className="landing-note"><span className="tiny-dot" aria-hidden="true"></span> 작은 프로젝트도, 첫 경험도 충분한 시작이 돼요.</div>
           </div>
@@ -41,7 +40,7 @@ export function Landing({ onLogin, onSampleDemo }) {
           <article><span className="feature-number" aria-hidden="true">03</span><div><h3>자신 있게 지원해요</h3><p>공고와의 적합도, 준비할 역량을 확인하세요.</p></div><Icon name="arrow" /></article>
         </section>
       </main>
-      <footer className="landing-footer"><p>© 2026 onfit. 나다운 커리어의 시작.</p><p>프론트엔드 데모 · 실제 채용 및 인증 서비스 미연결</p></footer>
+      <footer className="landing-footer"><p>© 2026 onfit. 나다운 커리어의 시작.</p><p>로그인 후 프로필과 추천을 사용할 수 있습니다.</p></footer>
     </div>
   );
 }

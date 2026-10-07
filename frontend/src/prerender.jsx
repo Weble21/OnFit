@@ -3,5 +3,5 @@ import { renderToString } from 'react-dom/server';
 import { Landing } from './pages/Landing.jsx';
 
 export function render() {
-  return renderToString(<Landing onLogin={() => {}} onSampleDemo={() => {}} />);
+  return renderToString(<Landing onLogin={() => {}} />);
 }

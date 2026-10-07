@@ -1,0 +1,39 @@
+{
+  "realm": "onfit",
+  "enabled": true,
+  "registrationAllowed": true,
+  "displayName": "온핏",
+  "displayNameHtml": "온핏",
+  "loginTheme": "onfit",
+  "internationalizationEnabled": true,
+  "supportedLocales": ["ko"],
+  "defaultLocale": "ko",
+  "clients": [
+    {
+      "clientId": "onfit-web",
+      "name": "OnFit browser client",
+      "enabled": true,
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "redirectUris": ["http://localhost:5173/", "http://127.0.0.1:5173/", "http://localhost:5174/", "http://127.0.0.1:5174/"],
+      "webOrigins": ["http://localhost:5173", "http://127.0.0.1:5173", "http://localhost:5174", "http://127.0.0.1:5174"],
+      "attributes": { "pkce.code.challenge.method": "S256" },
+      "protocolMappers": [
+        {
+          "name": "onfit-api audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.client.audience": "onfit-api",
+            "access.token.claim": "true",
+            "id.token.claim": "false"
+          }
+        }
+      ]
+    },
+    { "clientId": "onfit-api", "enabled": true, "bearerOnly": true, "standardFlowEnabled": false }
+  ]
+}

@@ -1,7 +1,7 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { createRecommendations, fromProfileResponse, getProfile, saveProfile, toDisplayJob } from './api.js';
-import { sampleProfile } from './data.js';
-import { persist, read, validProfile } from './storage.js';
+import { persist, read } from './storage.js';
+import { accountId, accountName, accountPicture, authConfigured, login, logout as oidcLogout, socialProviders } from './auth.js';
 import { navigate, useHashRoute } from './hooks/useHashRoute.js';
 import { useJobAnalysis } from './hooks/useJobAnalysis.js';
 import { NAV_ITEMS, Shell } from './components/Shell.jsx';
@@ -22,24 +22,20 @@ const ROUTES = ['/', ...NAV_ITEMS.map(([path]) => path)];
 const IDLE = { status: 'idle', jobs: [], error: '' };
 const DEFAULT_FILTERS = { filter: '전체', sort: 'score', search: '' };
 
-function storedProfile() {
-  const stored = read('profile', null);
-  return validProfile(stored) ? stored : null;
-}
-
-function storedFavorites() {
-  const stored = read('favorites', []);
+function storedFavorites(account) {
+  const stored = read('favorites', [], account);
   return Array.isArray(stored) ? stored : [];
 }
 
-export function App() {
+export function App({ authenticated = false, authError = '' }) {
   const route = useHashRoute(ROUTES);
   const [toast, showToast] = useToast();
-  const [demoSession, setDemoSession] = useState(() => read('demoSession', false) === true);
-  const [profile, setProfile] = useState(storedProfile);
+  const [signedIn, setSignedIn] = useState(authenticated);
+  const account = signedIn ? accountId() : null;
+  const [profile, setProfile] = useState(null);
   // Bumped whenever the profile is replaced, so the uncontrolled profile form starts over from it.
   const [profileVersion, setProfileVersion] = useState(0);
-  const [favorites, setFavorites] = useState(storedFavorites);
+  const [favorites, setFavorites] = useState(() => storedFavorites(account));
   const [recs, setRecs] = useState(IDLE);
   const [filters, setFilters] = useState(DEFAULT_FILTERS);
   const [modal, setModal] = useState(null);
@@ -49,11 +45,12 @@ export function App() {
   const recLoading = useRef(false);
   const shownRoute = useRef(route);
 
-  const store = (key, value) => { if (!persist(key, value)) showToast('브라우저 저장이 제한되어 이번 화면에서만 유지됩니다.'); };
+  const store = (key, value) => { if (!persist(key, value, account)) showToast('브라우저 저장이 제한되어 이번 화면에서만 유지됩니다.'); };
 
   function replaceProfile(next) {
     setProfile(next);
-    if (next) store('profile', next);
+    if (next) store('preferences', { types: next.types, companies: next.companies,
+      department: next.department, career: next.career });
     setProfileVersion(version => version + 1);
   }
 
@@ -65,21 +62,25 @@ export function App() {
 
   // Pick up the server copy once. Recommendations are computed from it on the server, so they need no reload.
   useEffect(() => {
-    if (!demoSession) return undefined;
+    if (!signedIn) return undefined;
     let active = true;
     getProfile().then(
-      response => { if (active) replaceProfile(fromProfileResponse(response, profile)); },
+      response => {
+        if (!active) return;
+        replaceProfile(fromProfileResponse(response, read('preferences', null, account)));
+        if (location.hash === '' || location.hash === '#/') navigate('/recommendations');
+      },
       error => {
         if (!active) return;
-        if (error.status === 404) setProfile(null);
+        if (error.status === 404) { setProfile(null); navigate('/profile'); }
         else showToast(error.message);
       },
     );
     return () => { active = false; };
-    // Only on first load; later replacements go through startDemo and handleSaveProfile.
+    // Only on first load; later replacements go through handleSaveProfile.
   }, []);
 
-  const wantsRecommendations = demoSession && !!profile && recs.status === 'idle'
+  const wantsRecommendations = signedIn && !!profile && recs.status === 'idle'
     && (route === '/recommendations' || route === '/favorites');
   useEffect(() => {
     // The ref also keeps StrictMode's second effect run from sending a duplicate POST.
@@ -95,23 +96,28 @@ export function App() {
 
   useEffect(() => {
     setFilters(current => ({ ...current, filter: '전체', search: '' }));
-    setModal(route !== '/' && !demoSession ? { type: 'login' } : null);
+    setModal(route !== '/' && !signedIn ? { type: 'login' } : null);
     document.title = (NAV_ITEMS.find(([path]) => path === route)?.[2] || '나다운 커리어의 시작') + ' | 온핏';
     if (shownRoute.current === route) return;
     shownRoute.current = route;
     window.scrollTo(0, 0);
     document.getElementById('main-content')?.focus({ preventScroll: true });
-    // Runs on navigation only; startDemo and logout manage the modal themselves.
+    // Runs on navigation only; login and logout manage their redirects themselves.
   }, [route]);
 
   useEffect(() => {
-    // Once in the demo, fetch the other screens in the background so switching to them does not wait.
-    if (!demoSession) return undefined;
+    if (!signedIn) return undefined;
     const timer = setTimeout(() => {
       for (const load of [loadRecommendations, loadProfilePage, loadAnalyzePage]) load().catch(() => {});
     }, 500);
     return () => clearTimeout(timer);
-  }, [demoSession]);
+  }, [signedIn]);
+
+  useEffect(() => {
+    const signedOut = () => { setSignedIn(false); setProfile(null); resetRecommendations(); navigate('/'); };
+    window.addEventListener('onfit-auth-logout', signedOut);
+    return () => window.removeEventListener('onfit-auth-logout', signedOut);
+  }, []);
 
   useEffect(() => {
     // Dropping a file anywhere else must not make the browser navigate away to it.
@@ -124,20 +130,9 @@ export function App() {
     };
   }, []);
 
-  async function startDemo(withSample) {
+  async function handleLogin(provider) {
     try {
-      const existing = await getProfile().catch(error => { if (error.status === 404) return null; throw error; });
-      let next = existing ? fromProfileResponse(existing, profile) : null;
-      if (!existing && withSample) {
-        next = structuredClone(sampleProfile);
-        await saveProfile(next);
-      }
-      setDemoSession(true);
-      store('demoSession', true);
-      replaceProfile(next);
-      resetRecommendations();
-      setModal(null);
-      navigate(next ? '/recommendations' : '/profile');
+      await login(provider);
     } catch (error) {
       showToast(error.message);
     }
@@ -156,11 +151,9 @@ export function App() {
     }
   }
 
-  function logout() {
-    setDemoSession(false);
-    store('demoSession', false);
-    navigate('/');
-    showToast('데모에서 나왔어요. 공용 데모 프로필은 서버에 남아 있습니다.');
+  async function handleLogout() {
+    try { await oidcLogout(); }
+    catch { showToast('로그아웃에 실패했습니다. 다시 시도해 주세요.'); }
   }
 
   function toggleFavorite(id) {
@@ -190,10 +183,11 @@ export function App() {
 
   return (
     <>
-      {route === '/' || !demoSession
-        ? <Landing onLogin={() => setModal({ type: 'login' })} onSampleDemo={() => startDemo(true)} />
-        : <Shell route={route} favoriteCount={favorites.length} onLogout={logout}><Suspense fallback={null}>{page}</Suspense></Shell>}
-      {modal?.type === 'login' && <LoginModal onClose={() => setModal(null)} onBlankDemo={() => startDemo(false)} onSampleDemo={() => startDemo(true)} />}
+      {route === '/' || !signedIn
+        ? <Landing onLogin={() => setModal({ type: 'login' })} />
+        : <Shell route={route} favoriteCount={favorites.length} userName={accountName()} userPicture={accountPicture()} onLogout={handleLogout}><Suspense fallback={null}>{page}</Suspense></Shell>}
+      {modal?.type === 'login' && <LoginModal onClose={() => setModal(null)} onLogin={handleLogin}
+        onRetry={() => location.reload()} configured={authConfigured} socialProviders={socialProviders} error={authError} />}
       {openedJob && <JobDetailModal job={openedJob} saved={favorites.includes(openedJob.id)} onToggleFavorite={toggleFavorite} onClose={() => setModal(null)} />}
       <Toast {...toast} />
     </>

@@ -1,13 +1,17 @@
 import { profileSkills } from './data.js';
 
 const BACKEND_DOWN = '백엔드에 연결할 수 없습니다. PostgreSQL과 Spring Boot를 실행해 주세요.';
+let accessTokenProvider = async () => { throw new Error('로그인이 필요합니다.'); };
+export function setAccessTokenProvider(provider) { accessTokenProvider = provider; }
 
 async function request(path, options = {}) {
+  const token = await accessTokenProvider();
   let response;
   try {
     response = await fetch('/api' + path, {
       ...options,
-      headers: { 'Accept': 'application/json', ...(options.body ? { 'Content-Type': 'application/json' } : {}) },
+      headers: { 'Accept': 'application/json', Authorization: `Bearer ${token}`,
+        ...(options.body ? { 'Content-Type': 'application/json' } : {}), ...options.headers },
     });
   } catch {
     throw new Error(BACKEND_DOWN);
@@ -37,11 +41,13 @@ export async function saveProfile(profile) {
 export const createRecommendations = () => request('/recommendations', { method: 'POST' });
 
 export async function extractJobText(file, signal) {
+  const token = await accessTokenProvider();
   const body = new FormData();
   body.append('file', file);
   let response;
   try {
-    response = await fetch('/api/job-text/extract', { method: 'POST', body, signal, headers: { Accept: 'application/json' } });
+    response = await fetch('/api/job-text/extract', { method: 'POST', body, signal,
+      headers: { Accept: 'application/json', Authorization: `Bearer ${token}` } });
   } catch (error) {
     if (error.name === 'AbortError') throw error;
     throw new Error(BACKEND_DOWN);
@@ -59,7 +65,10 @@ export function toProfileRequest(profile) {
     targetRoles: [profile.role],
     preferredLocations: profile.location ? [profile.location.trim()] : [],
     skills: profileSkills(profile),
-    certificates: profile.certificates || [],
+    certificates: (profile.certificates || []).map(certificate => ({
+      name: certificate.name, issuer: certificate.issuer || null,
+      acquiredOn: certificate.acquiredOn || null, score: certificate.score || null,
+    })),
     projects: profile.projects.map(project => ({
       ...project.extra, name: project.name, description: project.description, techStack: project.stack,
     })),
@@ -83,7 +92,10 @@ export function fromProfileResponse(response, previous = null) {
     department: previous?.department || '',
     career: experiences.length ? '경력' : previous?.career || '신입',
     experiences,
-    certificates: response.certificates || [],
+    certificates: (response.certificates || []).map(certificate => ({
+      name: certificate.name, issuer: certificate.issuer || '',
+      acquiredOn: certificate.acquiredOn || '', score: certificate.score || '',
+    })),
     projects: response.projects.length ? response.projects.map(project => ({
       name: project.name, description: project.description || '', stack: project.techStack || '',
       extra: { startedOn: project.startedOn, endedOn: project.endedOn, projectUrl: project.projectUrl },

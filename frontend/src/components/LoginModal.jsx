@@ -1,23 +1,33 @@
-import { Icon, Logo } from './ui.jsx';
+import { Logo } from './ui.jsx';
 import { Modal } from './Modal.jsx';
 
-export function LoginModal({ onClose, onBlankDemo, onSampleDemo }) {
+const providers = [
+  { alias: 'google', label: 'Google', mark: 'G' },
+  { alias: 'naver', label: '네이버', mark: 'N' },
+  { alias: 'kakao', label: '카카오', mark: 'K' },
+];
+
+export function LoginModal({ onClose, onLogin, onRetry, configured, socialProviders = new Set(), error }) {
   return (
-    <Modal label="로그인 및 데모 시작" onClose={onClose}>
+    <Modal label="로그인" onClose={onClose}>
       <div className="login-modal">
         <Logo />
         <span className="eyebrow">WELCOME TO YOUR NEXT CHAPTER</span>
         <h2>나에게 맞는 기회,<br />온핏에서 시작해요.</h2>
         <p>좋아하는 일에 한 걸음 더 가까이.</p>
         <div className="oauth-buttons">
-          <button disabled className="oauth google"><b>G</b> Google로 시작하기</button>
-          <button disabled className="oauth kakao"><b>●</b> 카카오로 시작하기</button>
-          <button disabled className="oauth naver"><b>N</b> 네이버로 시작하기</button>
+          {providers.map(({ alias, label, mark }) => (
+            <button key={alias} className={`oauth ${alias}`} data-action={`oauth-${alias}`}
+              onClick={() => onLogin(alias)} disabled={!configured || !!error || !socialProviders.has(alias)}
+              title={!socialProviders.has(alias) ? `${label} 로그인이 아직 설정되지 않았습니다.` : undefined}>
+              <b aria-hidden="true">{mark}</b>{label}로 로그인
+            </button>
+          ))}
+          <button className="oauth oauth-login" data-action="oauth-login" onClick={() => onLogin()} disabled={!configured || !!error}>계정으로 로그인</button>
         </div>
-        <p className="oauth-note">소셜 로그인은 백엔드 연동 후 제공됩니다.<br />지금은 로그인 없이 화면을 체험할 수 있어요.</p>
-        <button className="btn full" data-action="blank-demo" onClick={onBlankDemo}>내 프로필로 체험하기 <Icon name="arrow" /></button>
-        <button className="btn text full" data-action="sample-demo" onClick={onSampleDemo}>샘플 프로필로 둘러보기</button>
-        <small className="privacy-note">프로필은 공용 데모 사용자로 서버에 저장됩니다. 실제 개인정보를 입력하지 마세요.</small>
+        {(!configured || error) && <p className="oauth-note" role="alert">{error || 'Keycloak 인증 설정이 필요합니다.'}</p>}
+        {error && <button className="btn full" data-action="retry-auth" onClick={onRetry}>다시 연결하기</button>}
+        <small className="privacy-note">로그인 후 내 계정의 프로필을 만들거나 수정할 수 있습니다.</small>
       </div>
     </Modal>
   );

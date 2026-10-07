@@ -21,7 +21,7 @@ function JobCard({ job, saved, onToggleFavorite, onOpen }) {
       <p className="match-reason"><Icon name="spark" /><span>{matched.length ? matched.slice(0, 2).join(', ') + ' 기술이 일치해요.' : '필수 기술을 확인해 보세요.'}</span></p>
       <footer className="job-card-bottom">
         <div className="card-score"><strong>{job.score}<small>점</small></strong><span>추천 점수</span></div>
-        <button className="btn text" data-action="job" data-id={job.id} aria-label={job.company + ' 공고 자세히 보기'}
+        <button className="btn text job-card-open" data-action="job" data-id={job.id} aria-label={job.company + ' 공고 자세히 보기'}
           onClick={() => onOpen(job.id)}>자세히 보기 <Icon name="arrow" /></button>
       </footer>
     </article>

@@ -5,6 +5,10 @@ RUN npm ci
 COPY frontend/ ./
 COPY backend/src/main/resources/skill-aliases.json /src/backend/src/main/resources/
 COPY backend/src/main/resources/seed/job-postings.json /src/backend/src/main/resources/seed/
+ARG VITE_KEYCLOAK_URL
+ARG VITE_KEYCLOAK_REALM
+ARG VITE_KEYCLOAK_CLIENT_ID
+ARG VITE_SOCIAL_PROVIDERS
 RUN npm test && npm run check
 
 FROM node:24-alpine

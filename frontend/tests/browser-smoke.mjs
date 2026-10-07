@@ -53,12 +53,34 @@ try {
   assert.ok(await evaluate('document.querySelector(".landing-hero") !== null'));
   await noOverflow(); await screenshot('landing-desktop');
   await click('[data-action="login"]');
-  assert.equal(await evaluate('document.querySelectorAll(".oauth:disabled").length'),3);
-  await click('[data-action="blank-demo"]');
-  // Starting the demo first asks the server for an existing profile.
-  await waitFor('!!document.querySelector(".app-shell")');
+  assert.equal(await evaluate('document.querySelectorAll(".oauth").length'),4);
+  for (const provider of ['google', 'naver', 'kakao']) {
+    assert.ok(await evaluate(`document.querySelector('[data-action="oauth-${provider}"]') !== null`));
+  }
+  assert.equal(await evaluate('document.querySelector("[data-action=blank-demo], [data-action=sample-demo]")'),null);
+  if (process.env.ONFIT_EXPECT_AUTH_CONFIG === '1') {
+    assert.equal(await evaluate('document.querySelector("[data-action=oauth-login]").disabled'),false);
+    if (!process.env.ONFIT_E2E_USERNAME) {
+      await click('[data-action="oauth-login"]');
+      await waitFor('!!document.querySelector("#username")');
+      assert.equal(await evaluate('location.pathname.includes("/realms/onfit/protocol/openid-connect/auth")'),true);
+      assert.equal(await evaluate('!!document.querySelector("#kc-registration a")'),true);
+    }
+  }
+  if (process.env.ONFIT_E2E_USERNAME && process.env.ONFIT_E2E_PASSWORD) {
+  assert.equal(await evaluate('document.querySelector("[data-action=oauth-login]").disabled'),false);
+  await click('[data-action="oauth-login"]');
+  await waitFor('!!document.querySelector("#username")');
+  await evaluate('document.querySelector("#username").value='+JSON.stringify(process.env.ONFIT_E2E_USERNAME));
+  await evaluate('document.querySelector("#password").value='+JSON.stringify(process.env.ONFIT_E2E_PASSWORD));
+  await click('#kc-login');
+  try { await waitFor('!!document.querySelector(".app-shell")'); }
+  catch (error) {
+    const page = await evaluate('({ page: location.origin + location.pathname, title: document.title, message: document.querySelector(".alert-error, .instruction, [role=alert]")?.textContent?.trim()?.slice(0, 200) })');
+    throw new Error(`${error.message}: ${JSON.stringify(page)}`);
+  }
   await route('/profile');
-  assert.ok(await evaluate('document.querySelector("#profile-form") !== null'));
+  await waitFor('document.querySelector("#profile-form") !== null');
   await evaluate("document.querySelector('[name=projectName]').value='브라우저 테스트 프로젝트';document.querySelector('[name=projectDescription]').value='Java API와 PostgreSQL 데이터베이스를 설계하고 AWS에 배포했습니다.';document.querySelector('[name=projectStack]').value='Java, Spring Boot, PostgreSQL, Docker, AWS';document.querySelector('[name=types][value=핀테크]').checked=true");
   await click('[data-action="add-project"]');
   assert.equal(await evaluate('document.querySelectorAll(".project-block").length'),2);
@@ -83,7 +105,8 @@ try {
       disabled: form.querySelector('[type="submit"]').disabled,
       busy: form.getAttribute('aria-busy') };
   })()`);
-  assert.deepEqual(pendingSave, { writes: 1, disabled: true, busy: 'true' });
+  assert.deepEqual({ disabled: pendingSave.disabled, busy: pendingSave.busy }, { disabled: true, busy: 'true' });
+  await waitFor('window.__profileWriteCount === 1');
   await evaluate('window.__releaseProfileSave()');
   await waitFor('document.querySelectorAll(".job-card").length > 0');
   assert.ok(await evaluate('document.querySelectorAll(".job-card").length > 0'));
@@ -194,11 +217,26 @@ try {
   }
   await route('/recommendations');
   await call('Page.reload');await new Promise(r=>setTimeout(r,500));
-  assert.ok(await evaluate('document.querySelectorAll(".job-card").length > 0'),'Profile and route persist on reload');
+  try { await waitFor('document.querySelectorAll(".job-card").length > 0'); }
+  catch (error) {
+    const page = await evaluate('({ page: location.origin + location.pathname, params: [...new URLSearchParams(location.search).keys()], redirect: new URLSearchParams(location.search).get("redirect_uri"), hash: location.hash.startsWith("#/") ? location.hash : "auth callback", title: document.title, heading: document.querySelector("h1")?.textContent?.trim()?.slice(0, 100), app: !!document.querySelector(".app-shell"), login: !!document.querySelector("[data-action=login]"), message: document.body.innerText?.trim()?.slice(0, 200) })');
+    throw new Error(`${error.message}: ${JSON.stringify(page)}`);
+  }
   await call('Emulation.setDeviceMetricsOverride',{width:320,height:740,deviceScaleFactor:1,mobile:true});
   for(const hash of ['/','/profile','/recommendations','/analyze']) {await route(hash);await noOverflow();}
+  await call('Emulation.setDeviceMetricsOverride',{width:1440,height:1000,deviceScaleFactor:1,mobile:false});
+  await route('/recommendations');
+  assert.equal(await evaluate('Object.keys(localStorage).some(key => /token|demoSession/.test(key))'),false);
+  await click('[data-action="logout"]');
+  await waitFor('!!document.querySelector(".landing-hero")');
+  assert.equal(await evaluate('!!document.querySelector(".app-shell")'),false);
+  assert.equal(await evaluate('fetch("/api/profiles/me").then(response => response.status)'),401);
   assert.deepEqual(errors,[]);
-  console.log('PASS: desktop/mobile at 1440, 390, 320px; login, onboarding, project add/remove, profile persistence, recommendations, favorites, job detail, JD analysis, career fields, image/PDF attachments, invalid and multiple files, input isolation, removal, no runtime exceptions.');
+  console.log('PASS: Keycloak login/logout, authenticated API, session restore, desktop/mobile regression, no runtime exceptions.');
+  } else {
+    assert.deepEqual(errors,[]);
+    console.log('PASS: public landing and OAuth-only login; set ONFIT_E2E_USERNAME/PASSWORD for full authenticated regression.');
+  }
   console.log('Screenshots: '+out);
 } finally {clearTimeout(timer);socket?.close();chrome.kill();}
 

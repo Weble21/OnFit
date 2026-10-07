@@ -6,6 +6,9 @@ import { Icon, PageHeading } from '../components/ui.jsx';
 const emptyProfile = () => ({ types: [], companies: '', role: '백엔드 개발자', location: '', department: '', career: '신입', experiences: [], projects: [{ name: '', description: '', stack: '' }] });
 const emptyProject = () => ({ name: '', description: '', stack: '' });
 const emptyExperience = () => ({ company: '', role: '백엔드 개발자', start: '', end: '' });
+const emptyCertificate = () => ({ name: '', issuer: '', acquiredOn: '', score: '' });
+// Local date (not UTC), so a certificate earned today is still accepted late in the evening.
+const today = () => new Date().toLocaleDateString('sv-SE');
 let nextKey = 0;
 const withKey = item => ({ ...item, key: ++nextKey });
 
@@ -48,6 +51,25 @@ function ProjectFields({ project, index, onRemove }) {
   );
 }
 
+function CertificateFields({ certificate, index, onRemove }) {
+  return (
+    <section className="certificate-block">
+      <div className="project-heading">
+        <h3>자격증 {index + 1}</h3>
+        <button className="btn text danger" type="button" data-action="remove-certificate" onClick={onRemove}>삭제</button>
+      </div>
+      <div className="form-row">
+        <label>자격증명 <span>*</span><input name="certificateName" required maxLength={200} placeholder="예: 정보처리기사, TOEIC" defaultValue={certificate.name} /></label>
+        <label>발급 기관 <span className="optional">선택</span><input name="certificateIssuer" maxLength={200} placeholder="예: 한국산업인력공단" defaultValue={certificate.issuer} /></label>
+      </div>
+      <div className="form-row">
+        <label>취득일 <span className="optional">선택</span><input name="certificateAcquiredOn" type="date" max={today()} defaultValue={certificate.acquiredOn} /></label>
+        <label>점수·등급 <span className="optional">선택</span><input name="certificateScore" maxLength={50} placeholder="예: 900, IH, 최종합격" defaultValue={certificate.score} /></label>
+      </div>
+    </section>
+  );
+}
+
 /**
  * Inputs are uncontrolled and read once on submit. Project and experience lists keep their own
  * entries only for add/remove and for server fields the form does not edit (`extra`).
@@ -57,6 +79,7 @@ export function ProfilePage({ profile, onSave, onToast }) {
   const [career, setCareer] = useState(initial.career);
   const [projects, setProjects] = useState(() => initial.projects.map(withKey));
   const [experiences, setExperiences] = useState(() => (initial.experiences?.length ? initial.experiences : [emptyExperience()]).map(withKey));
+  const [certificates, setCertificates] = useState(() => (initial.certificates || []).map(withKey));
   const [saving, setSaving] = useState(false);
   const savingRef = useRef(false);
   const focusNew = useRef(null);
@@ -65,7 +88,7 @@ export function ProfilePage({ profile, onSave, onToast }) {
     if (!focusNew.current) return;
     document.querySelector(focusNew.current + ' > section:last-child input')?.focus();
     focusNew.current = null;
-  }, [projects, experiences]);
+  }, [projects, experiences, certificates]);
 
   async function submit(event) {
     event.preventDefault();
@@ -85,10 +108,12 @@ export function ProfilePage({ profile, onSave, onToast }) {
       ? experiences.map((experience, i) => ({ company: companies[i], role: experienceRoles[i], start: starts[i], end: ends[i], extra: experience.extra || {} }))
       : [];
     if (nextExperiences.some(experience => experience.end && experience.end < experience.start)) { onToast('경력 종료 월은 시작 월보다 빠를 수 없어요.'); return; }
+    const [certificateNames, issuers, acquiredOns, scores] = ['certificateName', 'certificateIssuer', 'certificateAcquiredOn', 'certificateScore'].map(column);
+    const nextCertificates = certificateNames.map((name, i) => ({ name, issuer: issuers[i], acquiredOn: acquiredOns[i], score: scores[i] }));
     const next = {
       types: data.getAll('types'), companies: String(data.get('companies')).trim(), role: data.get('role'),
       location: data.get('location') || '', department: String(data.get('department')).trim(),
-      career, experiences: nextExperiences, certificates: profile?.certificates || [], projects: nextProjects,
+      career, experiences: nextExperiences, certificates: nextCertificates, projects: nextProjects,
     };
     savingRef.current = true;
     // Disable the button before this handler returns so a second click cannot slip in.
@@ -99,6 +124,7 @@ export function ProfilePage({ profile, onSave, onToast }) {
 
   const addProject = () => { focusNew.current = '#projects'; setProjects(list => [...list, withKey(emptyProject())]); };
   const addExperience = () => { focusNew.current = '#experiences'; setExperiences(list => [...list, withKey(emptyExperience())]); };
+  const addCertificate = () => { focusNew.current = '#certificates'; setCertificates(list => [...list, withKey(emptyCertificate())]); };
 
   return (
     <>
@@ -154,8 +180,19 @@ export function ProfilePage({ profile, onSave, onToast }) {
             </div>
             <button className="btn outline add-project" type="button" data-action="add-project" onClick={addProject}><Icon name="plus" /> 프로젝트 추가</button>
           </section>
+          <section className="form-section" aria-labelledby="profile-step-4">
+            <header className="form-section-heading"><span aria-hidden="true">04</span><div><h2 id="profile-step-4">어떤 자격을 갖추고 있나요?</h2><p>자격증과 어학 점수가 있다면 알려주세요. 없으면 비워 두어도 괜찮아요.</p></div></header>
+            <div id="certificates">
+              {certificates.map((certificate, index) => (
+                <CertificateFields key={certificate.key} certificate={certificate} index={index}
+                  onRemove={() => setCertificates(list => list.filter(item => item.key !== certificate.key))} />
+              ))}
+            </div>
+            {!certificates.length && <p className="field-help">등록한 자격증이 없어요.</p>}
+            <button className="btn outline add-project" type="button" data-action="add-certificate" onClick={addCertificate}><Icon name="plus" /> 자격증 추가</button>
+          </section>
           <div className="form-actions">
-            <span>직무·지역·경력·기술·프로젝트는 서버에 저장됩니다. 관심 업종·기업명은 브라우저에 저장됩니다.</span>
+            <span>직무·지역·경력·기술·프로젝트·자격증은 서버에 저장됩니다. 관심 업종·기업명은 브라우저에 저장됩니다.</span>
             <button className="btn" type="submit" disabled={saving}>프로필 저장하고 추천 보기 <Icon name="arrow" /></button>
           </div>
         </form>

@@ -1,6 +1,24 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { toProfileRequest, fromProfileResponse, toDisplayJob, saveProfile, extractJobText } from '../src/api.js';
+import { toProfileRequest, fromProfileResponse, toDisplayJob, saveProfile, extractJobText, setAccessTokenProvider, getProfile } from '../src/api.js';
+
+setAccessTokenProvider(async () => 'test-access-token');
+
+test('private API sends a bearer token and blocks calls without authentication', async () => {
+  const original = globalThis.fetch;
+  globalThis.fetch = async (_url, options) => {
+    assert.equal(options.headers.Authorization, 'Bearer test-access-token');
+    return Response.json({ targetRoles: [], preferredLocations: [], skills: [], projects: [] });
+  };
+  try {
+    await getProfile();
+    setAccessTokenProvider(async () => { throw new Error('로그인이 필요합니다.'); });
+    await assert.rejects(getProfile(), { message: '로그인이 필요합니다.' });
+  } finally {
+    globalThis.fetch = original;
+    setAccessTokenProvider(async () => 'test-access-token');
+  }
+});
 
 test('profile form converts to backend schema', () => {
   const request = toProfileRequest({ role: '백엔드 개발자', location: '서울', projects: [
@@ -35,14 +53,16 @@ test('backend profile and recommendation map to existing UI', () => {
 
 test('experiences, certificates and fields the form does not edit survive a save', () => {
   const profile = fromProfileResponse({ targetRoles: ['백엔드 개발자'], preferredLocations: [], skills: ['Java'],
-    certificates: ['정보처리기사'],
+    certificates: [{ id: 7, name: '정보처리기사', issuer: '한국산업인력공단', acquiredOn: '2024-06-14', score: null }],
     projects: [{ name: 'API', description: '구현', techStack: 'Java', startedOn: '2024-01-01', endedOn: null, projectUrl: 'https://example.com' }],
     experiences: [{ companyName: '가상 회사', roleName: '백엔드 개발자', description: '결제 API', startedOn: '2023-03-01', endedOn: null }] });
   assert.equal(profile.career, '경력');
   assert.deepEqual(profile.experiences[0], { company: '가상 회사', role: '백엔드 개발자', start: '2023-03', end: '', extra: { description: '결제 API' } });
 
   const request = toProfileRequest(profile);
-  assert.deepEqual(request.certificates, ['정보처리기사']);
+  // The form shows empty strings for missing values; the request sends them back as null.
+  assert.deepEqual(profile.certificates, [{ name: '정보처리기사', issuer: '한국산업인력공단', acquiredOn: '2024-06-14', score: '' }]);
+  assert.deepEqual(request.certificates, [{ name: '정보처리기사', issuer: '한국산업인력공단', acquiredOn: '2024-06-14', score: null }]);
   assert.deepEqual(request.experiences, [{ description: '결제 API', companyName: '가상 회사', roleName: '백엔드 개발자', startedOn: '2023-03-01', endedOn: null }]);
   assert.equal(request.projects[0].projectUrl, 'https://example.com');
   assert.equal(request.projects[0].startedOn, '2024-01-01');
@@ -71,6 +91,7 @@ test('file extraction uploads multipart bytes and exposes server errors', async 
     assert.equal(url, '/api/job-text/extract');
     assert.equal(options.method, 'POST');
     assert.equal(options.headers['Content-Type'], undefined);
+    assert.equal(options.headers.Authorization, 'Bearer test-access-token');
     assert.equal(options.body.get('file').name, 'posting.pdf');
     return Response.json({ text: 'Java Spring Boot 채용공고', method: 'PDF_TEXT', pages: 1, truncated: false });
   };

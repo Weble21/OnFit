@@ -1,0 +1,13 @@
+name: onfit-local-auth
+services:
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.2.5
+    command: start-dev --import-realm --http-port=8081
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${ONFIT_KC_ADMIN_USER:-admin}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${ONFIT_KC_ADMIN_PASSWORD:?Set a local Keycloak admin password}
+    ports:
+      - '127.0.0.1:8081:8081'
+    volumes:
+      - ./keycloak/onfit-realm.json:/opt/keycloak/data/import/onfit-realm.json:ro
+      - ./keycloak/themes/onfit:/opt/keycloak/themes/onfit:ro

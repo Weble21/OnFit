@@ -2,11 +2,13 @@
 
 백엔드의 `prod` 인증·시드 차단, 빌드 가능한 컨테이너, 백업·복원 및 상태 점검 스크립트를 준비했다.
 외부 배포 계정·도메인·인증 제공자·수집 사이트는 지정되지 않았으므로 공개 배포는 실행하지 않았다.
-프론트의 로그인 화면은 데모 진입용이며 실제 OIDC 로그인 UI를 연결한 상태가 아니다.
+프론트는 Keycloak JavaScript 어댑터로 OIDC Authorization Code + PKCE(S256) 로그인을 수행한다.
+공개 배포 전에는 실제 인증 제공자·클라이언트·도메인을 연결하고 브라우저 로그인을 검증해야 한다.
 
 ## 운영 API 인증
 
-`prod`에서 `ONFIT_AUTH_ISSUER`와 `ONFIT_AUTH_AUDIENCE`를 필수로 설정한다.
+로컬 기본 실행과 `auth` 프로필은 `http://localhost:8081/realms/onfit`과 `onfit-api`를 기본값으로 사용한다. `prod` 프로필에서는 `ONFIT_AUTH_ISSUER`와 `ONFIT_AUTH_AUDIENCE`를 필수로 설정한다.
+`test` 프로필에서만 기존 H2 회귀 테스트를 위한 공용 사용자를 허용한다.
 인증 제공자는 issuer 발견 문서와 서명 공개키(JWKS)를 제공해야 한다.
 Spring Security가 접근 토큰의 서명·issuer·audience·만료를 검증한다.
 `GET /api/jobs`, `GET /api/jobs/{id}`와 상세 정보를 숨긴 health만 비인증 접근을 허용한다.
@@ -20,12 +22,18 @@ Spring Security가 접근 토큰의 서명·issuer·audience·만료를 검증�
 프로필·추천 조회와 생성은 인증된 계정으로 제한된다. 인증 오류도 requestId를 가진 ProblemDetail이다.
 쿠키·세션 인증을 사용하지 않으므로 API의 CSRF 검증은 끄고 stateless bearer 인증을 사용한다.
 
-프론트 공개 전에 선택한 인증 제공자의 Authorization Code + PKCE 로그인과 로그아웃을 연결해야 한다.
-접근 토큰은 URL이나 localStorage에 보관하지 않고 인증 라이브러리의 메모리 또는 서버 BFF에서 관리한다.
-현재 프론트 데모 코드를 운영 로그인으로 간주하지 않는다.
+프론트는 Keycloak `onfit-web` 공개 클라이언트로 로그인·로그아웃하고, API 요청 직전에 액세스 토큰을 갱신한다.
+토큰은 어댑터 메모리에만 두며 URL·localStorage에는 저장하지 않는다. 계정별 브라우저 설정은 issuer와 subject로 분리한다.
+Keycloak 클라이언트의 리디렉션 URI와 웹 출처를 실제 배포 주소로 제한하고, 액세스 토큰의 `aud`에 백엔드 `ONFIT_AUTH_AUDIENCE`가 포함되도록 Audience 매퍼를 설정한다.
+프론트 빌드 시 공개 설정 `VITE_KEYCLOAK_URL`, `VITE_KEYCLOAK_REALM`, `VITE_KEYCLOAK_CLIENT_ID`를 주입한다.
+이 값은 브라우저에 노출되므로 클라이언트 시크릿을 넣지 않는다. 외부 도메인 배포에서 값이 없으면 로그인 버튼이 비활성화된다.
+`localhost`/`127.0.0.1`에서는 개발용 Keycloak(`http://localhost:8081`, `onfit`, `onfit-web`)을 기본값으로 사용한다.
+로컬 통합 로그인은 [frontend/README.md](../frontend/README.md)의 Keycloak Compose와 백엔드 `auth` 프로필을 사용한다.
+운영 Keycloak에서도 같은 로그인 화면을 쓰려면 `infra/keycloak/themes/onfit`을 서버의 `themes/onfit`에 배치하고, realm의 로그인 테마를 `onfit`으로 지정한다.
 
 근거: [Spring Boot OAuth2 설정](https://docs.spring.io/spring-boot/reference/security/oauth2.html),
 [Spring Security JWT 검증](https://docs.spring.io/spring-security/reference/servlet/oauth2/resource-server/jwt.html).
+Keycloak 어댑터 사용법은 [공식 문서](https://www.keycloak.org/securing-apps/javascript-adapter)를 따른다.
 
 ## 로컬 배포 리허설
 
@@ -43,15 +51,18 @@ $env:ONFIT_DB_PASSWORD_FILE = 'C:\secrets\onfit-db-password'
 $env:ONFIT_BACKUP_DIR = 'D:\encrypted-onfit-backups'
 $env:ONFIT_AUTH_ISSUER = 'https://your-identity-provider/issuer'
 $env:ONFIT_AUTH_AUDIENCE = 'onfit-api'
+$env:VITE_KEYCLOAK_URL = 'https://your-identity-provider'
+$env:VITE_KEYCLOAK_REALM = 'onfit'
+$env:VITE_KEYCLOAK_CLIENT_ID = 'onfit-web'
 docker compose -f infra/compose.release.yaml config --quiet
-docker compose -f infra/compose.release.yaml up -d --build backend
+docker compose -f infra/compose.release.yaml --profile preview up -d --build backend frontend
 ```
 
 예제 경로·issuer는 실제 값으로 바꾼다. `prod`에서는 가상 시드와 고정 날짜가 기본적으로 꺼진다.
 백엔드 Docker 빌드는 Java 21 Linux에서 H2·인증·추출·한국어 OCR 테스트 및 추천 평가 후 bootJar를 만든다.
 실제 PostgreSQL 회귀는 별도 CI `postgresTest`에서 필수로 실행한다.
 프론트 Docker 빌드는 `npm ci`, 테스트와 Vite 빌드를 실행한다.
-`--profile preview`로 프론트를 추가 실행할 수 있지만 인증 UI 연결 전에는 데모/정적 화면 확인 용도다.
+`--profile preview`의 프론트 빌드에도 위 Keycloak 공개 설정이 필요하다.
 
 ## 백업·복원·모니터링
 
