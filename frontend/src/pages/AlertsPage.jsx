@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { getAlerts, saveAlerts, requestAlertEmail, verifyAlertEmail } from '../api.js';
 import { PageHeading } from '../components/ui.jsx';
+import { expandCompanies } from '../companyGroups.js';
 
 export function AlertsPage() {
   const [settings, setSettings] = useState(null);
@@ -34,6 +35,7 @@ export function AlertsPage() {
       }, '인증번호를 보냈어요. 이메일에서 확인해 주세요.'); }}>
         <label>알림 받을 이메일<input type="email" required maxLength={320} value={email} onChange={e => setEmail(e.target.value)} autoComplete="email" /></label>
         <p>{settings.verified ? '이메일 인증 완료' : '이메일 인증이 필요합니다.'}</p>
+        <p>같은 이메일 주소로 보내는 인증 메일은 하루 5회까지 요청할 수 있어요. 한국 시간 자정에 초기화됩니다.</p>
         <button className="btn secondary" disabled={busy || !settings.mailAvailable}>인증번호 보내기</button>
       </form>
       {!settings.verified && <form onSubmit={event => { event.preventDefault(); act(async () => {
@@ -47,7 +49,8 @@ export function AlertsPage() {
           companies: companies.split('\n').map(name => name.trim()).filter(Boolean), minScore: Number(settings.minScore) }));
       }, '알림 설정을 저장했어요.'); }}>
         <label>관심 기업<textarea rows={5} maxLength={4000} value={companies} onChange={e => setCompanies(e.target.value)} placeholder={'네이버\n카카오'} /></label>
-        <p>기업명을 한 줄에 하나씩, 최대 20개 입력해 주세요. 공고의 기업명과 일치하는 기업을 추천합니다.</p>
+        <p>기업명을 한 줄에 하나씩, 최대 20개 입력해 주세요. 카카오는 카카오페이·카카오뱅크·카카오모빌리티까지 함께 수집·추천합니다.</p>
+        {companies.trim() && <p role="status">수집·알림 대상: {expandCompanies(companies.split('\n')).join(', ')}</p>}
         <label>최소 추천 점수<input type="number" min={0} max={100} step={1} required value={settings.minScore}
           onChange={e => setSettings({ ...settings, minScore: e.target.value })} /></label>
         <label><input type="checkbox" checked={settings.enabled} disabled={!settings.verified}

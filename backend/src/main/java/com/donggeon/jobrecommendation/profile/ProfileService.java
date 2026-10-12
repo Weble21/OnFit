@@ -91,7 +91,7 @@ public class ProfileService {
         skills.forEach(profile::addSkill);
         for (ProfileRequest.CertificateInput input : request.certificates()) {
             profile.addCertificate(new Certificate(SkillNormalizer.displayName(input.name()),
-                    optionalText(input.issuer()), input.acquiredOn(), optionalText(input.score())));
+                    input.category(), input.acquiredOn(), optionalText(input.score())));
         }
 
         for (ProfileRequest.ProjectInput input : optional(request.projects())) {

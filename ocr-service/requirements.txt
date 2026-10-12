@@ -1,0 +1,5 @@
+# Contract tests need only these; the OCR models need requirements-paddle.txt as well.
+fastapi==0.143.0
+uvicorn==0.54.0
+pillow==12.3.0
+numpy==2.3.5

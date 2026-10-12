@@ -1,5 +1,6 @@
 package com.donggeon.jobrecommendation.profile;
 
+import com.donggeon.jobrecommendation.domain.CertificateCategory;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
@@ -19,7 +20,7 @@ public record ProfileRequest(
 ) {
     public record CertificateInput(
             @NotBlank @Size(max = 200) String name,
-            @Size(max = 200) String issuer,
+            @NotNull CertificateCategory category,
             LocalDate acquiredOn,
             @Size(max = 50) String score
     ) {

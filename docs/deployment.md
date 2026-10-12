@@ -56,6 +56,7 @@ Compose가 파일을 secret으로 마운트하고 Spring은 configtree로 읽는
 
 ```powershell
 $env:ONFIT_DB_PASSWORD_FILE = 'C:\secrets\onfit-db-password'
+$env:ONFIT_OCR_TOKEN_FILE = 'C:\secrets\onfit-ocr-token'
 $env:ONFIT_BACKUP_DIR = 'D:\encrypted-onfit-backups'
 $env:ONFIT_AUTH_ISSUER = 'https://your-identity-provider/issuer'
 $env:ONFIT_AUTH_AUDIENCE = 'onfit-api'
@@ -63,11 +64,13 @@ $env:VITE_KEYCLOAK_URL = 'https://your-identity-provider'
 $env:VITE_KEYCLOAK_REALM = 'onfit'
 $env:VITE_KEYCLOAK_CLIENT_ID = 'onfit-web'
 docker compose -f infra/compose.release.yaml config --quiet
-docker compose -f infra/compose.release.yaml --profile preview up -d --build backend frontend
+docker compose -f infra/compose.release.yaml --profile preview up -d --build backend ocr frontend
 ```
 
 예제 경로·issuer는 실제 값으로 바꾼다. `prod`에서는 가상 시드와 고정 날짜가 기본적으로 꺼진다.
 백엔드 Docker 빌드는 Java 21 Linux에서 H2·인증·추출·한국어 OCR 테스트 및 추천 평가 후 bootJar를 만든다.
+OCR 이미지(`infra/ocr.Dockerfile`)는 계약 테스트 후 PaddleOCR 모델을 이미지에 넣는다. 백엔드는 이 서비스를 기본 OCR로 쓴다.
+`ONFIT_OCR_TOKEN_FILE`에는 임의의 긴 문자열 한 줄을 넣는다. 자세한 내용은 [파일 추출 문서](file-extraction.md)를 따른다.
 실제 PostgreSQL 회귀는 별도 CI `postgresTest`에서 필수로 실행한다.
 프론트 Docker 빌드는 `npm ci`, 테스트와 Vite 빌드를 실행한다.
 `--profile preview`의 프론트 빌드에도 위 Keycloak 공개 설정이 필요하다.

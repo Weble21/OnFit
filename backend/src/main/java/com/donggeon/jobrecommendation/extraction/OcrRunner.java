@@ -6,26 +6,48 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.concurrent.TimeUnit;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.web.server.ResponseStatusException;
 
-/** Runs local Tesseract without retaining uploaded image bytes or OCR output. */
+/**
+ * Reads text from one image with the configured engine, without retaining the image or the OCR output.
+ * PaddleOCR (the private ocr-service) reads long Korean postings far better; local Tesseract stays selectable.
+ */
 @Component
 public class OcrRunner {
     private final boolean enabled;
+    private final String engine;
     private final String command;
+    private final PaddleOcrClient paddle;
 
+    @Autowired
     public OcrRunner(@Value("${onfit.extraction.ocr-enabled:true}") boolean enabled,
-                     @Value("${onfit.extraction.ocr-command:tesseract}") String command) {
+                     @Value("${onfit.extraction.ocr-engine:paddle}") String engine,
+                     @Value("${onfit.extraction.ocr-command:tesseract}") String command,
+                     PaddleOcrClient paddle) {
+        if (!engine.equals("paddle") && !engine.equals("tesseract"))
+            throw new IllegalArgumentException("OCR engine must be paddle or tesseract");
         this.enabled = enabled;
+        this.engine = engine;
         this.command = command;
+        this.paddle = paddle;
+    }
+
+    /** Local Tesseract only, for tests and hosts without the OCR service. */
+    public static OcrRunner tesseract(String command) {
+        return new OcrRunner(true, "tesseract", command, null);
     }
 
     public String recognize(byte[] image, String suffix) {
         if (!enabled) throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
                 "OCR이 설정되지 않았습니다. 원본을 보며 텍스트 입력 방식을 사용해 주세요.");
+        return engine.equals("paddle") ? paddle.recognize(image, suffix) : tesseract(image, suffix);
+    }
+
+    private String tesseract(byte[] image, String suffix) {
         Path input = null;
         Path output = null;
         Process process = null;

@@ -45,7 +45,7 @@ class OcrRunnerTests {
             ImageIO.write(image, "png", output);
             png = output.toByteArray();
         }
-        assertThat(new OcrRunner(true, "tesseract").recognize(png, ".png"))
+        assertThat(OcrRunner.tesseract("tesseract").recognize(png, ".png"))
                 .containsIgnoringCase("Java").containsIgnoringCase("Spring").contains("채용");
     }
 }

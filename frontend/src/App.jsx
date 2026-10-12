@@ -50,8 +50,7 @@ export function App({ authenticated = false, authError = '' }) {
 
   function replaceProfile(next) {
     setProfile(next);
-    if (next) store('preferences', { types: next.types, companies: next.companies,
-      department: next.department, career: next.career });
+    if (next) store('preferences', { types: next.types, companies: next.companies, career: next.career });
     setProfileVersion(version => version + 1);
   }
 

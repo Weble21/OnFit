@@ -1,0 +1,5 @@
+-r requirements.txt
+# paddlepaddle 3.3.x fails on CPU with oneDNN ("ConvertPirAttribute2RuntimeAttribute"); 3.2.2 works.
+paddlepaddle==3.2.2
+paddleocr==3.7.0
+paddlex==3.7.2

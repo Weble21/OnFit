@@ -46,11 +46,11 @@ class PostgresRegressionTests {
     private static final String PROFILE = """
             {"targetRoles":["백엔드 개발자"],"preferredLocations":["서울"],
              "skills":["Java","Docker","AWS"],
-             "certificates":[{"name":"정보처리기사","acquiredOn":"2024-06-14","score":"최종합격"}]}
+             "certificates":[{"name":"정보처리기사","category":"TECHNICAL","acquiredOn":"2024-06-14","score":"최종합격"}]}
             """;
 
     @ParameterizedTest(name = "DB at V{0} upgrades and passes core APIs")
-    @ValueSource(ints = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9})
+    @ValueSource(ints = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11})
     void freshAndHistoricalDatabasesPassMigrationAndApis(int previousVersion) throws Exception {
         String schema = "regression_v" + previousVersion;
         var admin = new JdbcTemplate(new DriverManagerDataSource(
@@ -85,7 +85,16 @@ class PostgresRegressionTests {
             var mvc = MockMvcBuilders.webAppContextSetup((WebApplicationContext) context)
                     .addFilters(context.getBean(com.donggeon.jobrecommendation.config.RequestLogFilter.class)).build();
             assertThat(jdbc.queryForList("SELECT version FROM flyway_schema_history WHERE success ORDER BY installed_rank",
-                    String.class)).containsExactly("1", "2", "3", "4", "5", "6", "7", "8", "9", "10");
+                    String.class)).containsExactly("1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12");
+            // V12: certificates kept from older versions become OTHER, and the issuer column is gone.
+            assertThat(jdbc.queryForList("SELECT category FROM certificates", String.class))
+                    .containsExactlyElementsOf(previousVersion > 0 ? List.of("OTHER") : List.of());
+            assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM information_schema.columns WHERE table_schema=? "
+                    + "AND table_name='certificates' AND column_name='issuer'", Integer.class, schema)).isZero();
+            var verificationQuota=context.getBean(com.donggeon.jobrecommendation.alerts.VerificationMailQuota.class);
+            for(int i=0;i<5;i++) assertThat(verificationQuota.reserve("Owner@Example.test")).isTrue();
+            assertThat(verificationQuota.reserve("owner@example.test")).isFalse();
+            assertThat(jdbc.queryForObject("SELECT attempts FROM verification_mail_limits",Integer.class)).isEqualTo(5);
             assertThat(context.getBean(Flyway.class).migrate().migrationsExecuted).isZero();
             assertThat(context.getBean(JobSeedService.class).seed()).isZero();
             assertThat(context.getBean(JobSeedService.class).seed()).isZero();
@@ -298,6 +307,7 @@ class PostgresRegressionTests {
         jdbc.update("INSERT INTO user_profiles(user_id) VALUES (1)");
         jdbc.update("INSERT INTO profile_target_roles VALUES (1,0,'백엔드 개발자')");
         jdbc.update("INSERT INTO profile_preferred_locations VALUES (1,0,'서울')");
+        jdbc.update("INSERT INTO certificates(profile_id,name,issuer) VALUES (1,'정보처리기사','한국산업인력공단')");
         for (String skill : List.of("Java", "Docker", "AWS")) {
             jdbc.update("INSERT INTO skills(profile_id,name,normalized_name) VALUES (1,?,?)", skill, skill.toLowerCase());
         }

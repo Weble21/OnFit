@@ -2,11 +2,18 @@ import { useEffect, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { industries, regions, roles, splitSkills } from '../data.js';
 import { Icon, PageHeading } from '../components/ui.jsx';
+import { expandCompanies, splitCompanyInterests } from '../companyGroups.js';
 
-const emptyProfile = () => ({ types: [], companies: '', role: '백엔드 개발자', location: '', department: '', career: '신입', experiences: [], projects: [{ name: '', description: '', stack: '' }] });
+const emptyProfile = () => ({ types: [], companies: '', roles: ['백엔드 개발자'], location: '', career: '신입', experiences: [], projects: [{ name: '', description: '', stack: '' }] });
 const emptyProject = () => ({ name: '', description: '', stack: '' });
 const emptyExperience = () => ({ company: '', role: '백엔드 개발자', start: '', end: '' });
-const emptyCertificate = () => ({ name: '', issuer: '', acquiredOn: '', score: '' });
+const emptyCertificate = () => ({ name: '', category: '', acquiredOn: '', score: '' });
+// Server values of a certificate's kind, with the label and score example shown for each.
+const certificateCategories = [
+  { value: 'LANGUAGE', label: '어학', example: '예: TOEIC 900, OPIc IH, JLPT N1' },
+  { value: 'TECHNICAL', label: 'IT·기술', example: '예: 최종합격, 1급' },
+  { value: 'OTHER', label: '기타', example: '예: 1급, 최종합격' },
+];
 // Local date (not UTC), so a certificate earned today is still accepted late in the evening.
 const today = () => new Date().toLocaleDateString('sv-SE');
 let nextKey = 0;
@@ -52,6 +59,8 @@ function ProjectFields({ project, index, onRemove }) {
 }
 
 function CertificateFields({ certificate, index, onRemove }) {
+  const [category, setCategory] = useState(certificate.category);
+  const example = certificateCategories.find(item => item.value === category)?.example || '예: 900, IH, 최종합격';
   return (
     <section className="certificate-block">
       <div className="project-heading">
@@ -60,11 +69,14 @@ function CertificateFields({ certificate, index, onRemove }) {
       </div>
       <div className="form-row">
         <label>자격증명 <span>*</span><input name="certificateName" required maxLength={200} placeholder="예: 정보처리기사, TOEIC" defaultValue={certificate.name} /></label>
-        <label>발급 기관 <span className="optional">선택</span><input name="certificateIssuer" maxLength={200} placeholder="예: 한국산업인력공단" defaultValue={certificate.issuer} /></label>
+        <label>종류 <span>*</span><select name="certificateCategory" required defaultValue={certificate.category} onChange={event => setCategory(event.target.value)}>
+          <option value="">선택해 주세요</option>
+          {certificateCategories.map(item => <option key={item.value} value={item.value}>{item.label}</option>)}
+        </select></label>
       </div>
       <div className="form-row">
         <label>취득일 <span className="optional">선택</span><input name="certificateAcquiredOn" type="date" max={today()} defaultValue={certificate.acquiredOn} /></label>
-        <label>점수·등급 <span className="optional">선택</span><input name="certificateScore" maxLength={50} placeholder="예: 900, IH, 최종합격" defaultValue={certificate.score} /></label>
+        <label>점수·등급 <span className="optional">선택</span><input name="certificateScore" maxLength={50} placeholder={example} defaultValue={certificate.score} /></label>
       </div>
     </section>
   );
@@ -76,6 +88,7 @@ function CertificateFields({ certificate, index, onRemove }) {
  */
 export function ProfilePage({ profile, onSave, onToast }) {
   const initial = profile || emptyProfile();
+  const [companyInput, setCompanyInput] = useState(initial.companies || '');
   const [career, setCareer] = useState(initial.career);
   const [projects, setProjects] = useState(() => initial.projects.map(withKey));
   const [experiences, setExperiences] = useState(() => (initial.experiences?.length ? initial.experiences : [emptyExperience()]).map(withKey));
@@ -98,6 +111,8 @@ export function ProfilePage({ profile, onSave, onToast }) {
       if (!field.value.trim()) { field.setCustomValidity('공백이 아닌 내용을 입력해 주세요.'); field.reportValidity(); return; }
     }
     const data = new FormData(form);
+    const nextRoles = data.getAll('roles').map(String);
+    if (!nextRoles.length) { onToast('목표 직무를 한 개 이상 골라 주세요.'); form.querySelector('[name="roles"]')?.focus(); return; }
     const column = name => data.getAll(name).map(value => String(value).trim());
     const [names, descriptions, stacks] = ['projectName', 'projectDescription', 'projectStack'].map(column);
     const nextProjects = projects.map((project, i) => ({ name: names[i], description: descriptions[i], stack: stacks[i], extra: project.extra || {} }));
@@ -108,11 +123,11 @@ export function ProfilePage({ profile, onSave, onToast }) {
       ? experiences.map((experience, i) => ({ company: companies[i], role: experienceRoles[i], start: starts[i], end: ends[i], extra: experience.extra || {} }))
       : [];
     if (nextExperiences.some(experience => experience.end && experience.end < experience.start)) { onToast('경력 종료 월은 시작 월보다 빠를 수 없어요.'); return; }
-    const [certificateNames, issuers, acquiredOns, scores] = ['certificateName', 'certificateIssuer', 'certificateAcquiredOn', 'certificateScore'].map(column);
-    const nextCertificates = certificateNames.map((name, i) => ({ name, issuer: issuers[i], acquiredOn: acquiredOns[i], score: scores[i] }));
+    const [certificateNames, categories, acquiredOns, scores] = ['certificateName', 'certificateCategory', 'certificateAcquiredOn', 'certificateScore'].map(column);
+    const nextCertificates = certificateNames.map((name, i) => ({ name, category: categories[i], acquiredOn: acquiredOns[i], score: scores[i] }));
     const next = {
-      types: data.getAll('types'), companies: String(data.get('companies')).trim(), role: data.get('role'),
-      location: data.get('location') || '', department: String(data.get('department')).trim(),
+      types: data.getAll('types'), companies: String(data.get('companies')).trim(), roles: nextRoles,
+      location: data.get('location') || '',
       career, experiences: nextExperiences, certificates: nextCertificates, projects: nextProjects,
     };
     savingRef.current = true;
@@ -122,6 +137,8 @@ export function ProfilePage({ profile, onSave, onToast }) {
     finally { savingRef.current = false; setSaving(false); }
   }
 
+  // Keep stored roles that are no longer offered, so saving the form does not silently drop them.
+  const roleChoices = [...roles, ...initial.roles.filter(role => !roles.includes(role))];
   const addProject = () => { focusNew.current = '#projects'; setProjects(list => [...list, withKey(emptyProject())]); };
   const addExperience = () => { focusNew.current = '#experiences'; setExperiences(list => [...list, withKey(emptyExperience())]); };
   const addCertificate = () => { focusNew.current = '#certificates'; setCertificates(list => [...list, withKey(emptyCertificate())]); };
@@ -143,14 +160,24 @@ export function ProfilePage({ profile, onSave, onToast }) {
                 </label>
               ))}
             </fieldset>
-            <label>관심 있는 기업 <span className="optional">선택</span><input name="companies" maxLength={500} defaultValue={initial.companies} placeholder="기업명을 쉼표로 구분해 입력해 주세요." /></label>
-            <p className="field-help">관심 업종과 기업명은 이 브라우저에만 저장되며 추천 점수에는 반영되지 않아요.</p>
+            <label>관심 있는 기업 <span className="optional">선택</span><input name="companies" maxLength={500} defaultValue={initial.companies} onChange={event => setCompanyInput(event.target.value)} placeholder="예: 카카오, 네이버" /></label>
+            {companyInput.trim() && <p className="field-help" role="status">추천 대상 기업: {expandCompanies(splitCompanyInterests(companyInput)).join(', ')}</p>}
+            <p className="field-help">카카오를 입력하면 카카오페이·카카오뱅크·카카오모빌리티도 함께 보여드려요. 관심 기업은 이 브라우저에 저장되어 추천 목록을 고르는 데 사용하며 점수는 바꾸지 않아요. 자동 수집·이메일 수신은 공고 이메일 알림 메뉴에서 설정해 주세요.</p>
           </section>
           <section className="form-section" aria-labelledby="profile-step-2">
             <header className="form-section-heading"><span aria-hidden="true">02</span><div><h2 id="profile-step-2">어떤 일을 하고 싶나요?</h2><p>앞으로 나아가고 싶은 방향을 알려주세요.</p></div></header>
+            <fieldset className="role-field">
+              <legend>목표 직무 <span>*</span><span className="optional">여러 개 고를 수 있어요</span></legend>
+              <div className="type-options industry-options">
+                {roleChoices.map(role => (
+                  <label key={role} className="type-option">
+                    <input type="checkbox" name="roles" value={role} defaultChecked={initial.roles.includes(role)} />
+                    <span><strong>{role}</strong><Icon name="check" /></span>
+                  </label>
+                ))}
+              </div>
+            </fieldset>
             <div className="form-row">
-              <label>목표 직무 <span>*</span><select name="role" required defaultValue={initial.role}><Options values={roles} current={initial.role} /></select></label>
-              <label>목표 부서 <span className="optional">선택</span><input name="department" maxLength={100} defaultValue={initial.department} placeholder="예: 플랫폼 개발팀, 금융 IT팀" /></label>
               <label>희망 지역 <span className="optional">선택</span><select name="location" defaultValue={initial.location}><Options values={regions} current={initial.location} blank="선택 안 함" /></select></label>
             </div>
             <fieldset className="career-options">

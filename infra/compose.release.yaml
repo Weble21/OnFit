@@ -29,12 +29,6 @@ services:
       ONFIT_AUTH_ISSUER: ${ONFIT_AUTH_ISSUER:?Set the OIDC issuer URL}
       ONFIT_AUTH_AUDIENCE: ${ONFIT_AUTH_AUDIENCE:?Set the API access token audience}
       ONFIT_INGESTION_ENABLED: ${ONFIT_INGESTION_ENABLED:-false}
-      ONFIT_WORK24_ENABLED: ${ONFIT_WORK24_ENABLED:-false}
-      ONFIT_WORK24_AUTH_KEY: ${ONFIT_WORK24_AUTH_KEY:-}
-      ONFIT_WORK24_PERMISSION_EVIDENCE: ${ONFIT_WORK24_PERMISSION_EVIDENCE:-}
-      ONFIT_WORK24_KEYWORD: ${ONFIT_WORK24_KEYWORD:-개발자}
-      ONFIT_WORK24_MAX_PAGES: ${ONFIT_WORK24_MAX_PAGES:-2}
-      ONFIT_INGESTION_ALERT_URL: ${ONFIT_INGESTION_ALERT_URL:-}
       ONFIT_ALERTS_ENABLED: ${ONFIT_ALERTS_ENABLED:-false}
       ONFIT_MAIL_FROM: ${ONFIT_MAIL_FROM:-}
       ONFIT_APP_URL: ${ONFIT_APP_URL:-}
@@ -43,17 +37,32 @@ services:
       ONFIT_SMTP_USERNAME: ${ONFIT_SMTP_USERNAME:-}
       ONFIT_SMTP_PASSWORD: ${ONFIT_SMTP_PASSWORD:-}
       ONFIT_SARAMIN_PERMISSION_EVIDENCE: ${ONFIT_SARAMIN_PERMISSION_EVIDENCE:-}
-      ONFIT_WANTED_PERMISSION_EVIDENCE: ${ONFIT_WANTED_PERMISSION_EVIDENCE:-}
-      ONFIT_JOBKOREA_PERMISSION_EVIDENCE: ${ONFIT_JOBKOREA_PERMISSION_EVIDENCE:-}
-      ONFIT_JOBKOREA_TERMS_URL: ${ONFIT_JOBKOREA_TERMS_URL:-}
+      ONFIT_OCR_ENGINE: paddle
+      ONFIT_OCR_URL: http://ocr:8002/v1/ocr
     secrets:
       - source: db_password
         target: DB_PASSWORD
+      - source: ocr_token
+        target: ONFIT_OCR_TOKEN
     ports:
       - '127.0.0.1:${ONFIT_BACKEND_PORT:-8080}:8080'
     depends_on:
       postgres:
         condition: service_healthy
+      ocr:
+        condition: service_healthy
+    restart: unless-stopped
+  ocr:
+    # Private PaddleOCR service: no published port, reachable only from the backend on the Compose network.
+    build:
+      context: ..
+      dockerfile: infra/ocr.Dockerfile
+    environment:
+      OCR_SERVICE_TOKEN_FILE: /run/secrets/OCR_SERVICE_TOKEN
+      OCR_THREADS: ${ONFIT_OCR_THREADS:-4}
+    secrets:
+      - source: ocr_token
+        target: OCR_SERVICE_TOKEN
     restart: unless-stopped
   frontend:
     profiles: [preview]
@@ -92,5 +101,7 @@ services:
 secrets:
   db_password:
     file: ${ONFIT_DB_PASSWORD_FILE:?Set the path of the database password secret file}
+  ocr_token:
+    file: ${ONFIT_OCR_TOKEN_FILE:?Set the path of the OCR service token secret file}
 volumes:
   release_postgres:

@@ -1,4 +1,4 @@
-import { profileSkills } from './data.js';
+import { industryGroup, profileSkills } from './data.js';
 
 const BACKEND_DOWN = '백엔드에 연결할 수 없습니다. PostgreSQL과 Spring Boot를 실행해 주세요.';
 let accessTokenProvider = async () => { throw new Error('로그인이 필요합니다.'); };
@@ -66,11 +66,11 @@ export async function extractJobText(file, signal) {
 export function toProfileRequest(profile) {
   // PUT replaces the whole profile, so fields the form does not edit travel in `extra` and go back unchanged.
   return {
-    targetRoles: [profile.role],
+    targetRoles: profile.roles,
     preferredLocations: profile.location ? [profile.location.trim()] : [],
     skills: profileSkills(profile),
     certificates: (profile.certificates || []).map(certificate => ({
-      name: certificate.name, issuer: certificate.issuer || null,
+      name: certificate.name, category: certificate.category,
       acquiredOn: certificate.acquiredOn || null, score: certificate.score || null,
     })),
     projects: profile.projects.map(project => ({
@@ -90,14 +90,14 @@ export function fromProfileResponse(response, previous = null) {
     extra: { description: experience.description },
   }));
   return {
-    types: previous?.types || [], companies: previous?.companies || '',
-    role: response.targetRoles[0] || '백엔드 개발자',
+    // Interests saved under the older category names move to the category that now covers them.
+    types: [...new Set((previous?.types || []).map(industryGroup))], companies: previous?.companies || '',
+    roles: response.targetRoles.length ? response.targetRoles : ['백엔드 개발자'],
     location: response.preferredLocations[0] || '',
-    department: previous?.department || '',
     career: experiences.length ? '경력' : previous?.career || '신입',
     experiences,
     certificates: (response.certificates || []).map(certificate => ({
-      name: certificate.name, issuer: certificate.issuer || '',
+      name: certificate.name, category: certificate.category || 'OTHER',
       acquiredOn: certificate.acquiredOn || '', score: certificate.score || '',
     })),
     projects: response.projects.length ? response.projects.map(project => ({
@@ -111,7 +111,7 @@ export function toDisplayJob(job, recommendation = null) {
   return {
     id: String(job.id),
     company: job.companyName, initial: job.companyName.slice(0, 1), color: 'sage',
-    industry: job.industry || '기타', companySize: job.companySize || null,
+    industry: job.industry ? industryGroup(job.industry) : '기타', companySize: job.companySize || null,
     role: job.roleName, team: job.roleName,
     location: job.location, career: job.careerLevel || '경력 무관', title: job.title,
     intro: job.description || '', duties: job.responsibilities,

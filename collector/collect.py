@@ -4,18 +4,19 @@ import os
 import re
 import sys
 import time
-import urllib.error
 import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
+from pathlib import Path
 from datetime import datetime, timezone, timedelta
 
 MAX_BYTES = 2_000_000
-HOSTS = {"saramin": "www.saramin.co.kr", "wanted": "www.wanted.co.kr", "jobkorea": "www.jobkorea.co.kr"}
+HOSTS = {"saramin": "www.saramin.co.kr"}
 # Per-source request budgets. Saramin allows 500 calls a day: two scheduled runs plus one manual run fit.
-BUDGETS = {"saramin": 150, "wanted": 300, "jobkorea": 150}
+BUDGETS = {"saramin": 150}
 # Legal-form markers sources add to the same company name: "(주)카카오", "카카오 주식회사".
 LEGAL_FORMS = re.compile(r"\(\s*(?:주|유|사|재|株)\s*\)|㈜|주식회사|유한책임회사|유한회사")
+GROUP_CATALOG = json.loads((Path(__file__).resolve().parent.parent / 'backend/src/main/resources/company-groups.json').read_text(encoding='utf-8'))['groups']
 
 
 class Incomplete(Exception):
@@ -93,7 +94,18 @@ def company_name(value):
 
 
 def company_key(value):
-    return company_name(value).casefold()
+    return re.sub(r"\s+", "", company_name(value)).casefold()
+
+
+def expand_companies(interests):
+    groups = {company_key(name): members for name, members in GROUP_CATALOG.items()}
+    result = {}
+    for interest in interests:
+        name = company_name(interest)
+        if name:
+            for member in groups.get(company_key(name), [name]):
+                result.setdefault(company_key(member), company_name(member))
+    return list(result.values())
 
 
 def lookback_since():
@@ -198,112 +210,6 @@ def saramin(http, companies, pages, report):
     yield from collect(http, companies, company_jobs, report)
 
 
-def wanted_map(job, listing):
-    detail = job["detail"]
-    title = detail.get("position") or detail.get("name") or listing["name"]
-    duties = detail.get("main_tasks") or ""
-    description = "\n\n".join(str(detail.get(k) or "") for k in ("intro", "main_tasks", "requirements", "preferred_points"))
-    deadline = job.get("due_time") or None
-    if deadline:
-        datetime.strptime(deadline, "%Y-%m-%d")
-    state = job.get("status")
-    if state not in ("active", "archived", "close"):
-        raise ValueError("Unsupported Wanted job state")
-    return dict(sourceName="wanted", externalId=str(job["id"]), sourceUrl=source_url("wanted", job["url"]),
-                observedAt=observed(), content=content(job["company"]["name"], title, title,
-                    job["address"].get("full_location") or job["address"].get("location"), duties,
-                    description=description, deadline=deadline, status="OPEN" if state == "active" else "CLOSED",
-                    career=f"경력 {job.get('annual_from', 0)}~{job.get('annual_to', 100)}년"))
-
-
-def wanted(http, companies, pages, report):
-    required_env("ONFIT_WANTED_PERMISSION_EVIDENCE")
-    headers = {"wanted-client-id": required_env("ONFIT_WANTED_CLIENT_ID"),
-               "wanted-client-secret": required_env("ONFIT_WANTED_CLIENT_SECRET")}
-    base = "https://openapi.wanted.jobs/v1"
-
-    def company_ids(company, target):
-        for search_page in range(pages):
-            found = http.call(query(base + "/search/company", query=company, offset=search_page * 20, limit=20), headers=headers)
-            # The official schema uses data; its published example uses companies.
-            matches = found.get("data", found.get("companies"))
-            if not isinstance(matches, list):
-                raise ValueError("Unexpected Wanted company response")
-            ids = [int(m["id"]) for m in matches if company_key(str(m.get("name", ""))) == target]
-            if ids:
-                return list(dict.fromkeys(ids))
-            if not found.get("links", {}).get("next"):
-                return []
-        raise Incomplete("Wanted company search exceeds page budget")
-
-    def company_jobs(company):
-        target = company_key(company)
-        for company_id in company_ids(company, target):
-            for page in range(pages):
-                result = http.call(query(f"{base}/companies/{company_id}/jobs", offset=page * 20, limit=20), headers=headers)
-                if not isinstance(result.get("jobs"), list):
-                    raise ValueError("Unexpected Wanted jobs response")
-                for listing in result["jobs"]:
-                    try:
-                        job = http.call(f"{base}/jobs/{int(listing['id'])}", headers=headers)
-                    except urllib.error.HTTPError as error:
-                        if error.code != 404:
-                            raise
-                        report["skipped"] += 1  # Removed between the list and the detail call.
-                        continue
-                    item = mapped(report, wanted_map, job, listing)
-                    if item and company_key(item["content"]["companyName"]) == target:
-                        yield item
-                    time.sleep(1)
-                if not result.get("links", {}).get("next"):
-                    break
-                if page == pages - 1:
-                    raise Incomplete("Wanted job coverage exceeds page budget")
-
-    yield from collect(http, companies, company_jobs, report)
-
-
-def jobkorea_map(item):
-    item["sourceUrl"] = source_url("jobkorea", item["sourceUrl"])
-    item["observedAt"] = observed()
-    name = company_name(item["content"]["companyName"])
-    if not name:
-        raise ValueError("Missing job fields")
-    item["content"]["companyName"] = name[:200]
-    return item
-
-
-def jobkorea(http, companies, pages, report):
-    """Partner bridge contract, not a guessed JobKorea public endpoint.
-
-    Approved partner returns {items: [JobImportRequest], hasNext: bool}; page starts at 0.
-    Until the partner URL/permission is configured, this source explicitly fails closed.
-    """
-    required_env("ONFIT_JOBKOREA_PERMISSION_EVIDENCE")
-    url = required_env("ONFIT_JOBKOREA_FEED_URL")
-    headers = {"Authorization": "Bearer " + required_env("ONFIT_JOBKOREA_FEED_TOKEN")}
-
-    def company_jobs(company):
-        target = company_key(company)
-        for page in range(pages):
-            result = http.call(query(url, company=company, page=page, size=100), headers=headers)
-            items = result.get("items")
-            if not isinstance(items, list) or len(items) > 100 or not isinstance(result.get("hasNext"), bool):
-                raise ValueError("Unexpected partner feed contract")
-            for item in items:
-                if item.get("sourceName") != "jobkorea":
-                    raise ValueError("Partner source mismatch")
-                item = mapped(report, jobkorea_map, item)
-                if item and company_key(item["content"]["companyName"]) == target:
-                    yield item
-            if not result["hasNext"]:
-                return
-            if page == pages - 1:
-                raise Incomplete("Partner coverage exceeds page budget")
-
-    yield from collect(http, companies, company_jobs, report)
-
-
 def source_budget(name):
     value = int(os.environ.get(f"ONFIT_{name.upper()}_REQUEST_BUDGET", BUDGETS[name]))
     if not 1 <= value <= 1000:
@@ -332,7 +238,7 @@ def run(http=None):
     if not isinstance(companies, list) or any(not isinstance(c, str) or not c.strip() for c in companies):
         raise ValueError("Invalid collection targets")
     # "(주)카카오" and "카카오" are one target; the name without the legal form is searched.
-    companies = sorted({company_key(c): company_name(c) for c in companies if company_name(c)}.values())
+    companies = sorted(expand_companies(companies))
     if len(companies) > 50:
         # Surface incomplete coverage rather than silently dropping the last subscribers.
         raise ValueError("Target budget exceeded; partition collection before enabling more companies")
@@ -343,10 +249,10 @@ def run(http=None):
     if not 1 <= pages <= 10:
         raise ValueError("Page budget must be 1..10")
     failures = 0
-    for name, adapter in (("saramin", saramin), ("wanted", wanted), ("jobkorea", jobkorea)):
+    for name, adapter in (("saramin", saramin),):
         report = {"imported": 0, "incomplete": 0, "skipped": 0}
         try:
-            # Separate budgets: one source using up its requests never starves the next one.
+            # Saramin requests are bounded independently of backend/token requests.
             for item in adapter(http or Http(limit=source_budget(name)), companies, pages, report):
                 backend("/api/admin/jobs/import", payload=item)
                 report["imported"] += 1

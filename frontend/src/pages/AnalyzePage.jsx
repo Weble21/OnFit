@@ -144,7 +144,7 @@ export function AnalyzePage({ profile, analysis: state }) {
             <button className="btn full" id="analyze-button" type="submit" disabled={!canAnalyze}><Icon name="spark" /> 내 프로필과 비교하기</button>
           </form>
           {fileMode && <p className="upload-help">파일은 텍스트 추출을 위해 서버에 전송되며 처리 후 삭제됩니다. 브라우저 미리보기와 수정 텍스트는 새로고침하면 사라집니다.</p>}
-          <p className="jd-profile"><Icon name="user" /><span>{profile.role} · {profile.career} 프로필로 비교</span><a href="#/profile" aria-label="비교할 프로필 수정">수정</a></p>
+          <p className="jd-profile"><Icon name="user" /><span>{profile.roles.join(', ')} · {profile.career} 프로필로 비교</span><a href="#/profile" aria-label="비교할 프로필 수정">수정</a></p>
         </section>
         <section className="panel result-panel" id="analysis-output" aria-live="polite"><AnalysisResult analysis={state.analysis} /></section>
       </div>

@@ -2,6 +2,8 @@ package com.donggeon.jobrecommendation.domain;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -26,8 +28,9 @@ public class Certificate {
     @Column(nullable = false, length = 200)
     private String name;
 
-    @Column(length = 200)
-    private String issuer;
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private CertificateCategory category;
 
     @Column(name = "acquired_on")
     private LocalDate acquiredOn;
@@ -39,9 +42,9 @@ public class Certificate {
     protected Certificate() {
     }
 
-    public Certificate(String name, String issuer, LocalDate acquiredOn, String score) {
+    public Certificate(String name, CertificateCategory category, LocalDate acquiredOn, String score) {
         this.name = name;
-        this.issuer = issuer;
+        this.category = category;
         this.acquiredOn = acquiredOn;
         this.score = score;
     }
@@ -51,7 +54,7 @@ public class Certificate {
     public Long getId() { return id; }
     public UserProfile getProfile() { return profile; }
     public String getName() { return name; }
-    public String getIssuer() { return issuer; }
+    public CertificateCategory getCategory() { return category; }
     public LocalDate getAcquiredOn() { return acquiredOn; }
     public String getScore() { return score; }
 }

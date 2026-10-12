@@ -4,6 +4,7 @@ COPY frontend/package.json frontend/package-lock.json ./
 RUN npm ci
 COPY frontend/ ./
 COPY backend/src/main/resources/skill-aliases.json /src/backend/src/main/resources/
+COPY backend/src/main/resources/company-groups.json /src/backend/src/main/resources/
 COPY backend/src/main/resources/seed/job-postings.json /src/backend/src/main/resources/seed/
 ARG VITE_KEYCLOAK_URL
 ARG VITE_KEYCLOAK_REALM

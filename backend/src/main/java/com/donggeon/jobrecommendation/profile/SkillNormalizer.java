@@ -19,15 +19,19 @@ public final class SkillNormalizer {
     private SkillNormalizer() {
     }
 
+    // 공백 정리
     public static String displayName(String value) {
         return value.trim().replaceAll("\\s+", " ");
     }
 
+    // 사용할 이름 통일 - 소문자로 만들고 별칭 확인
     public static String normalize(String value) {
         String key = displayName(value).toLowerCase(Locale.ROOT);
+        // ALIASES 는 대응표 : k8s-> kubernetes, postgres -> postgresql 등등
         return ALIASES.getOrDefault(key, key);
     }
 
+    // 한 문장에 적힌 기술들 목록으로 분리
     /** Splits a free-text tech stack such as "Java, Spring Boot" into skill names. */
     public static List<String> split(String stack) {
         if (stack == null) {

@@ -31,15 +31,20 @@ public class AlertService {
     private final RecommendationCalculator calculator;
     private final SemanticScoreProvider semantic;
     private final AlertMail mail;
+    private final VerificationMailQuota verificationQuota;
+    private final CompanyGroups companyGroups;
     private final Clock clock;
     private final TransactionTemplate tx;
     private final String appUrl;
     private final SecureRandom random = new SecureRandom();
     public AlertService(JdbcTemplate db, CurrentUser current, UserProfileRepository profiles, JobService jobs,
-            RecommendationCalculator calculator, SemanticScoreProvider semantic, AlertMail mail, Clock clock,
+            RecommendationCalculator calculator, SemanticScoreProvider semantic, AlertMail mail,
+            VerificationMailQuota verificationQuota, CompanyGroups companyGroups, Clock clock,
             PlatformTransactionManager manager, @Value("${onfit.alerts.app-url:http://localhost:5173}") String appUrl) {
         this.db=db; this.current=current; this.profiles=profiles; this.jobs=jobs; this.calculator=calculator;
         this.semantic=semantic; this.mail=mail; this.clock=clock; this.tx=new TransactionTemplate(manager);
+        this.verificationQuota=verificationQuota;
+        this.companyGroups=companyGroups;
         this.appUrl=appUrl;
     }
     private long owner(boolean lock) {
@@ -67,11 +72,12 @@ public class AlertService {
         long id=owner(false);
         if (db.queryForObject("SELECT COUNT(*) FROM job_alert_subscriptions WHERE user_id=?", Integer.class, id)==0)
             return Map.of("email","", "verified",false,"enabled",false,"companies",List.of(),
-                    "minScore",60,"mailAvailable",mail.available());
+                    "minScore",60,"mailAvailable",mail.available(),"expandedCompanies",List.of());
         var s=subscription(id);
         return Map.of("email", Objects.toString(s.get("email"),""), "verified",s.get("verified"),
                 "enabled",s.get("enabled"),"companies",companies((String)s.get("companies")),
-                "minScore",s.get("min_score"),"mailAvailable",mail.available());
+                "minScore",s.get("min_score"),"mailAvailable",mail.available(),
+                "expandedCompanies",companyGroups.expand(companies((String)s.get("companies"))));
     }
     @Transactional
     public void save(AlertController.Settings settings) {
@@ -97,6 +103,9 @@ public class AlertService {
         Object sent=subscription(id).get("verification_sent_at");
         if (sent!=null && instant(sent).plusSeconds(60).isAfter(clock.instant()))
             throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS,"인증번호는 1분 후 다시 요청할 수 있습니다.");
+        if (!verificationQuota.reserve(email))
+            throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS,
+                    "이 이메일 주소의 하루 인증 메일 한도(5회)를 초과했습니다. 한국 시간 자정 이후 다시 요청해 주세요.");
         String code="%06d".formatted(random.nextInt(1_000_000));
         db.update("""
             UPDATE job_alert_subscriptions SET email=?,verified=FALSE,enabled=FALSE,
@@ -121,15 +130,13 @@ public class AlertService {
     @Transactional(readOnly=true)
     public List<String> targets() {
         return db.query("SELECT companies FROM job_alert_subscriptions WHERE enabled=TRUE AND verified=TRUE",
-                (r,i)->companies(r.getString(1))).stream().flatMap(List::stream).distinct().sorted().toList();
+                (r,i)->companyGroups.expand(companies(r.getString(1)))).stream().flatMap(List::stream).distinct().sorted().toList();
     }
     // The collector strips the same legal-form markers from source names ("(주)카카오" is stored as "카카오").
-    private static final java.util.regex.Pattern LEGAL_FORMS=java.util.regex.Pattern.compile("\\(\\s*(?:주|유|사|재|株)\\s*\\)|㈜|주식회사|유한책임회사|유한회사");
-    static String companyName(String value) { return LEGAL_FORMS.matcher(value).replaceAll(" ").replaceAll("\\s+"," ").strip(); }
+    static String companyName(String value) { return CompanyGroups.name(value); }
     private static List<String> companies(String names) { return names.isBlank()?List.of():List.of(names.split("\n")); }
-    static boolean companyMatches(String actual,List<String> expected) {
-        // Exact names avoid sending subsidiaries or unrelated keyword matches. Aliases are entered explicitly.
-        return expected.stream().anyMatch(n->n.strip().equalsIgnoreCase(actual.strip()));
+    private boolean companyMatches(String actual,List<String> expected) {
+        return companyGroups.matches(actual,expected);
     }
     private static String hash(String value) {
         try { return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(value.getBytes(StandardCharsets.UTF_8))); }
@@ -179,7 +186,7 @@ public class AlertService {
         db.update("UPDATE job_alert_subscriptions SET evaluated_at=? WHERE user_id=?",Timestamp.from(evaluated),id);
         UserProfile profile=profiles.findByUserId(id).orElse(null);
         if(profile==null) return null;
-        var open=jobs.alertCandidates(companies((String)s.get("companies"))).stream().filter(j->j.getOrigin()==JobOrigin.REAL
+        var open=jobs.alertCandidates(companyGroups.expand(companies((String)s.get("companies")))).stream().filter(j->j.getOrigin()==JobOrigin.REAL
                 && companyMatches(j.getCompanyName(),companies((String)s.get("companies")))).toList();
         var semantics=semantic.score(profile,open);
         Map<Long,JobPosting> eligible=new HashMap<>();

@@ -68,8 +68,13 @@ onfit:
       max-pages: ${ONFIT_WORK24_MAX_PAGES:2}
       alert-url: ${ONFIT_INGESTION_ALERT_URL:}
   extraction:
-    ocr-command: ${ONFIT_OCR_COMMAND:tesseract}
     ocr-enabled: ${ONFIT_OCR_ENABLED:true}
+    # paddle: private PaddleOCR service (ocr-service/), tesseract: local command below.
+    ocr-engine: ${ONFIT_OCR_ENGINE:paddle}
+    ocr-command: ${ONFIT_OCR_COMMAND:tesseract}
+    paddle-url: ${ONFIT_OCR_URL:http://127.0.0.1:8002/v1/ocr}
+    paddle-token: ${ONFIT_OCR_TOKEN:}
+    paddle-timeout-ms: ${ONFIT_OCR_TIMEOUT_MS:60000}
   ai:
     enabled: ${ONFIT_AI_ENABLED:false}
     url: ${ONFIT_AI_URL:http://127.0.0.1:8001/v1/semantic-score}

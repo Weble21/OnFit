@@ -44,7 +44,7 @@ public class JobService {
 
     public List<JobPosting> alertCandidates(List<String> companies) {
         if(companies.isEmpty()) return List.of();
-        return jobs.findAlertCandidates(companies.stream().map(name->name.toLowerCase(java.util.Locale.ROOT)).toList(),
+        return jobs.findAlertCandidates(companies.stream().map(com.donggeon.jobrecommendation.alerts.CompanyGroups::key).toList(),
                 LocalDate.now(clock));
     }
 

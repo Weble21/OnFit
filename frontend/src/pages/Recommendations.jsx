@@ -1,4 +1,6 @@
 import { profileSkills } from '../data.js';
+import { useState } from 'react';
+import { expandCompanies, matchesCompany, splitCompanyInterests } from '../companyGroups.js';
 import { EmptyState, Icon, PageHeading, Pill, PillList, Plant } from '../components/ui.jsx';
 
 function JobCard({ job, saved, onToggleFavorite, onOpen }) {
@@ -29,6 +31,7 @@ function JobCard({ job, saved, onToggleFavorite, onOpen }) {
 }
 
 export function Recommendations({ savedOnly, profile, recs, favorites, filters, onFiltersChange, onRetry, onToggleFavorite, onOpenJob }) {
+  const [onlyInterests, setOnlyInterests] = useState(true);
   if (!profile) {
     return <EmptyState title="먼저 나의 이야기를 들려주세요" text="프로필을 작성하면 경험에 맞는 기업을 찾아볼 수 있어요." href="/profile" label="프로필 작성하기" level={1} />;
   }
@@ -46,15 +49,18 @@ export function Recommendations({ savedOnly, profile, recs, favorites, filters, 
 
   const { filter, sort, search } = filters;
   const jobs = recs.jobs;
+  const interests = splitCompanyInterests(profile.companies || '');
   const query = search.toLowerCase();
   const list = jobs
-    .filter(job => (!savedOnly || favorites.includes(job.id)) && (filter === '전체' || job.industry === filter)
+    .filter(job => (!savedOnly || favorites.includes(job.id))
+      && (savedOnly || !onlyInterests || !interests.length || matchesCompany(job.company, interests))
+      && (filter === '전체' || job.industry === filter)
       && (job.company + ' ' + job.title + ' ' + job.required.join(' ')).toLowerCase().includes(query))
     .sort(sort === 'name' ? (a, b) => a.company.localeCompare(b.company, 'ko') : (a, b) => b.score - a.score || Number(a.id) - Number(b.id));
   // Industries the profile is interested in come first.
   const industries = ['전체', ...[...new Set(jobs.map(job => job.industry))].sort((a, b) => profile.types.includes(b) - profile.types.includes(a))];
   const skills = profileSkills(profile);
-  const resetFilters = () => onFiltersChange({ filter: '전체', search: '' });
+  const resetFilters = () => { setOnlyInterests(false); onFiltersChange({ filter: '전체', search: '' }); };
 
   return (
     <>
@@ -76,13 +82,17 @@ export function Recommendations({ savedOnly, profile, recs, favorites, filters, 
         <section className="profile-strip" aria-label="나의 커리어 키워드">
           <div className="profile-strip-title">
             <span className="round-icon" aria-hidden="true"><Icon name="user" /></span>
-            <div><small>나의 커리어 키워드</small><strong>{profile.role} <span>· {profile.career}</span></strong></div>
+            <div><small>나의 커리어 키워드</small><strong>{profile.roles.join(', ')} <span>· {profile.career}</span></strong></div>
           </div>
           <PillList className="profile-tags" items={[...skills.slice(0, 4).map(skill => [skill]), ...(skills.length > 4 ? [['+' + (skills.length - 4)]] : [])]} />
           <a href="#/profile" className="icon-btn" aria-label="커리어 프로필 수정"><Icon name="chevron" /></a>
         </section>
       </>}
       <section className="recommendation-section" aria-labelledby="recommendation-title">
+        {!savedOnly && interests.length > 0 && <div>
+          <label><input type="checkbox" checked={onlyInterests} onChange={event => setOnlyInterests(event.target.checked)} />관심 기업과 연관 기업만 보기</label>
+          <p className="field-help">대상 기업: {expandCompanies(interests).join(', ')}</p>
+        </div>}
         <header className="section-heading">
           <h2 id="recommendation-title">{savedOnly ? '저장한 기업' : '발견한 기회'} <span>{list.length}<span className="sr-only">곳</span></span></h2>
           <span className="subtle"><Icon name="spark" /> 서버 계산 추천</span>

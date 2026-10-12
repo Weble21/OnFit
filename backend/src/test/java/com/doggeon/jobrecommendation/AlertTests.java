@@ -27,6 +27,7 @@ class AlertTests {
     @Autowired JdbcTemplate db;
     @Autowired Clock clock;
     @Autowired JobPostingRepository jobs;
+    @Autowired org.springframework.transaction.PlatformTransactionManager transactions;
     @MockitoBean AlertMail mail;
     @MockitoBean CurrentUser current;
     long user;
@@ -39,7 +40,7 @@ class AlertTests {
         db.update("INSERT INTO job_alert_subscriptions(user_id,email,verified,enabled,companies,min_score,subscribed_at,evaluated_at) VALUES(?, ?,TRUE,TRUE,?,0,?,?)",
                 user,"owner@example.test","Example",Timestamp.from(clock.instant().minusSeconds(60)),Timestamp.from(clock.instant().minusSeconds(60)));
     }
-    @AfterEach void cleanup() { db.update("DELETE FROM app_users"); jobs.deleteAll(); }
+    @AfterEach void cleanup() { db.update("DELETE FROM app_users"); jobs.deleteAll(); db.update("DELETE FROM verification_mail_limits"); }
     JobPosting posting(String company,JobPostingStatus state,Instant collected) {
         JobPosting job=JobPosting.imported("wanted",UUID.randomUUID().toString(),collected);
         job.markSeen(collected);
@@ -94,6 +95,85 @@ class AlertTests {
         alerts.save(new AlertController.Settings(true,List.of("(주)Example","Example 주식회사","㈜ Other Co"," "),BigDecimal.ZERO));
         assertThat(alerts.mine().get("companies")).isEqualTo(List.of("Example","Other Co"));
         assertThat(alerts.targets()).containsExactly("Example","Other Co");
+    }
+    @Test void recipientDailyLimitIsSharedAcrossAccountsAndCaseVariants() {
+        // Recipient limits are independent of the company group expansion.
+        for(int i=0;i<5;i++) {
+            String identity="quota-"+i+"@onfit.invalid";
+            db.update("INSERT INTO app_users(email,display_name) VALUES(?,'Fixture')",identity);
+            when(current.identity()).thenReturn(identity);
+            alerts.requestVerification(i%2==0?"Owner@Example.test":"owner@example.test");
+        }
+        when(current.identity()).thenReturn("alerts.owner@onfit.invalid");
+        assertThatThrownBy(()->alerts.requestVerification("owner@EXAMPLE.TEST"))
+                .isInstanceOfSatisfying(ResponseStatusException.class,
+                        error->assertThat(error.getStatusCode().value()).isEqualTo(429));
+        verify(mail,times(5)).send(anyString(),anyString(),anyString());
+        assertThat(db.queryForObject("SELECT attempts FROM verification_mail_limits",Integer.class)).isEqualTo(5);
+        // A quota rejection preserves the owner's verified email and active subscription.
+        assertThat(alerts.mine().get("verified")).isEqualTo(true);
+        assertThat(alerts.mine().get("enabled")).isEqualTo(true);
+    }
+    @Test void kakaoInterestIncludesReviewedSubsidiariesInTargetsAndEmails() {
+        alerts.save(new AlertController.Settings(true,List.of("카카오","카카오페이"),BigDecimal.ZERO));
+        assertThat(alerts.mine().get("companies")).isEqualTo(List.of("카카오","카카오페이"));
+        assertThat(alerts.mine().get("expandedCompanies")).isEqualTo(List.of("카카오","카카오페이","카카오뱅크","카카오모빌리티"));
+        assertThat(alerts.targets()).containsExactlyInAnyOrder("카카오","카카오페이","카카오뱅크","카카오모빌리티");
+        posting("카카오",JobPostingStatus.OPEN,clock.instant().minusSeconds(30));
+        posting("카카오페이",JobPostingStatus.OPEN,clock.instant().minusSeconds(30));
+        posting("카카오뱅크",JobPostingStatus.OPEN,clock.instant().minusSeconds(30));
+        posting("카카오 모빌리티",JobPostingStatus.OPEN,clock.instant().minusSeconds(30));
+        posting("카카오와 일하는 개발회사",JobPostingStatus.OPEN,clock.instant().minusSeconds(30));
+        assertThat(alerts.run().get("sentEmails")).isEqualTo(1);
+        assertThat(db.queryForObject("SELECT COUNT(*) FROM job_alert_deliveries WHERE state='SENT'",Integer.class)).isEqualTo(4);
+        var body=ArgumentCaptor.forClass(String.class);
+        verify(mail).send(anyString(),anyString(),body.capture());
+        assertThat(body.getValue()).contains("카카오페이","카카오뱅크","카카오 모빌리티").doesNotContain("카카오와 일하는 개발회사");
+    }
+    @Test void specificSubsidiaryInterestDoesNotExpandBackToEntireGroup() {
+        alerts.save(new AlertController.Settings(true,List.of("카카오페이"),BigDecimal.ZERO));
+        assertThat(alerts.targets()).containsExactly("카카오페이");
+        posting("카카오",JobPostingStatus.OPEN,clock.instant().minusSeconds(30));
+        posting("카카오페이",JobPostingStatus.OPEN,clock.instant().minusSeconds(30));
+        posting("카카오뱅크",JobPostingStatus.OPEN,clock.instant().minusSeconds(30));
+        assertThat(alerts.run().get("sentEmails")).isEqualTo(1);
+        assertThat(db.queryForObject("SELECT COUNT(*) FROM job_alert_deliveries",Integer.class)).isEqualTo(1);
+    }
+    @Test void uncertainVerificationSendFailureStillConsumesRecipientQuota() {
+        doThrow(new IllegalStateException("SMTP timeout")).when(mail).send(anyString(),anyString(),anyString());
+        for(int i=0;i<5;i++)
+            assertThatThrownBy(()->alerts.requestVerification("failure@example.test"))
+                    .isInstanceOfSatisfying(ResponseStatusException.class,
+                            error->assertThat(error.getStatusCode().value()).isEqualTo(502));
+        assertThatThrownBy(()->alerts.requestVerification("failure@example.test"))
+                .isInstanceOfSatisfying(ResponseStatusException.class,
+                        error->assertThat(error.getStatusCode().value()).isEqualTo(429));
+        verify(mail,times(5)).send(anyString(),anyString(),anyString());
+    }
+    @Test void recipientQuotaResetsAtKoreanMidnightRatherThanUtcMidnight() {
+        var before=new VerificationMailQuota(db,Clock.fixed(Instant.parse("2026-10-11T14:59:59Z"),ZoneOffset.UTC),transactions);
+        for(int i=0;i<5;i++) assertThat(before.reserve("boundary@example.test")).isTrue();
+        assertThat(before.reserve("boundary@example.test")).isFalse();
+        var after=new VerificationMailQuota(db,Clock.fixed(Instant.parse("2026-10-11T15:00:00Z"),ZoneOffset.UTC),transactions);
+        for(int i=0;i<5;i++) assertThat(after.reserve("boundary@example.test")).isTrue();
+        assertThat(after.reserve("boundary@example.test")).isFalse();
+        assertThat(db.queryForList("SELECT attempts FROM verification_mail_limits ORDER BY limit_day",Integer.class))
+                .containsExactly(5,5);
+    }
+    @Test void concurrentRecipientRequestsCannotReserveMoreThanFiveSlots() throws Exception {
+        var quota=new VerificationMailQuota(db,clock,transactions);
+        var start=new java.util.concurrent.CountDownLatch(1);
+        try(var executor=java.util.concurrent.Executors.newFixedThreadPool(6)) {
+            List<java.util.concurrent.Future<Boolean>> results=new ArrayList<>();
+            for(int i=0;i<12;i++) results.add(executor.submit(()->{
+                start.await(); return quota.reserve("concurrent@example.test");
+            }));
+            start.countDown();
+            int allowed=0;
+            for(var result:results) if(result.get(15,java.util.concurrent.TimeUnit.SECONDS)) allowed++;
+            assertThat(allowed).isEqualTo(5);
+        }
+        assertThat(db.queryForObject("SELECT attempts FROM verification_mail_limits",Integer.class)).isEqualTo(5);
     }
     @Test void unsubscribeCancelsQueuedItemsAndOwnerIsolationHidesSettings() {
         JobPosting job=posting("Example",JobPostingStatus.OPEN,clock.instant().minusSeconds(30));

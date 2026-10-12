@@ -54,6 +54,17 @@ jobs:
         working-directory: frontend
       - run: npm run check
         working-directory: frontend
+  ocr:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      # Contract tests use a fake engine; the real models are exercised when infra/ocr.Dockerfile is built.
+      - run: python -m pip install -r ocr-service/requirements-test.txt
+      - run: python -m pytest ocr-service/test_app.py -q
   collector:
     runs-on: ubuntu-latest
     timeout-minutes: 5

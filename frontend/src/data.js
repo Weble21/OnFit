@@ -1,13 +1,19 @@
 ﻿// Demo profile, form choices and the keyword comparison behind free-text JD analysis.
 export const sampleProfile = {
-  types: ['클라우드', '핀테크'], companies: '모노랩, 오르빗',
-  role: '백엔드 개발자', location: '서울', department: '플랫폼 개발팀', career: '신입', experiences: [],
+  types: ['IT/플랫폼', '금융/핀테크'], companies: '모노랩, 오르빗',
+  roles: ['백엔드 개발자'], location: '서울', career: '신입', experiences: [],
   projects: [{ name: '나만의 채용 추천 서비스', description: '사용자 프로필과 공고를 비교하는 추천 서비스를 개발했습니다. Spring Boot API와 PostgreSQL 데이터 모델을 설계하고 Docker로 AWS에 배포했습니다.', stack: 'Java, Spring Boot, PostgreSQL, Docker, AWS' }],
 };
 // Server scoring compares role and region names exactly, so these must cover the seed postings' values.
 export const roles = ['백엔드 개발자', '프론트엔드 개발자', '모바일 개발자', '데이터 엔지니어', '데이터 분석가', 'AI 엔지니어', 'DevOps 엔지니어', '보안 엔지니어', 'QA 엔지니어', '게임 개발자', '로봇 개발자', '기타'];
-// Posting industry values must be covered by the profile's interest options.
-export const industries = ['클라우드', '핀테크', '모빌리티', '이커머스', '헬스케어', '에듀테크', '게임', '물류', '보안', '미디어', '여행', '에너지', '제조', '프롭테크', '애그리테크', '로보틱스', '인슈어테크', '소셜', '리테일'];
+// Profile interest categories. Every posting industry must fall into one of them through industryGroup.
+export const industries = ['금융/핀테크', '이커머스/리테일', '모빌리티', '헬스케어', '에듀테크', '게임', '물류', '미디어/콘텐츠', '여행', '에너지', '제조', '프롭테크', '애그리테크', '로보틱스', '보험/인슈어테크', '소셜/커뮤니티', 'IT/플랫폼', '공공/국방'];
+// Posting industry values (seed data, older browser settings) that are named differently from the categories.
+const industryGroups = {
+  '핀테크': '금융/핀테크', '이커머스': '이커머스/리테일', '리테일': '이커머스/리테일', '미디어': '미디어/콘텐츠',
+  '인슈어테크': '보험/인슈어테크', '소셜': '소셜/커뮤니티', '클라우드': 'IT/플랫폼', '보안': 'IT/플랫폼',
+};
+export const industryGroup = value => industryGroups[value] || value;
 export const regions = ['서울', '경기', '인천', '부산', '대구', '광주', '대전', '울산', '세종', '강원', '충북', '충남', '전북', '전남', '경북', '경남', '제주'];
 export const knownSkills = ['Java', 'JavaScript', 'TypeScript', 'Spring Boot', 'PostgreSQL', 'MySQL', 'Python', 'FastAPI', 'Docker', 'AWS', 'Redis', 'React', 'SQL', 'CSS', 'Git', 'Kubernetes', 'Node.js', 'Spark', 'MongoDB'];
 // Copy of backend/src/main/resources/skill-aliases.json; tests/skills.test.mjs fails when they drift apart.

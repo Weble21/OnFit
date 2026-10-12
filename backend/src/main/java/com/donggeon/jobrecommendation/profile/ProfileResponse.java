@@ -5,6 +5,7 @@ import java.time.LocalDate;
 import java.util.List;
 
 import com.donggeon.jobrecommendation.domain.Certificate;
+import com.donggeon.jobrecommendation.domain.CertificateCategory;
 import com.donggeon.jobrecommendation.domain.Experience;
 import com.donggeon.jobrecommendation.domain.Project;
 import com.donggeon.jobrecommendation.domain.Skill;
@@ -37,9 +38,9 @@ public record ProfileResponse(
         );
     }
 
-    public record CertificateView(Long id, String name, String issuer, LocalDate acquiredOn, String score) {
+    public record CertificateView(Long id, String name, CertificateCategory category, LocalDate acquiredOn, String score) {
         static CertificateView from(Certificate certificate) {
-            return new CertificateView(certificate.getId(), certificate.getName(), certificate.getIssuer(),
+            return new CertificateView(certificate.getId(), certificate.getName(), certificate.getCategory(),
                     certificate.getAcquiredOn(), certificate.getScore());
         }
     }
