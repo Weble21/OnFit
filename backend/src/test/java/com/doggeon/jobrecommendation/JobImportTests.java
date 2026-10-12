@@ -14,6 +14,8 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import com.donggeon.jobrecommendation.ingestion.JobImportService;
+import jakarta.persistence.EntityManager;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.context.WebApplicationContext;
 
@@ -28,6 +30,8 @@ import org.springframework.web.context.WebApplicationContext;
 class JobImportTests {
     @Autowired WebApplicationContext context;
     @Autowired JdbcTemplate jdbc;
+    @Autowired JobImportService importer;
+    @Autowired EntityManager entities;
     MockMvc mvc;
     @BeforeEach void setup() { mvc = MockMvcBuilders.webAppContextSetup(context).build(); }
 
@@ -86,5 +90,19 @@ class JobImportTests {
                 .content(request("fixture", "https://jobs.example.test/1", "2026-09-28T01:00:00Z", "OPEN", "2026-09-27")))
                 .andExpect(status().isCreated()).andExpect(jsonPath("$.job.status").value("EXPIRED"));
         mvc.perform(get("/api/jobs?size=100")).andExpect(jsonPath("$.totalElements").value(36));
+    }
+
+    @Test void deadlineExpiryCreatesRevisionAndRemovesOpenPosting() throws Exception {
+        String body = request("fixture", "https://jobs.example.test/1", "2026-09-28T01:00:00Z", "OPEN", "2026-09-30");
+        mvc.perform(post("/api/admin/jobs/import").contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isCreated()).andExpect(jsonPath("$.job.status").value("OPEN"));
+        entities.flush();
+        jdbc.update("UPDATE job_postings SET deadline = DATE '2026-09-28' WHERE source_name='fixture'");
+        entities.clear();
+        assertThat(importer.expireDue("fixture")).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT status FROM job_postings WHERE source_name='fixture'", String.class))
+                .isEqualTo("EXPIRED");
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM job_source_revisions WHERE job_id = "
+                + "(SELECT id FROM job_postings WHERE source_name='fixture')", Long.class)).isEqualTo(2);
     }
 }

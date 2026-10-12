@@ -50,7 +50,7 @@ class PostgresRegressionTests {
             """;
 
     @ParameterizedTest(name = "DB at V{0} upgrades and passes core APIs")
-    @ValueSource(ints = {0, 1, 2, 3, 4, 5, 6, 7, 8})
+    @ValueSource(ints = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9})
     void freshAndHistoricalDatabasesPassMigrationAndApis(int previousVersion) throws Exception {
         String schema = "regression_v" + previousVersion;
         var admin = new JdbcTemplate(new DriverManagerDataSource(
@@ -85,7 +85,7 @@ class PostgresRegressionTests {
             var mvc = MockMvcBuilders.webAppContextSetup((WebApplicationContext) context)
                     .addFilters(context.getBean(com.donggeon.jobrecommendation.config.RequestLogFilter.class)).build();
             assertThat(jdbc.queryForList("SELECT version FROM flyway_schema_history WHERE success ORDER BY installed_rank",
-                    String.class)).containsExactly("1", "2", "3", "4", "5", "6", "7", "8", "9");
+                    String.class)).containsExactly("1", "2", "3", "4", "5", "6", "7", "8", "9", "10");
             assertThat(context.getBean(Flyway.class).migrate().migrationsExecuted).isZero();
             assertThat(context.getBean(JobSeedService.class).seed()).isZero();
             assertThat(context.getBean(JobSeedService.class).seed()).isZero();

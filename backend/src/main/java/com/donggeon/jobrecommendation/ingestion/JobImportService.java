@@ -40,6 +40,21 @@ public class JobImportService {
     public record Result(JobResponse job, boolean created, boolean changed) { }
 
     @Transactional
+    public int expireDue(String sourceName) {
+        requireEnabled();
+        var due = jobs.findBySourceNameAndStatusAndDeadlineBefore(
+                sourceName, JobPostingStatus.OPEN, LocalDate.now(clock));
+        for (var job : due) {
+            ingest(new JobImportRequest(sourceName, job.getExternalId(), job.getSourceUrl(), clock.instant(),
+                    new JobImportRequest.Content(job.getCompanyName(), job.getTitle(), job.getRoleName(),
+                            job.getIndustry(), job.getCompanySize(), job.getCareerLevel(), job.getDescription(),
+                            job.getResponsibilities(), job.getLocation(), job.getDeadline(), JobPostingStatus.EXPIRED,
+                            List.copyOf(job.getRequiredSkills()), List.copyOf(job.getPreferredSkills()))));
+        }
+        return due.size();
+    }
+
+    @Transactional
     public Result ingest(JobImportRequest request) {
         requireEnabled();
         var policy = policies.getSources().get(request.sourceName());

@@ -192,4 +192,6 @@ Invoke-RestMethod -Method Post http://localhost:8080/api/recommendations
 
 공고 응답에는 `origin`(SYNTHETIC/REAL/LEGACY), 출처·원문 URL·최초 수집·최근 확인 시각도 포함됩니다.
 V8은 기존 시드를 구분하고 실제 공고의 중복·변경 이력을 보존합니다.
+V10은 관심 기업 이메일 구독, 인증번호 해시, 중복 발송 이력과 배치 잠금을 추가합니다.
+한국 시간 오전 11시·오후 5시의 Python 수집·알림 실행 설정은 [수집기 안내](../collector/README.md)를 참고하세요.
 [등록 계약](../docs/job-ingestion.md)과 [검증 결과](../docs/roadmap.md)를 참고하세요.

@@ -1,0 +1,45 @@
+name: Collect jobs and send new recommendations
+
+on:
+  schedule:
+    # UTC 02:00 / 08:00 = Asia/Seoul 11:00 / 17:00.
+    - cron: '0 2,8 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: onfit-job-alerts
+  cancel-in-progress: false
+
+jobs:
+  collect:
+    # Set this repository variable only after backend, approvals and Secrets are ready.
+    if: vars.ONFIT_JOB_ALERTS_ENABLED == 'true'
+    environment: job-alerts
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Validate collector regressions
+        run: python -m unittest discover -s collector -p 'test_*.py' -v
+      - name: Collect approved sources and notify subscribers
+        env:
+          ONFIT_BACKEND_URL: ${{ vars.ONFIT_BACKEND_URL }}
+          ONFIT_OIDC_ISSUER: ${{ vars.ONFIT_OIDC_ISSUER }}
+          ONFIT_COLLECTOR_CLIENT_ID: ${{ vars.ONFIT_COLLECTOR_CLIENT_ID }}
+          ONFIT_COLLECTOR_CLIENT_SECRET: ${{ secrets.ONFIT_COLLECTOR_CLIENT_SECRET }}
+          ONFIT_SARAMIN_API_KEY: ${{ secrets.ONFIT_SARAMIN_API_KEY }}
+          ONFIT_SARAMIN_PERMISSION_EVIDENCE: ${{ vars.ONFIT_SARAMIN_PERMISSION_EVIDENCE }}
+          ONFIT_WANTED_CLIENT_ID: ${{ secrets.ONFIT_WANTED_CLIENT_ID }}
+          ONFIT_WANTED_CLIENT_SECRET: ${{ secrets.ONFIT_WANTED_CLIENT_SECRET }}
+          ONFIT_WANTED_PERMISSION_EVIDENCE: ${{ vars.ONFIT_WANTED_PERMISSION_EVIDENCE }}
+          ONFIT_JOBKOREA_FEED_URL: ${{ vars.ONFIT_JOBKOREA_FEED_URL }}
+          ONFIT_JOBKOREA_FEED_TOKEN: ${{ secrets.ONFIT_JOBKOREA_FEED_TOKEN }}
+          ONFIT_JOBKOREA_PERMISSION_EVIDENCE: ${{ vars.ONFIT_JOBKOREA_PERMISSION_EVIDENCE }}
+          ONFIT_COLLECTOR_MAX_PAGES: '3'
+        run: python collector/collect.py

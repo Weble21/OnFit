@@ -1,4 +1,5 @@
 import Keycloak from 'keycloak-js';
+import { INIT_TIMEOUT_MS, REACHABILITY_TIMEOUT_MS, SESSION_HINT_KEY, assertReachable, initOptions, withTimeout } from './authInit.js';
 
 const local = ['localhost', '127.0.0.1'].includes(location.hostname);
 const settings = {
@@ -15,9 +16,25 @@ export const socialProviders = new Set(
 );
 const client = authConfigured ? new Keycloak(settings) : null;
 let initialization;
-if (client) client.onAuthLogout = () => window.dispatchEvent(new Event('onfit-auth-logout'));
+
+function hadSession() {
+  try { return localStorage.getItem(SESSION_HINT_KEY) === '1'; }
+  catch { return false; }
+}
+
+function rememberSession(signedIn) {
+  try { if (signedIn) localStorage.setItem(SESSION_HINT_KEY, '1'); else localStorage.removeItem(SESSION_HINT_KEY); }
+  catch { /* Without storage every visit simply starts signed out until the user logs in. */ }
+}
+
+if (client) {
+  client.onAuthLogout = () => {
+    rememberSession(false);
+    window.dispatchEvent(new Event('onfit-auth-logout'));
+  };
+}
 const routeKey = 'onfit.auth.returnRoute';
-const routes = new Set(['#/profile', '#/recommendations', '#/analyze', '#/favorites']);
+const routes = new Set(['#/profile', '#/recommendations', '#/analyze', '#/favorites', '#/alerts']);
 const callbackUrl = () => location.origin + location.pathname;
 
 function rememberRoute() {
@@ -36,12 +53,21 @@ function restoreRoute() {
 export function initializeAuth() {
   if (!client) return Promise.resolve(false);
   if (!initialization) {
+    // If the browser blocks third-party cookies, keycloak-js falls back to a full redirect; keep the screen.
     rememberRoute();
-    initialization = client.init({ onLoad: 'check-sso', flow: 'standard', pkceMethod: 'S256',
-      checkLoginIframe: false, redirectUri: callbackUrl() }).then(authenticated => {
-      restoreRoute();
-      return authenticated;
-    });
+    const options = initOptions({ hash: location.hash, hadSession: hadSession(), redirectUri: callbackUrl(),
+      silentCheckSsoRedirectUri: location.origin + '/silent-check-sso.html' });
+    // Only the session check talks to Keycloak during startup, so only it needs to know Keycloak is up.
+    const reachable = options.onLoad
+      ? assertReachable(`${settings.url}/realms/${settings.realm}/.well-known/openid-configuration`, REACHABILITY_TIMEOUT_MS)
+      : Promise.resolve();
+    initialization = reachable
+      .then(() => withTimeout(client.init(options), INIT_TIMEOUT_MS, 'Keycloak did not answer in time.'))
+      .then(authenticated => {
+        rememberSession(authenticated);
+        restoreRoute();
+        return authenticated;
+      });
   }
   return initialization;
 }
@@ -91,5 +117,6 @@ export function login(provider) {
 
 export function logout() {
   if (!client) return Promise.resolve();
+  rememberSession(false);
   return client.logout({ redirectUri: callbackUrl() });
 }

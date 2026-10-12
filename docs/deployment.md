@@ -25,6 +25,14 @@ Spring Security가 접근 토큰의 서명·issuer·audience·만료를 검증�
 프론트는 Keycloak `onfit-web` 공개 클라이언트로 로그인·로그아웃하고, API 요청 직전에 액세스 토큰을 갱신한다.
 토큰은 어댑터 메모리에만 두며 URL·localStorage에는 저장하지 않는다. 계정별 브라우저 설정은 issuer와 subject로 분리한다.
 Keycloak 클라이언트의 리디렉션 URI와 웹 출처를 실제 배포 주소로 제한하고, 액세스 토큰의 `aud`에 백엔드 `ONFIT_AUTH_AUDIENCE`가 포함되도록 Audience 매퍼를 설정한다.
+리디렉션 URI에는 앱 주소(`https://<앱 도메인>/`)와 함께 `https://<앱 도메인>/silent-check-sso.html`도 등록한다.
+로그인했던 브라우저는 다음 방문 때 이 페이지를 숨은 iframe으로 열어 세션을 확인하며, 등록되지 않으면 확인이 15초 뒤 실패한다.
+처음 방문하는 브라우저는 Keycloak에 요청하지 않으므로, Keycloak 장애 중에도 랜딩 화면은 열린다.
+로그인했던 브라우저는 먼저 Keycloak 연결을 확인해, 연결이 거부되면 즉시, 응답이 없으면 5초 안에 안내를 띄운다.
+
+Keycloak은 앱과 같은 사이트(등록 도메인)에 둔다. 예: 앱 `https://onfit.example.com`, Keycloak `https://auth.onfit.example.com`.
+다른 사이트에 두면 서드파티 쿠키를 막는 브라우저에서 숨은 iframe 확인이 실패한다.
+이때도 페이지가 Keycloak으로 이동하지는 않지만, 다음 방문 때 로그아웃 상태로 시작하고 로그인 버튼을 한 번 눌러야 한다(비밀번호는 다시 묻지 않는다).
 프론트 빌드 시 공개 설정 `VITE_KEYCLOAK_URL`, `VITE_KEYCLOAK_REALM`, `VITE_KEYCLOAK_CLIENT_ID`를 주입한다.
 이 값은 브라우저에 노출되므로 클라이언트 시크릿을 넣지 않는다. 외부 도메인 배포에서 값이 없으면 로그인 버튼이 비활성화된다.
 `localhost`/`127.0.0.1`에서는 개발용 Keycloak(`http://localhost:8081`, `onfit`, `onfit-web`)을 기본값으로 사용한다.

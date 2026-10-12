@@ -133,4 +133,20 @@ class ProductionSecurityTests {
         mvc.perform(get("/api/recommendations/{id}", id).header("Authorization", bob)).andExpect(status().isNotFound());
         assertThat(jdbc.queryForObject("SELECT count(*) FROM app_users WHERE email='demo@onfit.local'", Long.class)).isZero();
     }
+
+    @Test void alertSettingsAndBatchRequireOwnerAndSeparateNotificationScope() throws Exception {
+        mvc.perform(get("/api/alerts/me")).andExpect(status().isUnauthorized());
+        mvc.perform(post("/api/admin/alerts/run").header("Authorization",userToken("alice")))
+                .andExpect(status().isForbidden());
+        mvc.perform(post("/api/admin/alerts/run").header("Authorization",token("collector",issuer,
+                "onfit-test",Instant.now().plusSeconds(300),"jobs:import"))).andExpect(status().isForbidden());
+        mvc.perform(post("/api/admin/alerts/run").header("Authorization",token("collector",issuer,
+                "onfit-test",Instant.now().plusSeconds(300),"jobs:notify"))).andExpect(status().isServiceUnavailable());
+        mvc.perform(post("/api/profiles").header("Authorization",userToken("alice"))
+                .contentType(MediaType.APPLICATION_JSON).content(PROFILE)).andExpect(status().isCreated());
+        mvc.perform(put("/api/alerts/me").header("Authorization",userToken("alice"))
+                .contentType(MediaType.APPLICATION_JSON).content("{\"enabled\":false,\"companies\":[\"Example\"],\"minScore\":60}"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.companies[0]").value("Example"));
+        mvc.perform(get("/api/alerts/me").header("Authorization",userToken("bob"))).andExpect(status().isNotFound());
+    }
 }

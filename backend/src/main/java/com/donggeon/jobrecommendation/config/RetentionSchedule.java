@@ -4,13 +4,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.annotation.Scheduled;
 
 import com.donggeon.jobrecommendation.recommendation.RecommendationRetention;
 
 @Configuration(proxyBeanMethods = false)
-@EnableScheduling
 @ConditionalOnProperty(name = "onfit.recommendation.cleanup-enabled", havingValue = "true", matchIfMissing = true)
 public class RetentionSchedule {
     private static final Logger log = LoggerFactory.getLogger(RetentionSchedule.class);

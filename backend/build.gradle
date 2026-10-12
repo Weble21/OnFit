@@ -18,6 +18,7 @@ repositories {
 }
 
 dependencies {
+	implementation 'org.springframework.boot:spring-boot-starter-mail'
 	implementation 'org.springframework.boot:spring-boot-starter-actuator'
 	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
 	implementation 'org.springframework.boot:spring-boot-starter-flyway'
@@ -52,7 +53,14 @@ tasks.named('bootRun') {
 		def envFile = file('../.env')
 		if (!envFile.isFile()) return
 		def allowed = ['DB_URL', 'DB_USERNAME', 'DB_PASSWORD',
-			'ONFIT_AUTH_ISSUER', 'ONFIT_AUTH_AUDIENCE'] as Set
+			'ONFIT_AUTH_ISSUER', 'ONFIT_AUTH_AUDIENCE', 'ONFIT_INGESTION_ENABLED',
+			'ONFIT_WORK24_ENABLED', 'ONFIT_WORK24_AUTH_KEY',
+			'ONFIT_WORK24_PERMISSION_EVIDENCE', 'ONFIT_WORK24_KEYWORD',
+			'ONFIT_WORK24_MAX_PAGES', 'ONFIT_INGESTION_ALERT_URL',
+			'ONFIT_ALERTS_ENABLED', 'ONFIT_MAIL_FROM', 'ONFIT_APP_URL',
+			'ONFIT_SMTP_HOST', 'ONFIT_SMTP_PORT', 'ONFIT_SMTP_USERNAME', 'ONFIT_SMTP_PASSWORD',
+			'ONFIT_SARAMIN_PERMISSION_EVIDENCE', 'ONFIT_WANTED_PERMISSION_EVIDENCE',
+			'ONFIT_JOBKOREA_PERMISSION_EVIDENCE', 'ONFIT_JOBKOREA_TERMS_URL'] as Set
 		envFile.eachLine('UTF-8') { line, number ->
 			def entry = line.trim()
 			if (!entry || entry.startsWith('#')) return

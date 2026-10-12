@@ -1,4 +1,16 @@
 spring:
+  mail:
+    host: ${ONFIT_SMTP_HOST:}
+    port: ${ONFIT_SMTP_PORT:587}
+    username: ${ONFIT_SMTP_USERNAME:}
+    password: ${ONFIT_SMTP_PASSWORD:}
+    properties:
+      mail.smtp.auth: true
+      mail.smtp.starttls.enable: true
+      mail.smtp.starttls.required: true
+      mail.smtp.connectiontimeout: 5000
+      mail.smtp.timeout: 10000
+      mail.smtp.writetimeout: 10000
   servlet:
     multipart:
       max-file-size: 10MB
@@ -22,6 +34,39 @@ logging:
   pattern:
     level: '%5p [request_id=%X{requestId:-}]'
 onfit:
+  alerts:
+    enabled: ${ONFIT_ALERTS_ENABLED:false}
+    mail-from: ${ONFIT_MAIL_FROM:}
+    app-url: ${ONFIT_APP_URL:http://localhost:5173}
+  ingestion:
+    enabled: ${ONFIT_INGESTION_ENABLED:false}
+    sources:
+      saramin:
+        allowed-host: www.saramin.co.kr
+        terms-url: https://oapi.saramin.co.kr/guide/info
+        reviewed-on: 2026-10-12
+        permission-evidence: ${ONFIT_SARAMIN_PERMISSION_EVIDENCE:}
+      wanted:
+        allowed-host: www.wanted.co.kr
+        terms-url: https://openapi.wanted.jobs/
+        reviewed-on: 2026-10-12
+        permission-evidence: ${ONFIT_WANTED_PERMISSION_EVIDENCE:}
+      jobkorea:
+        allowed-host: www.jobkorea.co.kr
+        terms-url: ${ONFIT_JOBKOREA_TERMS_URL:}
+        reviewed-on: 2026-10-12
+        permission-evidence: ${ONFIT_JOBKOREA_PERMISSION_EVIDENCE:}
+      work24:
+        allowed-host: www.work24.go.kr
+        terms-url: https://www.work24.go.kr/cm/e/a/0110/selectOpenApiSvcInfo.do
+        reviewed-on: 2026-10-12
+        permission-evidence: ${ONFIT_WORK24_PERMISSION_EVIDENCE:}
+    work24:
+      enabled: ${ONFIT_WORK24_ENABLED:false}
+      auth-key: ${ONFIT_WORK24_AUTH_KEY:}
+      keyword: ${ONFIT_WORK24_KEYWORD:개발자}
+      max-pages: ${ONFIT_WORK24_MAX_PAGES:2}
+      alert-url: ${ONFIT_INGESTION_ALERT_URL:}
   extraction:
     ocr-command: ${ONFIT_OCR_COMMAND:tesseract}
     ocr-enabled: ${ONFIT_OCR_ENABLED:true}

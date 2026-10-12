@@ -7,6 +7,7 @@ import com.donggeon.jobrecommendation.domain.UserProfile;
 
 public interface UserProfileRepository extends JpaRepository<UserProfile, Long> {
     Optional<UserProfile> findByUserEmail(String email);
+    Optional<UserProfile> findByUserId(Long userId);
 
     boolean existsByUserId(Long userId);
 }

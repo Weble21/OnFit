@@ -17,6 +17,7 @@ const loadAnalyzePage = () => import('./pages/AnalyzePage.jsx');
 const Recommendations = lazy(() => loadRecommendations().then(m => ({ default: m.Recommendations })));
 const ProfilePage = lazy(() => loadProfilePage().then(m => ({ default: m.ProfilePage })));
 const AnalyzePage = lazy(() => loadAnalyzePage().then(m => ({ default: m.AnalyzePage })));
+const AlertsPage = lazy(() => import('./pages/AlertsPage.jsx').then(m => ({ default: m.AlertsPage })));
 
 const ROUTES = ['/', ...NAV_ITEMS.map(([path]) => path)];
 const IDLE = { status: 'idle', jobs: [], error: '' };
@@ -172,6 +173,8 @@ export function App({ authenticated = false, authError = '' }) {
   let page = null;
   if (route === '/profile') {
     page = <ProfilePage key={profileVersion} profile={profile} onSave={handleSaveProfile} onToast={showToast} />;
+  } else if (route === '/alerts') {
+    page = <AlertsPage />;
   } else if (route === '/analyze') {
     page = <AnalyzePage profile={profile} analysis={analysis} />;
   } else if (route === '/recommendations' || route === '/favorites') {

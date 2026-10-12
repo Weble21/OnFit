@@ -42,6 +42,12 @@ public class JobService {
                 JobPostingStatus.OPEN, LocalDate.now(clock));
     }
 
+    public List<JobPosting> alertCandidates(List<String> companies) {
+        if(companies.isEmpty()) return List.of();
+        return jobs.findAlertCandidates(companies.stream().map(name->name.toLowerCase(java.util.Locale.ROOT)).toList(),
+                LocalDate.now(clock));
+    }
+
     @Transactional(readOnly = true)
     public JobResponse get(Long id) {
         return jobs.findById(id).map(JobResponse::from)

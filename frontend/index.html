@@ -14,7 +14,14 @@
   // The build puts the landing page in #app; hide it when the URL opens another screen ("#/profile") until React renders.
   if (location.hash.length > 2) document.documentElement.classList.add('deep-link');
 </script>
-<style>.deep-link .prerendered { visibility: hidden; }</style>
+<style>
+  .deep-link .prerendered { visibility: hidden; }
+  /* Until React renders (it may first check the login session): a quiet loading line instead of a blank page. */
+  #app:empty::before, .deep-link #app:has(> .prerendered)::before {
+    content: '불러오는 중…'; position: fixed; inset: 0; display: grid; place-items: center;
+    background: #f8f7f3; color: #818276; font: 14px "Noto Sans KR", "Malgun Gothic", sans-serif;
+  }
+</style>
 <script type="module" src="/src/main.jsx"></script>
 </head>
 <!-- #app is the React root; the modal renders into #modal-root so #app can be made inert behind it. -->

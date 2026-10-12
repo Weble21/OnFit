@@ -29,6 +29,10 @@ async function request(path, options = {}) {
 }
 
 export const getProfile = () => request('/profiles/me');
+export const getAlerts = () => request('/alerts/me');
+export const saveAlerts = settings => request('/alerts/me', { method: 'PUT', body: JSON.stringify(settings) });
+export const requestAlertEmail = email => request('/alerts/me/email', { method: 'POST', body: JSON.stringify({ email }) });
+export const verifyAlertEmail = code => request('/alerts/me/verify', { method: 'POST', body: JSON.stringify({ code }) });
 export async function saveProfile(profile) {
   const body = JSON.stringify(toProfileRequest(profile));
   // Updating is the common case; only the first save needs to create the profile.

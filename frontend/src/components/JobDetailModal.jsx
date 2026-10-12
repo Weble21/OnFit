@@ -15,7 +15,8 @@ export function JobDetailModal({ job, saved, onToggleFavorite, onClose }) {
         {job.origin === 'REAL' && <p>출처: {job.sourceName} · 상태: {job.status}<br />
           최초 수집: {job.collectedAt ? new Date(job.collectedAt).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' }) : '미확인'}<br />
           최근 확인: {job.lastSeenAt ? new Date(job.lastSeenAt).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' }) : '미확인'}<br />
-          {job.sourceUrl && <a href={job.sourceUrl} target="_blank" rel="noopener noreferrer">원문 공고 보기</a>}</p>}
+          {job.sourceUrl && <a href={job.sourceUrl} target="_blank" rel="noopener noreferrer">{job.sourceName === 'work24' ? '채용정보 제공사이트로 이동' : '원문 공고 보기'}</a>}</p>}
+        {job.sourceName === 'work24' && <p className="source-attribution"><a href="https://www.work24.go.kr" target="_blank" rel="noopener noreferrer"><img src="https://www.work24.go.kr/cm/static/images/h1_ci.png" alt="고용24" height="32" /></a><br />본 자료는 고용노동부 고용24(www.work24.go.kr)에서 제공된 정보이며, 무단복제 및 배포를 금지합니다.</p>}
         <div className="detail-score">
           <div><small>서버 계산 추천 점수</small><strong>{job.score}<span>점</span></strong></div>
           <p>필수 35% · 우대 20% · 의미 20%<br />경험 15% · 희망조건 10%</p>

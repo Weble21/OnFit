@@ -1,8 +1,32 @@
 import test from 'node:test';
+import { getAlerts, saveAlerts, requestAlertEmail, verifyAlertEmail } from '../src/api.js';
 import assert from 'node:assert/strict';
 import { toProfileRequest, fromProfileResponse, toDisplayJob, saveProfile, extractJobText, setAccessTokenProvider, getProfile } from '../src/api.js';
 
 setAccessTokenProvider(async () => 'test-access-token');
+
+test('alert email and consent use authenticated owner endpoints and preserve error details', async () => {
+  const original = globalThis.fetch;
+  const calls = [];
+  globalThis.fetch = async (url, options) => {
+    assert.equal(options.headers.Authorization, 'Bearer test-access-token');
+    calls.push([url, options.method || 'GET', options.body ? JSON.parse(options.body) : null]);
+    return Response.json({ enabled: false, verified: false, companies: [] });
+  };
+  try {
+    await getAlerts();
+    await requestAlertEmail('owner@example.test');
+    await verifyAlertEmail('123456');
+    await saveAlerts({ enabled: false, companies: ['Example'], minScore: 60 });
+    assert.deepEqual(calls.map(call => call.slice(0, 2)), [
+      ['/api/alerts/me', 'GET'], ['/api/alerts/me/email', 'POST'],
+      ['/api/alerts/me/verify', 'POST'], ['/api/alerts/me', 'PUT'],
+    ]);
+    assert.deepEqual(calls[1][2], { email: 'owner@example.test' });
+    globalThis.fetch = async () => Response.json({ detail: '인증번호가 만료되었습니다.' }, { status: 400 });
+    await assert.rejects(verifyAlertEmail('123456'), { message: '인증번호가 만료되었습니다.', status: 400 });
+  } finally { globalThis.fetch = original; }
+});
 
 test('private API sends a bearer token and blocks calls without authentication', async () => {
   const original = globalThis.fetch;

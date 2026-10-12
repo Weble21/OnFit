@@ -17,6 +17,7 @@ export const NAV_ITEMS = [
   ['/analyze', 'file', '공고 적합도 분석'],
   ['/favorites', 'bookmark', '관심 기업'],
   ['/profile', 'user', '내 프로필'],
+  ['/alerts', 'bookmark', '공고 이메일 알림'],
 ];
 
 export function Shell({ route, favoriteCount, userName, userPicture, onLogout, children }) {

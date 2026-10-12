@@ -32,6 +32,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/actuator/health", "/actuator/health/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/jobs", "/api/jobs/*").permitAll()
+                        .requestMatchers("/api/admin/alerts/run").hasAuthority("SCOPE_jobs:notify")
                         .requestMatchers("/api/admin/**").hasAuthority("SCOPE_jobs:import")
                         .requestMatchers("/api/**").authenticated()
                         .anyRequest().denyAll())

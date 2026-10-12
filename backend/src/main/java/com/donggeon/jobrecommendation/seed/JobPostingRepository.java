@@ -15,11 +15,15 @@ import com.donggeon.jobrecommendation.domain.JobPosting;
 import com.donggeon.jobrecommendation.domain.JobPostingStatus;
 
 public interface JobPostingRepository extends JpaRepository<JobPosting, Long> {
+    @Query("select j from JobPosting j where j.origin = com.donggeon.jobrecommendation.domain.JobOrigin.REAL and j.status = com.donggeon.jobrecommendation.domain.JobPostingStatus.OPEN and lower(j.companyName) in :companies and (j.deadline is null or j.deadline >= :today) order by j.id")
+    List<JobPosting> findAlertCandidates(List<String> companies, LocalDate today);
     @Query("select j.seedKey from JobPosting j where j.seedKey is not null")
     Set<String> findAllSeedKeys();
     long countBySeedKeyIsNotNull();
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     Optional<JobPosting> findBySourceNameAndExternalId(String sourceName, String externalId);
+    List<JobPosting> findBySourceNameAndStatusAndDeadlineBefore(
+            String sourceName, JobPostingStatus status, LocalDate deadline);
     @Query("select j from JobPosting j where j.status = :status and (j.deadline is null or j.deadline >= :deadline) order by j.id")
     List<JobPosting> findByStatusAndDeadlineGreaterThanEqualOrderByIdAsc(
             JobPostingStatus status, LocalDate deadline);
