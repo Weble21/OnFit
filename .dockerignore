@@ -1,0 +1,16 @@
+.git
+**/.gradle
+**/build
+**/node_modules
+**/dist
+**/dist-ssr
+**/.venv
+**/.cache
+**/.preview
+**/__pycache__
+**/.pytest_cache
+**/.env
+**/.env.*
+logs
+backups
+bin

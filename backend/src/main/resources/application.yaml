@@ -1,0 +1,50 @@
+spring:
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 11MB
+  application:
+    name: job-recommendation-backend
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/onfit}
+    username: ${DB_USERNAME:onfit}
+    password: ${DB_PASSWORD:onfit_local}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      # Load lazy skill/evidence lists for many jobs in one IN query instead of one query each.
+      hibernate.default_batch_fetch_size: 100
+  flyway:
+    enabled: true
+logging:
+  pattern:
+    level: '%5p [request_id=%X{requestId:-}]'
+onfit:
+  extraction:
+    ocr-enabled: ${ONFIT_OCR_ENABLED:true}
+    # paddle: private PaddleOCR service (ocr-service/), tesseract: local command below.
+    ocr-engine: ${ONFIT_OCR_ENGINE:paddle}
+    ocr-command: ${ONFIT_OCR_COMMAND:tesseract}
+    paddle-url: ${ONFIT_OCR_URL:http://127.0.0.1:8002/v1/ocr}
+    paddle-token: ${ONFIT_OCR_TOKEN:}
+    paddle-timeout-ms: ${ONFIT_OCR_TIMEOUT_MS:60000}
+  ai:
+    enabled: ${ONFIT_AI_ENABLED:false}
+    url: ${ONFIT_AI_URL:http://127.0.0.1:8001/v1/semantic-score}
+    token: ${ONFIT_AI_TOKEN:}
+    timeout-ms: ${ONFIT_AI_TIMEOUT_MS:5000}
+    include-project-descriptions: ${ONFIT_AI_INCLUDE_PROJECT_DESCRIPTIONS:false}
+  # Claude posting structuring and role analysis in the same private AI service (ai-service/job_llm.py).
+  # Enabling it sends confirmed posting text and masked profile items to the Anthropic API.
+  llm:
+    enabled: ${ONFIT_LLM_ENABLED:false}
+    base-url: ${ONFIT_LLM_URL:http://127.0.0.1:8001}
+    timeout-ms: ${ONFIT_LLM_TIMEOUT_MS:180000}
+  recommendation:
+    retention-days: ${ONFIT_RECOMMENDATION_RETENTION_DAYS:30}
+    cleanup-enabled: ${ONFIT_RECOMMENDATION_CLEANUP_ENABLED:true}
+  # Deadlines are judged in this zone. Set ONFIT_FIXED_DATE (yyyy-MM-dd) to pin "today" for demos.
+  time-zone: ${ONFIT_TIME_ZONE:Asia/Seoul}
+  fixed-date: ${ONFIT_FIXED_DATE:}

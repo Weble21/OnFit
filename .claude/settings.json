@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(Remove-Item -Confirm:$false ../backend/src/main/java/com/donggeon/jobrecommendation/extraction/JobTextExtractionController.java)",
+      "Bash(./gradlew compileJava compileTestJava --console=plain -q)",
+      "PowerShell(Remove-Item -Confirm:$false ../tests/matching.test.mjs)",
+      "Bash(npm test *)",
+      "Bash(npm run *)"
+    ]
+  }
+}

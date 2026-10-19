@@ -1,0 +1,178 @@
+package com.donggeon.jobrecommendation;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import java.util.List;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.web.context.WebApplicationContext;
+
+@SpringBootTest
+@ActiveProfiles("test")
+class ProfileApiTests {
+
+    @Autowired
+    private WebApplicationContext context;
+
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
+
+    private MockMvc mvc;
+
+    @BeforeEach
+    void setUp() {
+        mvc = MockMvcBuilders.webAppContextSetup(context).build();
+    }
+
+    @Test
+    void createsReadsAndReplacesDemoProfile() throws Exception {
+        mvc.perform(get("/api/profiles/me"))
+                .andExpect(status().isNotFound());
+
+        String original = """
+                {
+                  "targetRoles": ["백엔드 개발자"],
+                  "preferredLocations": ["서울"],
+                  "skills": ["Java", "Spring Boot", "PostgreSQL", "AWS", "Docker"],
+                  "certificates": [
+                    {"name":"정보처리기사", "category":"TECHNICAL", "acquiredOn":"2024-06-14", "score":"최종합격"},
+                    {"name":" ADsP ", "category":"OTHER", "score":""}
+                  ],
+                  "projects": [{"name":"추천 서비스", "description":"API 개발", "techStack":"Java, Spring Boot"}],
+                  "experiences": [{"companyName":"테스트 기업", "roleName":"인턴", "startedOn":"2025-01-01"}]
+                }
+                """;
+        mvc.perform(post("/api/profiles").contentType(MediaType.APPLICATION_JSON).content(original))
+                .andExpect(status().isCreated())
+                .andExpect(header().string("Location", "/api/profiles/me"))
+                .andExpect(jsonPath("$.userId").isNumber())
+                .andExpect(jsonPath("$.skills[1]").value("Spring Boot"))
+                .andExpect(jsonPath("$.projects[0].name").value("추천 서비스"));
+
+        mvc.perform(get("/api/profiles/me"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.targetRoles[0]").value("백엔드 개발자"))
+                .andExpect(jsonPath("$.certificates[0].name").value("정보처리기사"))
+                .andExpect(jsonPath("$.certificates[0].category").value("TECHNICAL"))
+                .andExpect(jsonPath("$.certificates[0].acquiredOn").value("2024-06-14"))
+                .andExpect(jsonPath("$.certificates[0].score").value("최종합격"))
+                // Names are trimmed and blank optional fields are stored as NULL.
+                .andExpect(jsonPath("$.certificates[1].name").value("ADsP"))
+                .andExpect(jsonPath("$.certificates[1].category").value("OTHER"))
+                .andExpect(jsonPath("$.certificates[1].score").value(org.hamcrest.Matchers.nullValue()));
+        assertEquals(1, jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM certificates WHERE score IS NULL AND acquired_on IS NULL",
+                Integer.class));
+
+        mvc.perform(post("/api/profiles").contentType(MediaType.APPLICATION_JSON).content(original))
+                .andExpect(status().isConflict());
+
+        String replacement = """
+                {
+                  "targetRoles": ["서버 개발자"],
+                  "preferredLocations": ["판교"],
+                  "skills": ["SpringBoot", "Postgres", "Docker"],
+                  "certificates": []
+                }
+                """;
+        mvc.perform(put("/api/profiles/me").contentType(MediaType.APPLICATION_JSON).content(replacement))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.skills.length()").value(3))
+                .andExpect(jsonPath("$.projects.length()").value(0))
+                .andExpect(jsonPath("$.experiences.length()").value(0));
+
+        List<String> normalized = jdbcTemplate.queryForList(
+                "SELECT normalized_name FROM skills ORDER BY id", String.class);
+        assertEquals(List.of("spring boot", "postgresql", "docker"), normalized);
+        assertEquals(Boolean.TRUE, jdbcTemplate.queryForObject(
+                "SELECT updated_at > created_at FROM user_profiles", Boolean.class));
+
+        mvc.perform(get("/api/profiles/me"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.targetRoles[0]").value("서버 개발자"))
+                .andExpect(jsonPath("$.skills[0]").value("SpringBoot"));
+
+        String duplicateSkills = """
+                {
+                  "targetRoles": ["백엔드 개발자"],
+                  "preferredLocations": [],
+                  "skills": ["PostgreSQL", "Postgres"],
+                  "certificates": []
+                }
+                """;
+        mvc.perform(put("/api/profiles/me").contentType(MediaType.APPLICATION_JSON).content(duplicateSkills))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").value("중복된 기술입니다: Postgres"));
+        assertEquals(3, jdbcTemplate.queryForObject("SELECT COUNT(*) FROM skills", Integer.class));
+    }
+
+    @Test
+    void rejectsMissingFieldsAndInvalidDates() throws Exception {
+        String noRole = """
+                {"targetRoles": [], "preferredLocations": [], "skills": [], "certificates": []}
+                """;
+        mvc.perform(post("/api/profiles").contentType(MediaType.APPLICATION_JSON).content(noRole))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").value("희망 직무 입력값을 확인해 주세요."));
+        mvc.perform(post("/api/profiles").contentType(MediaType.APPLICATION_JSON).content("{}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").value(org.hamcrest.Matchers.not(
+                        org.hamcrest.Matchers.containsString("targetRoles"))));
+        String noProjectName = """
+                {"targetRoles":["백엔드 개발자"],"preferredLocations":[],"skills":[],"certificates":[],
+                 "projects":[{"name":""}]}
+                """;
+        mvc.perform(post("/api/profiles").contentType(MediaType.APPLICATION_JSON).content(noProjectName))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").value("프로젝트 1번의 이름 입력값을 확인해 주세요."));
+        String noCertificateName = """
+                {"targetRoles":["백엔드 개발자"],"preferredLocations":[],"skills":[],
+                 "certificates":[{"name":" ", "category":"LANGUAGE", "score":"900"}]}
+                """;
+        mvc.perform(post("/api/profiles").contentType(MediaType.APPLICATION_JSON).content(noCertificateName))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").value("자격증 1번의 이름 입력값을 확인해 주세요."));
+        String noCertificateCategory = """
+                {"targetRoles":["백엔드 개발자"],"preferredLocations":[],"skills":[],
+                 "certificates":[{"name":"TOEIC", "score":"900"}]}
+                """;
+        mvc.perform(post("/api/profiles").contentType(MediaType.APPLICATION_JSON).content(noCertificateCategory))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").value("자격증 1번의 종류 입력값을 확인해 주세요."));
+        mvc.perform(post("/api/profiles").contentType(MediaType.APPLICATION_JSON)
+                        .content(noCertificateCategory.replace("\"TOEIC\",", "\"TOEIC\", \"category\":\"SPORTS\",")))
+                .andExpect(status().isBadRequest());
+        mvc.perform(post("/api/profiles").contentType(MediaType.APPLICATION_JSON).content("{\"skills\": ["))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").value(org.hamcrest.Matchers.startsWith("요청 형식이 올바르지 않습니다.")));
+
+        String invalidDates = """
+                {
+                  "targetRoles": ["백엔드 개발자"],
+                  "preferredLocations": [],
+                  "skills": [],
+                  "certificates": [],
+                  "experiences": [{
+                    "companyName": "회사", "roleName": "개발자",
+                    "startedOn": "2025-12-31", "endedOn": "2025-01-01"
+                  }]
+                }
+                """;
+        mvc.perform(put("/api/profiles/me").contentType(MediaType.APPLICATION_JSON).content(invalidDates))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").value("종료일은 시작일보다 빠를 수 없습니다."));
+    }
+}

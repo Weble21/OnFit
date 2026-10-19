@@ -1,0 +1,140 @@
+/* OnFit colors and type, copied from frontend/src/styles.css. Loaded after the keycloak.v2 styles. */
+@import url("https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700;800&display=swap");
+
+:root {
+  --onfit-bg: #f8f7f3;
+  --onfit-paper: #fffefa;
+  --onfit-ink: #34382f;
+  --onfit-muted: #818276;
+  --onfit-accent: #b65c44;
+  --onfit-accent-hover: #984932;
+  --onfit-line: #e8e7df;
+  --onfit-font: "Noto Sans KR", "Malgun Gothic", sans-serif;
+
+  /* PatternFly declares its globals under :where(:root), so these win. */
+  --pf-v5-global--primary-color--100: var(--onfit-accent);
+  --pf-v5-global--primary-color--200: var(--onfit-accent-hover);
+  --pf-v5-global--link--Color: var(--onfit-accent);
+  --pf-v5-global--link--Color--hover: var(--onfit-accent-hover);
+  --pf-v5-global--Color--100: var(--onfit-ink);
+  --pf-v5-global--Color--200: var(--onfit-muted);
+  --pf-v5-global--FontFamily--text: var(--onfit-font);
+  --pf-v5-global--FontFamily--text--vf: var(--onfit-font);
+  --pf-v5-global--FontFamily--heading: var(--onfit-font);
+  --pf-v5-global--FontFamily--heading--vf: var(--onfit-font);
+  --keycloak-card-top-color: transparent;
+}
+
+.login-pf body {
+  background: var(--onfit-bg);
+  color: var(--onfit-ink);
+  font-family: var(--onfit-font);
+}
+
+::selection { background: #eed5bd; }
+
+/* Brand: the realm display name ("온핏") between the app's "o" mark and the small "onfit". */
+#kc-header { display: flex; justify-content: center; }
+#kc-header-wrapper {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--onfit-ink) !important;
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: -1.5px;
+  line-height: 1;
+  text-transform: none;
+}
+#kc-header-wrapper::before {
+  content: "o";
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 37px;
+  height: 38px;
+  padding-bottom: 6px;
+  box-sizing: border-box;
+  border-radius: 12px 12px 12px 3px;
+  background: radial-gradient(circle at calc(100% - 8px) 9px, #edd4a5 3px, transparent 3.5px), var(--onfit-accent);
+  color: #fff8ed;
+  font: 38px/1 Georgia, serif;
+  letter-spacing: 0;
+}
+#kc-header-wrapper::after {
+  content: "onfit";
+  margin-left: -3px;
+  color: #8a897c;
+  font-size: 14px;
+  font-weight: 400;
+  letter-spacing: .2px;
+}
+/* onfit.js wraps the name in a link to the app; its overlay makes the whole logo clickable. */
+#kc-header-wrapper { position: relative; border-radius: 12px; }
+#kc-header-wrapper .onfit-home { color: inherit; text-decoration: none; }
+#kc-header-wrapper .onfit-home::after { content: ""; position: absolute; inset: -6px; }
+#kc-header-wrapper:has(.onfit-home):hover { opacity: .85; }
+#kc-header-wrapper .onfit-home:focus-visible { outline: 0; }
+#kc-header-wrapper:has(.onfit-home:focus-visible) { outline: 3px solid #a06d40; outline-offset: 6px; }
+
+/* Card */
+.pf-v5-c-login__main {
+  --pf-v5-c-login__main--BackgroundColor: var(--onfit-paper);
+  --pf-v5-c-login__main--BoxShadow: 0 18px 50px rgba(52, 56, 47, .06);
+  border: 1px solid var(--onfit-line);
+  border-radius: 16px;
+  overflow: hidden;
+}
+.pf-v5-c-login__main-header { border-top: 0; }
+#kc-page-title {
+  color: var(--onfit-ink);
+  font-size: 24px;
+  font-weight: 600;
+  letter-spacing: -.8px;
+}
+
+/* Inputs */
+.pf-v5-c-form-control {
+  --pf-v5-c-form-control--BackgroundColor: #fff;
+  --pf-v5-c-form-control--before--BorderTopColor: var(--onfit-line);
+  --pf-v5-c-form-control--before--BorderRightColor: var(--onfit-line);
+  --pf-v5-c-form-control--before--BorderLeftColor: var(--onfit-line);
+  --pf-v5-c-form-control--before--BorderBottomColor: var(--onfit-line);
+  --pf-v5-c-form-control--after--BorderBottomColor: #d8d6cb;
+  --pf-v5-c-form-control--hover--after--BorderBottomColor: #bd8469;
+  --pf-v5-c-form-control--focus--after--BorderBottomColor: var(--onfit-accent);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.pf-v5-c-form-control input:focus-visible { outline: 0; }
+.pf-v5-c-form-control:focus-within { outline: 2px solid #bd8469; outline-offset: 1px; }
+/* Password field + show/hide button read as one control. */
+.pf-v5-c-input-group .pf-v5-c-form-control { border-radius: 8px 0 0 8px; }
+.pf-v5-c-input-group .pf-v5-c-button.pf-m-control {
+  --pf-v5-c-button--BorderRadius: 0 8px 8px 0;
+  --pf-v5-c-button--m-control--after--BorderTopColor: var(--onfit-line);
+  --pf-v5-c-button--m-control--after--BorderRightColor: var(--onfit-line);
+  --pf-v5-c-button--m-control--after--BorderLeftColor: var(--onfit-line);
+  background: #fff;
+}
+.pf-v5-c-form__label-text { color: var(--onfit-ink); font-weight: 500; }
+
+/* Buttons */
+.pf-v5-c-button {
+  --pf-v5-c-button--BorderRadius: 9px;
+  font-weight: 600;
+}
+.pf-v5-c-button.pf-m-primary {
+  --pf-v5-c-button--PaddingTop: 12px;
+  --pf-v5-c-button--PaddingBottom: 12px;
+}
+.pf-v5-c-button.pf-m-primary:hover { transform: translateY(-1px); }
+.pf-v5-c-button.pf-m-secondary {
+  --pf-v5-c-button--m-secondary--Color: var(--onfit-ink);
+  --pf-v5-c-button--m-secondary--after--BorderColor: #deded3;
+}
+
+/* Focus rings follow the app: visible and in the brand palette. */
+a:focus-visible, button:focus-visible { outline: 3px solid #a06d40; outline-offset: 4px; }
+
+.pf-v5-c-alert.pf-m-inline { border-radius: 9px; }

@@ -1,0 +1,47 @@
+package com.donggeon.jobrecommendation.profile;
+
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.HexFormat;
+import org.springframework.core.env.Environment;
+import org.springframework.core.env.Profiles;
+import org.springframework.http.HttpStatus;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
+import org.springframework.stereotype.Component;
+import org.springframework.web.server.ResponseStatusException;
+
+@Component
+public class CurrentUser {
+    private final boolean production;
+
+    // 서버가 운영환경인지 확인하는 코드 : true면 운영 서버, false면 개발 환경
+    public CurrentUser(Environment environment) {
+        production = environment.acceptsProfiles(Profiles.of("prod"));
+    }
+
+    public String identity() {
+        if (!production) return "demo@onfit.local";
+        var authentication = SecurityContextHolder.getContext().getAuthentication();
+
+        // JWT 로그인이 정상적으로 되어 있는지 검사
+        if (!(authentication instanceof JwtAuthenticationToken token) || !token.isAuthenticated()
+                || token.getToken().getIssuer() == null || token.getToken().getSubject() == null
+                || token.getToken().getSubject().isBlank()) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "로그인이 필요합니다.");
+            // throw -> HTTP 401 반환
+        }
+
+        // Identity follows immutable issuer + subject, never an editable/unverified email claim.
+        // 식별용 문자열 생성
+        String key = token.getToken().getIssuer() + "\n" + token.getToken().getSubject();
+        try {
+            String digest = HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256")
+                    .digest(key.getBytes(StandardCharsets.UTF_8)));
+            return "oidc." + digest + "@onfit.invalid";
+        } catch (NoSuchAlgorithmException impossible) {
+            throw new IllegalStateException(impossible);
+        }
+    }
+}
