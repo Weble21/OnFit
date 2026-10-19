@@ -1,9 +1,4 @@
-﻿// Demo profile, form choices and the sample posting. Posting analysis itself runs on the server.
-export const sampleProfile = {
-  roles: ['백엔드 개발자'], location: '서울', career: '신입', experiences: [],
-  projects: [{ name: '나만의 채용 추천 서비스', description: '사용자 프로필과 공고를 비교하는 추천 서비스를 개발했습니다. Spring Boot API와 PostgreSQL 데이터 모델을 설계하고 Docker로 AWS에 배포했습니다.', stack: 'Java, Spring Boot, PostgreSQL, Docker, AWS' }],
-};
-// Server scoring compares role and region names exactly, so these must cover the seed postings' values.
+﻿// Form choices and the sample posting. Posting analysis itself runs on the server.
 export const roles = ['백엔드 개발자', '프론트엔드 개발자', '모바일 개발자', '데이터 엔지니어', '데이터 분석가', 'AI 엔지니어', 'DevOps 엔지니어', '보안 엔지니어', 'QA 엔지니어', '게임 개발자', '로봇 개발자', '기타'];
 export const regions = ['서울', '경기', '인천', '부산', '대구', '광주', '대전', '울산', '세종', '강원', '충북', '충남', '전북', '전남', '경북', '경남', '제주'];
 // Copy of backend/src/main/resources/skill-aliases.json; tests/skills.test.mjs fails when they drift apart.

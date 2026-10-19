@@ -6,10 +6,32 @@ Spring Boot 백엔드가 필요합니다.
 
 ## 실행
 
-저장소 루트의 [`.env.example`](../.env.example)을 `.env`로 복사하고 `ONFIT_KC_ADMIN_PASSWORD`를 채운 뒤 PostgreSQL과 로컬 Keycloak을 실행합니다. `.env`는 Git에서 제외됩니다. 이미 로컬 관리자 비밀번호를 사용했다면 같은 값을 유지하세요.
+### Docker로 전체 실행
+
+PostgreSQL, Keycloak, ai-service, 백엔드, 프론트엔드를 한 번에 띄웁니다. 코드 수정이 바로 반영되지 않으므로
+개발 중에는 아래 개별 실행을, 화면 확인에는 이 방법을 쓰세요. `infra/compose.auth.yaml`의 Keycloak이 떠 있으면 먼저 내립니다(포트 8081 충돌).
 
 ```powershell
-if (-not (Test-Path .env)) { Copy-Item .env.example .env }  # 처음 한 번만
+if (-not (Test-Path .env)) { Set-Content .env 'ONFIT_KC_ADMIN_PASSWORD=choose-a-local-password' }  # ONFIT_KC_ADMIN_PASSWORD, (AI 분석 시) ONFIT_LLM_ENABLED=true·ANTHROPIC_API_KEY 채우기
+docker compose up -d --build
+```
+
+http://localhost:5173 접속. 첫 빌드는 백엔드·프론트·AI 테스트 실행과 임베딩 모델 다운로드 때문에 오래 걸립니다.
+루트 `compose.yaml`이 `infra/compose.local.yaml`을 불러오고 루트 `.env`를 읽으므로 저장소 루트에서 `docker compose` 명령을 그대로 씁니다.
+상태 `docker compose ps`, 로그 `docker compose logs -f backend`, 코드 반영 `docker compose up -d --build backend`,
+중지 `docker compose down`(DB까지 지우려면 `-v`).
+소셜 로그인: `.env`에 공급자 ID·Secret과 `VITE_SOCIAL_PROVIDERS=google,naver,kakao`를 넣고, Keycloak이 뜬 뒤
+`./infra/keycloak/configure-social.ps1`을 한 번 실행합니다(Keycloak 데이터는 볼륨에 남으므로 `down -v` 전까지 다시 할 필요 없음).
+`VITE_SOCIAL_PROVIDERS`를 바꾸면 `docker compose up -d --build frontend`로 다시 빌드합니다.
+이미지·스캔 PDF는 PaddleOCR 컨테이너(`ocr`, 한국어 모델)로 읽습니다. 가볍게 띄우려면 `.env`에 `ONFIT_OCR_ENGINE=tesseract`를 넣습니다(정확도는 낮음).
+백엔드 API는 http://localhost:8080 이므로 8080을 쓰는 다른 컨테이너가 있으면 먼저 내립니다.
+
+### 개별 실행 (개발)
+
+저장소 루트에 `.env`를 만들고 `ONFIT_KC_ADMIN_PASSWORD`를 설정한 뒤 PostgreSQL과 로컬 Keycloak을 실행합니다. `.env`는 Git에서 제외됩니다. 기존 관리자 비밀번호를 사용했다면 같은 값을 유지하세요.
+
+```powershell
+if (-not (Test-Path .env)) { Set-Content .env 'ONFIT_KC_ADMIN_PASSWORD=choose-a-local-password' }  # 처음 한 번만
 docker compose --env-file .env -f infra/compose.yaml up -d
 docker compose --env-file .env -f infra/compose.auth.yaml up -d
 cd backend
@@ -143,7 +165,7 @@ npm.cmd run check --prefix frontend
 - 이미지 미리보기, 브라우저 내장 PDF 뷰어, 원본 열기, 교체·삭제를 제공합니다.
 - PDF 미리보기는 브라우저의 PDF 지원에 따라 달라집니다. PDF 전체 파싱·암호화 여부 검증은 아직 구현하지 않았습니다.
 - 파일은 텍스트 추출을 위해 `POST /api/job-analysis/file`로 보내며 파일 자체는 서버와 localStorage 어디에도 저장하지 않습니다. 추출한 텍스트만 검토용 초안으로 24시간 보관합니다.
-- 서버가 글자가 있는 PDF는 바로 읽고, 이미지와 스캔 PDF는 PaddleOCR(한국어·영문)로 읽어 검토 입력란에 채웁니다. 자세한 내용은 [파일 추출 문서](../docs/file-extraction.md)를 참고하세요.
+- 서버가 글자가 있는 PDF는 바로 읽고, 이미지와 스캔 PDF는 PaddleOCR(한국어·영문)로 읽어 검토 입력란에 채웁니다. 자세한 내용은 [프로젝트 요약](../docs/README.md)을 참고하세요.
 - 추출 결과는 사용자가 원본과 대조하고 **텍스트 확인**을 눌러야 분석에 쓰입니다. 파일만 올려서는 점수를 생성하지 않습니다.
   확인한 텍스트의 SHA-256을 함께 보내며, 서버는 확인 후 바뀐 텍스트를 409로 거부합니다.
 - 추출에 실패하면 첨부한 원본을 보며 공고 내용을 직접 입력·확인해 직접 입력 텍스트로 분석할 수 있습니다.

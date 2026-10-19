@@ -1,0 +1,104 @@
+# Whole stack on one machine for local use: database, login, AI service, backend and frontend.
+#   docker compose --env-file .env -f infra/compose.local.yaml up -d --build
+# Then open http://localhost:5173. Not for deployment: tokens fall back to local-only defaults.
+# Stop infra/compose.auth.yaml first if it is running; both use port 8081.
+name: onfit-local
+services:
+  postgres:
+    image: postgres:17.6-alpine
+    environment:
+      POSTGRES_DB: onfit
+      POSTGRES_USER: onfit
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-onfit_local}
+    volumes:
+      - local_postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -U onfit -d onfit']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.2.5
+    command: start-dev --import-realm --http-port=8081
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${ONFIT_KC_ADMIN_USER:-admin}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${ONFIT_KC_ADMIN_PASSWORD:?Set a local Keycloak admin password in .env}
+    ports:
+      # The browser logs in here, so tokens are issued by http://localhost:8081.
+      - '127.0.0.1:8081:8081'
+    volumes:
+      # Keeps accounts and social login settings across "down"; "down -v" resets them.
+      - local_keycloak:/opt/keycloak/data
+      - ./keycloak/onfit-realm.json:/opt/keycloak/data/import/onfit-realm.json:ro
+      - ./keycloak/themes/onfit:/opt/keycloak/themes/onfit:ro
+
+  ai:
+    # Embeddings plus Claude posting analysis. No published port; only the backend reaches it.
+    build:
+      context: ..
+      dockerfile: infra/ai.Dockerfile
+    environment:
+      AI_SERVICE_TOKEN: ${ONFIT_AI_TOKEN:-onfit-local-ai-token}
+      AI_LLM_ENABLED: ${ONFIT_LLM_ENABLED:-false}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      AI_LLM_MODEL: ${AI_LLM_MODEL:-claude-opus-5-5}
+
+  ocr:
+    # PaddleOCR (Korean model) for images and scanned PDFs. No published port; only the backend reaches it.
+    # Set ONFIT_OCR_ENGINE=tesseract to use the Tesseract bundled in the backend image instead.
+    build:
+      context: ..
+      dockerfile: infra/ocr.Dockerfile
+    environment:
+      OCR_SERVICE_TOKEN: ${ONFIT_OCR_TOKEN:-onfit-local-ocr-token}
+
+  backend:
+    build:
+      context: ..
+      dockerfile: infra/backend.Dockerfile
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      DB_URL: jdbc:postgresql://postgres:5432/onfit
+      DB_USERNAME: onfit
+      DB_PASSWORD: ${DB_PASSWORD:-onfit_local}
+      # Tokens carry iss=http://localhost:8081/...; keys are fetched over the Compose network instead.
+      ONFIT_AUTH_ISSUER: http://localhost:8081/realms/onfit
+      ONFIT_AUTH_AUDIENCE: onfit-api
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWKSETURI: http://keycloak:8081/realms/onfit/protocol/openid-connect/certs
+      ONFIT_OCR_ENGINE: ${ONFIT_OCR_ENGINE:-paddle}
+      ONFIT_OCR_URL: http://ocr:8002/v1/ocr
+      ONFIT_OCR_TOKEN: ${ONFIT_OCR_TOKEN:-onfit-local-ocr-token}
+      ONFIT_AI_ENABLED: 'true'
+      ONFIT_AI_URL: http://ai:8001/v1/semantic-score
+      ONFIT_AI_TOKEN: ${ONFIT_AI_TOKEN:-onfit-local-ai-token}
+      ONFIT_LLM_ENABLED: ${ONFIT_LLM_ENABLED:-false}
+      ONFIT_LLM_URL: http://ai:8001
+    ports:
+      - '127.0.0.1:8080:8080'
+    depends_on:
+      postgres:
+        condition: service_healthy
+      keycloak:
+        condition: service_started
+      ai:
+        condition: service_healthy
+      ocr:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ..
+      dockerfile: infra/frontend.Dockerfile
+      args:
+        # Login buttons to enable, e.g. google,naver,kakao. Register them with infra/keycloak/configure-social.ps1.
+        VITE_SOCIAL_PROVIDERS: ${VITE_SOCIAL_PROVIDERS:-}
+    environment:
+      BACKEND_URL: http://backend:8080
+    ports:
+      - '127.0.0.1:5173:5173'
+    depends_on: [backend]
+
+volumes:
+  local_postgres:
+  local_keycloak:

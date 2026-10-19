@@ -5,7 +5,14 @@
       "Bash(./gradlew compileJava compileTestJava --console=plain -q)",
       "PowerShell(Remove-Item -Confirm:$false ../tests/matching.test.mjs)",
       "Bash(npm test *)",
-      "Bash(npm run *)"
+      "Bash(npm run *)",
+      "Bash(ONFIT_KC_ADMIN_PASSWORD=dummy docker compose -f infra/compose.local.yaml config --services)",
+      "Bash(ONFIT_KC_ADMIN_PASSWORD=dummy docker compose -f infra/compose.local.yaml --profile ocr config --services)",
+      "Bash(ONFIT_KC_ADMIN_PASSWORD=dummy docker compose -f infra/compose.local.yaml config)",
+      "Bash(unzip -l /c/Users/Donggeon/.gradle/caches/modules-2/files-2.1/org.springframework.boot/spring-boot-security-oauth2-resource-server/4.1.1/ba63603b927a83a8b22de283797eae5392a026be/spring-boot-security-oauth2-resource-server-4.1.1.jar)",
+      "Bash(awk '{print $4}')",
+      "Bash(javap -p -c -cp /c/Users/Donggeon/.gradle/caches/modules-2/files-2.1/org.springframework.boot/spring-boot-security-oauth2-resource-server/4.1.1/ba63603b927a83a8b22de283797eae5392a026be/spring-boot-security-oauth2-resource-server-4.1.1.jar org.springframework.boot.security.oauth2.server.resource.autoconfigure.JwtDecoderConfiguration)",
+      "PowerShell(& ./infra/keycloak/configure-social.ps1)"
     ]
   }
 }

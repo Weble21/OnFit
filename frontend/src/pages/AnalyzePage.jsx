@@ -215,7 +215,16 @@ export function AnalyzePage({ profile, analysis: state }) {
                 </div>
               </div>
             </> : <p className="subtle input-help">담당 업무, 자격요건, 우대사항을 함께 넣어주세요.</p>}
-            <label className={fileMode ? 'review-label' : 'sr-only'} htmlFor="jd-text">{fileMode ? '공고 텍스트 확인·수정' : '채용공고 또는 Job Description'}</label>
+            {fileMode ? (
+              <div className="review-heading">
+                <label className="review-label" htmlFor="jd-text">공고 텍스트 확인·수정</label>
+                <div className="review-actions">
+                  {file.confirmed && <span className="confirmed-mark" role="status"><Icon name="check" /> 확인됨</span>}
+                  <button className="btn outline small" id="confirm-text" type="button" data-action="confirm-text" onClick={confirm}
+                    disabled={!file.attachment || file.busy || file.text.trim().length < 20 || file.confirmed}>텍스트 확인</button>
+                </div>
+              </div>
+            ) : <label className="sr-only" htmlFor="jd-text">채용공고 또는 Job Description</label>}
             <textarea id="jd-text" name="jd" required minLength={20} maxLength={15000} disabled={fileMode && (!file.attachment || file.busy)}
               placeholder={fileMode ? '추출 결과가 없으면 원본을 보며 직접 입력해 주세요.' : '분석할 공고를 붙여넣으세요.\n\n자격요건\n· Java, Spring Boot 기반의 개발 경험\n\n우대사항\n· Docker 기반 배포 경험'}
               value={currentText} onChange={event => state.editText(event.target.value)} />
@@ -223,8 +232,6 @@ export function AnalyzePage({ profile, analysis: state }) {
               <span>{fileMode ? '입력·수정한 텍스트를 확인해야 분석합니다.' : '텍스트로 입력 · 최소 20자'}</span>
               <span id="jd-count">{currentText.length.toLocaleString()} / 15,000</span>
             </div>
-            {fileMode && <button className="btn text small" id="confirm-text" type="button" data-action="confirm-text" onClick={confirm}
-              disabled={!file.attachment || file.busy || file.text.trim().length < 20 || file.confirmed}>텍스트 확인</button>}
             <button className="btn full" id="analyze-button" type="submit" disabled={!canAnalyze}><Icon name="spark" /> {state.analyzing ? '분석하는 중…' : '내 프로필과 비교하기'}</button>
           </form>
           {fileMode && <p className="upload-help">파일은 텍스트 추출을 위해 서버에 전송되며 처리 후 삭제됩니다. 브라우저 미리보기와 수정 텍스트는 새로고침하면 사라집니다.</p>}

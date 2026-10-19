@@ -1,0 +1,6 @@
+# Lets "docker compose up -d" from the repository root start the whole local stack.
+# The services live in infra/compose.local.yaml; variables come from the root .env.
+name: onfit-local
+include:
+  - path: infra/compose.local.yaml
+    env_file: .env

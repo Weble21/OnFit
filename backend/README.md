@@ -1,15 +1,6 @@
 # OnFit Backend
 
-Spring Boot API server for the OnFit job posting analysis project.
-
-단계별 작업 상태는 [roadmap](../docs/roadmap.md), PostgreSQL 검증·결과 보존·오류/로그·백업/비밀값 정책은
-[운영 문서](../docs/operations.md)를 참고하세요.
-
-추천 품질 기준과 가중치 비교 방법은 [추천 평가 문서](../docs/recommendation-quality.md)에 있습니다.
-`./gradlew.bat recommendationEvaluation`으로 40개 가상 공고·10개 프로필의 점수/순위 비교 보고서를 생성합니다.
-
-FastAPI 의미 점수 연동 설정·계약·평가 결과는 [의미 유사도 문서](../docs/semantic-integration.md)에 있습니다.
-공고 파일 추출 API와 OCR 설치·오류·보관 정책은 [파일 추출 문서](../docs/file-extraction.md)에 있습니다.
+Spring Boot API server for OnFit job posting analysis. Project overview: [docs/README.md](../docs/README.md).
 
 ## Stack
 
@@ -23,8 +14,8 @@ FastAPI 의미 점수 연동 설정·계약·평가 결과는 [의미 유사도 
 
 ## Run
 
-Copy `.env.example` to `.env` in the repository root, set a local Keycloak admin
-password, then start PostgreSQL and Keycloak from that directory:
+Create `.env` in the repository root with `ONFIT_KC_ADMIN_PASSWORD`, then start
+PostgreSQL and Keycloak from that directory:
 
 ```powershell
 docker compose --env-file .env -f infra/compose.yaml up -d
