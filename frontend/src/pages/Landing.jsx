@@ -13,7 +13,7 @@ export function Landing({ signedIn = false, onLogin }) {
           <a className="indiswork" href="https://inthiswork.com/" target="_blank" rel="noopener noreferrer">인디스워크 <span aria-hidden="true">↗</span></a>
         </nav>
         {signedIn
-          ? <a className="btn small" href="#/analyze">내 커리어 <Icon name="arrow" /></a>
+          ? <a className="btn small" href="#/profile">내 커리어 <Icon name="arrow" /></a>
           : <button className="btn small" data-action="login" onClick={onLogin}>로그인 <Icon name="arrow" /></button>}
       </header>
       <main className="landing-main">

@@ -17,6 +17,13 @@ export async function validateAttachment(file) {
   if (!signature) throw new Error('파일 내용과 형식이 맞지 않아요. 원본 파일을 다시 확인해 주세요.');
   return { mime, kind: mime==='application/pdf'?'pdf':'image' };
 }
+/** Screenshots arrive from the clipboard as "image.png" or with no name; give them a readable one with the right extension. */
+export function pastedFile(file) {
+  const extension = Object.keys(formats).find(key => formats[key] === file.type);
+  // An unsupported type keeps its name, so validation reports the format rather than a renamed file.
+  if (!extension || (file.name && !/^image\.\w+$/i.test(file.name))) return file;
+  return new File([file], '붙여넣은 이미지.' + extension, { type: file.type, lastModified: file.lastModified });
+}
 export function fileSize(bytes) {
   return bytes < 1024*1024 ? Math.max(1,Math.round(bytes/1024))+' KB' : (bytes/(1024*1024)).toFixed(1)+' MB';
 }

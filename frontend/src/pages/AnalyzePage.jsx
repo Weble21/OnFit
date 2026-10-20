@@ -1,6 +1,6 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
-import { FILE_ACCEPT, fileSize } from '../upload.js';
+import { FILE_ACCEPT, fileSize, pastedFile } from '../upload.js';
 import { EmptyState, Icon, PageHeading, Pill, SkillResult } from '../components/ui.jsx';
 
 const hasFiles = event => event.dataTransfer?.types.includes('Files');
@@ -138,7 +138,7 @@ function AttachmentPreview({ attachment, onPick, onRemove }) {
       <button type="button" className="upload-zone" data-action="pick-file" onClick={onPick}>
         <span className="round-icon"><Icon name="plus" /></span>
         <strong>공고 사진이나 PDF를 올려주세요</strong>
-        <span>파일을 끌어다 놓거나 클릭해서 선택하세요.</span>
+        <span>파일을 끌어다 놓거나 클릭해서 선택하세요.<br />이 영역에 마우스를 올리고 Ctrl+V로 붙여넣을 수도 있어요.</span>
         <small>JPG · PNG · WebP · PDF / 1개, 최대 10MB</small>
       </button>
     );
@@ -164,7 +164,15 @@ function AttachmentPreview({ attachment, onPick, onRemove }) {
 
 export function AnalyzePage({ profile, analysis: state }) {
   const fileInput = useRef(null);
+  const zoneRef = useRef(null);
+  const pasteRef = useRef(null);
   const [dragOver, setDragOver] = useState(false);
+  // Paste goes to the focused element, not the one under the pointer, so the document listens and pasteRef decides.
+  useEffect(() => {
+    const onPaste = event => pasteRef.current?.(event);
+    document.addEventListener('paste', onPaste);
+    return () => document.removeEventListener('paste', onPaste);
+  }, []);
   if (!profile) {
     return <EmptyState title="비교할 프로필이 필요해요" text="프로젝트와 사용한 기술을 먼저 등록해 주세요." href="/profile" label="프로필 작성하기" level={1} />;
   }
@@ -185,6 +193,15 @@ export function AnalyzePage({ profile, analysis: state }) {
     setDragOver(false);
     void state.selectFiles([...event.dataTransfer.files]);
   };
+  // Taken while the pointer is over the drop zone or focus is inside it. Only files are taken, so text still pastes as usual.
+  pasteRef.current = event => {
+    const zone = zoneRef.current;
+    if (!zone || !(zone.matches(':hover') || zone.contains(document.activeElement))) return;
+    const files = [...(event.clipboardData?.files || [])];
+    if (!files.length) return;
+    event.preventDefault();
+    void state.selectFiles(files.map(pastedFile));
+  };
 
   return (
     <>
@@ -201,7 +218,7 @@ export function AnalyzePage({ profile, analysis: state }) {
           </div>
           <form id="analysis-form" onSubmit={event => { event.preventDefault(); state.analyze(); }}>
             {fileMode ? <>
-              <div id="attachment-zone" aria-busy={String(file.busy)} className={dragOver ? 'drag-over' : ''}
+              <div id="attachment-zone" ref={zoneRef} aria-busy={String(file.busy)} className={dragOver ? 'drag-over' : ''}
                 onDragOver={event => { if (!hasFiles(event)) return; event.preventDefault(); event.dataTransfer.dropEffect = 'copy'; setDragOver(true); }}
                 onDragLeave={event => { if (!event.currentTarget.contains(event.relatedTarget)) setDragOver(false); }}
                 onDrop={drop}>
