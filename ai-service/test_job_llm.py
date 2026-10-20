@@ -141,6 +141,13 @@ def test_disabled_llm_and_input_limits():
                            headers=HEADERS).status_code == 422
 
 
+def test_versions_name_the_prompts_in_use():
+    with TestClient(create_app(FakeEmbedder(), token="private-test-token")) as client:
+        assert client.get("/internal/jobs/versions").status_code == 401
+        assert client.get("/internal/jobs/versions", headers=HEADERS).json() == {
+            "extractPromptVersion": job_llm.EXTRACT_PROMPT_VERSION, "rolePromptVersion": job_llm.ROLE_PROMPT_VERSION}
+
+
 def role_request(**overrides):
     request = {
         "sourceText": SOURCE,

@@ -10,9 +10,10 @@ const SEMANTIC_NOTE = {
   FAILED: '의미 유사도 계산에 실패해 이 항목(20%)은 0점으로 계산되었고, 총점은 최대 80점입니다.',
 };
 const POSTING_FIELDS = [['companyName', '회사'], ['title', '공고명'], ['roleName', '직무'], ['careerLevel', '경력'], ['location', '근무지']];
+// Brief sections list short phrases only; their quotes are still checked by the AI service, just not shown.
 const ROLE_SECTIONS = [
-  ['responsibilities', '핵심 업무'], ['competencies', '핵심 요구 역량'], ['keywords', '주요 직무 키워드'],
-  ['strengths', '내 강점'], ['unverified', '프로필에서 확인되지 않은 역량'], ['highlights', '지원 시 강조할 경험'],
+  ['responsibilities', '핵심 업무', true], ['competencies', '핵심 요구 역량', true],
+  ['strengths', '내 강점', false], ['unverified', '프로필에서 확인되지 않은 역량', true],
 ];
 const formatScore = value => Number(value).toFixed(Number.isInteger(Number(value)) ? 0 : 1);
 
@@ -59,12 +60,14 @@ function RoleAnalysis({ analysis, retrying, onRetry }) {
         ? <div className="role-item"><p>{role.summary.text}</p><Evidence item={role.summary} labels={labels} /></div>
         : <p className="subtle">공고에서 근거를 찾을 수 있는 요약을 만들지 못했어요.</p>}
     </section>
-    {ROLE_SECTIONS.map(([key, label]) => (
+    {ROLE_SECTIONS.map(([key, label, brief]) => (
       <section className="result-list" key={key} aria-labelledby={'role-' + key}>
         <h3 id={'role-' + key}><Icon name={key === 'unverified' ? 'plus' : 'check'} /> {label}</h3>
-        {role[key].length
-          ? <ul className="role-items">{role[key].map((item, i) => <li className="role-item" key={i}><p>{item.text}</p><Evidence item={item} labels={labels} /></li>)}</ul>
-          : <p className="subtle">{key === 'strengths' || key === 'highlights' ? '프로필에서 근거가 되는 항목을 찾지 못했어요.' : '해당 항목이 없어요.'}</p>}
+        {!role[key].length
+          ? <p className="subtle">{key === 'strengths' ? '프로필에서 근거가 되는 항목을 찾지 못했어요.' : '해당 항목이 없어요.'}</p>
+          : brief
+            ? <ul className="brief-items">{role[key].map((item, i) => <li key={i}>{item.text}</li>)}</ul>
+            : <ul className="role-items">{role[key].map((item, i) => <li className="role-item" key={i}><p>{item.text}</p><Evidence item={item} labels={labels} /></li>)}</ul>}
         {key === 'unverified' && <p className="subtle role-note">프로필에 적혀 있지 않다는 뜻이며, 역량이 없다는 뜻은 아닙니다.</p>}
       </section>
     ))}
@@ -122,7 +125,7 @@ function AnalysisResult({ state }) {
       {posting.ambiguities.length > 0 && <ul className="role-items">{posting.ambiguities.map((item, i) => <li className="role-item" key={i}><p>모호한 조건: {item.text}</p><Evidence item={{ evidence: [item.evidence] }} labels={new Map()} /></li>)}</ul>}
     </section>
     <RoleAnalysis analysis={analysis} retrying={state.retrying} onRetry={state.retryRole} />
-    <p className="analysis-caveat" role="note">점수는 AI가 아닌 규칙 기반 계산기가 정하고, AI 직무 분석은 점수를 바꾸지 않습니다. 모든 설명에는 공고 원문이나 프로필 항목의 인용 근거가 붙으며, 근거를 찾지 못한 내용은 표시하지 않습니다. 프로필에 없는 기술은 실제 역량 부족을 의미하지 않습니다.</p>
+    <p className="analysis-caveat" role="note">점수는 AI가 아닌 규칙 기반 계산기가 정하고, AI 직무 분석은 점수를 바꾸지 않습니다. 모든 설명은 공고 원문이나 프로필 항목에서 인용 근거를 찾은 내용만 표시합니다. 프로필에 없는 기술은 실제 역량 부족을 의미하지 않습니다.</p>
     <details className="analysis-versions"><summary>계산 정보</summary>
       <p>구조화 {analysis.versions.extractionModel} · {analysis.versions.extractionPrompt} / 계산기 {analysis.versions.calculator} / 의미 유사도 {analysis.versions.semanticModel}{analysis.versions.roleModel && ' / 직무 분석 ' + analysis.versions.roleModel + ' · ' + analysis.versions.rolePrompt}</p>
     </details>

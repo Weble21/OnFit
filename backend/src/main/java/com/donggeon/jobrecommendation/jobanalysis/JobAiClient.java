@@ -8,6 +8,7 @@ import java.net.http.HttpTimeoutException;
 import java.time.Duration;
 import java.util.List;
 import java.util.Set;
+import java.util.function.UnaryOperator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
@@ -29,8 +30,12 @@ public class JobAiClient {
     public record RoleResult(JsonNode analysis, String model, String promptVersion) {}
     public record ProfileItem(String id, String kind, String text) {}
     public record ScoreFacts(List<String> matchedRequired, List<String> matchedPreferred, List<String> missing) {}
+    public record PromptVersions(String extract, String role) {}
+
+    private static final Duration VERSIONS_TIMEOUT = Duration.ofSeconds(3);
 
     record ExtractRequest(String text) {}
+    record VersionsResponse(String extractPromptVersion, String rolePromptVersion) {}
     record RoleRequest(String sourceText, StructuredPosting posting, List<ProfileItem> profileItems,
                        ScoreFacts scoreFacts) {}
     record Meta(String model, String promptVersion, Integer droppedItems) {}
@@ -78,18 +83,33 @@ public class JobAiClient {
         return new RoleResult(response.analysis(), response.meta().model(), response.meta().promptVersion());
     }
 
+    /** The prompts the service runs now, or null when that cannot be learned; callers then keep stored results. */
+    public PromptVersions promptVersions() {
+        try {
+            var response = send("internal/jobs/versions", VERSIONS_TIMEOUT, VersionsResponse.class, HttpRequest.Builder::GET);
+            if (response.extractPromptVersion() == null || response.rolePromptVersion() == null) return null;
+            return new PromptVersions(response.extractPromptVersion(), response.rolePromptVersion());
+        } catch (JobAiException ex) {
+            log.warn("llm_versions_unavailable code={}", ex.getCode());
+            return null;
+        }
+    }
+
     private <T> T post(String path, Object body, Class<T> type) {
+        return send(path, timeout, type, builder -> builder.header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofByteArray(json.writeValueAsBytes(body))));
+    }
+
+    private <T> T send(String path, Duration limit, Class<T> type, UnaryOperator<HttpRequest.Builder> method) {
         if (!enabled) throw new JobAiException("LLM_DISABLED");
         if (token.isBlank()) {
             log.warn("llm_unavailable reason=missing_token");
             throw new JobAiException("LLM_DISABLED");
         }
         try {
-            var request = HttpRequest.newBuilder(baseUrl.resolve(path)).timeout(timeout)
-                    .header("Content-Type", "application/json")
+            var request = method.apply(HttpRequest.newBuilder(baseUrl.resolve(path)).timeout(limit)
                     .header("X-OnFit-AI-Token", token)
-                    .header("X-OnFit-Request-Id", MDC.get("requestId") == null ? "" : MDC.get("requestId"))
-                    .POST(HttpRequest.BodyPublishers.ofByteArray(json.writeValueAsBytes(body))).build();
+                    .header("X-OnFit-Request-Id", MDC.get("requestId") == null ? "" : MDC.get("requestId"))).build();
             var response = client.send(request, HttpResponse.BodyHandlers.ofString());
             if (response.statusCode() != 200) throw new JobAiException(errorCode(response));
             return json.readValue(response.body(), type);

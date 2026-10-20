@@ -87,6 +87,8 @@ public class JobAnalysisService {
         if (text.length() < MIN_TEXT) throw bad("공고 텍스트를 20자 이상 입력해 주세요.");
         String sourceHash = sha256(text);
         String identity = currentUser.identity();
+        // Asked before the read transaction, so no transaction stays open during a call to the AI service.
+        JobAiClient.PromptVersions versions = ai.promptVersions();
 
         Prepared prepared = readOnly.execute(status -> {
             UserProfile profile = profiles.findByUserEmail(identity).orElseThrow(() ->
@@ -97,6 +99,7 @@ public class JobAnalysisService {
             String profileHash = sha256(snapshotJson);
             Long existing = analyses.findFirstByUserIdAndSourceHashAndProfileHashAndCalculatorVersionAndCreatedAtGreaterThanEqualOrderByIdDesc(
                     profile.getUser().getId(), sourceHash, profileHash, JobMatchScorer.CALCULATOR_VERSION, retention.cutoff())
+                    .filter(found -> fromCurrentPrompts(found, versions))
                     .map(JobAnalysis::getId).orElse(null);
             return new Prepared(profile, snapshot, snapshotJson, profileHash, draftId, existing);
         });
@@ -216,6 +219,17 @@ public class JobAnalysisService {
                 analysis.getRoleStatus(), analysis.getRoleErrorCode() == null ? null : message(analysis.getRoleErrorCode()),
                 analysis.getRoleAnalysis() == null ? null : json.readTree(analysis.getRoleAnalysis()),
                 snapshot.labels(), versions);
+    }
+
+    /**
+     * A stored analysis is reused only if the AI service still runs the prompts that made it. A failed role
+     * analysis has no prompt of its own; retrying it uses the current one. Unknown versions keep the stored result.
+     */
+    static boolean fromCurrentPrompts(JobAnalysis analysis, JobAiClient.PromptVersions versions) {
+        if (versions == null) return true;
+        return versions.extract().equals(analysis.getExtractionPromptVersion())
+                && (analysis.getRoleStatus() != JobAnalysis.RoleStatus.COMPLETED
+                    || versions.role().equals(analysis.getRolePromptVersion()));
     }
 
     private JobAiClient.ScoreFacts facts(JobAnalysis.Scoring scoring) {

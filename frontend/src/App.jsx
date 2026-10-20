@@ -127,7 +127,7 @@ export function App({ authenticated = false, authError = '' }) {
   return (
     <>
       {route === '/' || !signedIn
-        ? <Landing onLogin={() => setModal({ type: 'login' })} />
+        ? <Landing signedIn={signedIn} onLogin={() => setModal({ type: 'login' })} />
         : <Shell route={route} userName={accountName()} userPicture={accountPicture()} onLogout={handleLogout}><Suspense fallback={null}>{page}</Suspense></Shell>}
       {modal?.type === 'login' && <LoginModal onClose={() => setModal(null)} onLogin={handleLogin}
         onRetry={() => location.reload()} configured={authConfigured} socialProviders={socialProviders} error={authError} />}

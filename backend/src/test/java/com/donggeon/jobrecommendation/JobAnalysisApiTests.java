@@ -146,6 +146,20 @@ class JobAnalysisApiTests {
     }
 
     @Test
+    void storedAnalysisFromAnOlderPromptIsRecomputed() throws Exception {
+        when(ai.promptVersions()).thenReturn(new JobAiClient.PromptVersions("job-extract-v1", "role-analysis-v1"));
+        long first = id(mvc.perform(analyze("TEXT", TEXT, null, null)).andExpect(status().isOk()));
+        assertThat(id(mvc.perform(analyze("TEXT", TEXT, null, null)).andExpect(status().isOk()))).isEqualTo(first);
+        verify(ai, times(1)).extract(anyString());
+
+        // The AI service now runs a newer role prompt, so the same text and profile are analyzed again.
+        when(ai.promptVersions()).thenReturn(new JobAiClient.PromptVersions("job-extract-v1", "role-analysis-v2"));
+        long recomputed = id(mvc.perform(analyze("TEXT", TEXT, null, null)).andExpect(status().isOk()));
+        assertThat(recomputed).isNotEqualTo(first);
+        verify(ai, times(2)).extract(anyString());
+    }
+
+    @Test
     void postingWithoutRecognizedRequirementsIsNeverAPerfectFit() throws Exception {
         when(ai.extract(anyString())).thenReturn(new JobAiClient.Extraction(new StructuredPosting(
                 new TextField(null, null), new TextField(null, null), new TextField(null, null),

@@ -136,6 +136,12 @@ def create_app(embedder: Any = None, token: str | None = None, llm: Any = None) 
     def health() -> dict[str, str]:
         return {"status": "ok", "modelVersion": MODEL_VERSION}
 
+    @app.get("/internal/jobs/versions")
+    def prompt_versions(x_onfit_ai_token: str | None = Header(default=None)) -> dict[str, str]:
+        # The backend reuses a stored analysis only if it came from these prompts.
+        authorize(x_onfit_ai_token)
+        return {"extractPromptVersion": job_llm.EXTRACT_PROMPT_VERSION, "rolePromptVersion": job_llm.ROLE_PROMPT_VERSION}
+
     @app.post("/internal/jobs/extract")
     def extract_job(request: ExtractRequest, x_onfit_ai_token: str | None = Header(default=None),
                     x_onfit_request_id: str | None = Header(default=None)) -> dict:

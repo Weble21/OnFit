@@ -1,12 +1,20 @@
 import { Icon, Logo, Plant } from '../components/ui.jsx';
 
-export function Landing({ onLogin }) {
+/** Also shown to a signed-in user who returns to the home page; the buttons then lead into the app instead of to login. */
+export function Landing({ signedIn = false, onLogin }) {
   return (
     <div className="landing">
       <header className="landing-header">
         <Logo />
-        <nav aria-label="주요 메뉴"><a href="#/profile">내 프로필</a><a href="#/analyze">공고 적합도 분석</a></nav>
-        <button className="btn small" data-action="login" onClick={onLogin}>로그인 <Icon name="arrow" /></button>
+        <nav className="external-links" aria-label="취업 관련 사이트">
+          <a className="saramin" href="https://www.saramin.co.kr/zf_user/" target="_blank" rel="noopener noreferrer">사람인 <span aria-hidden="true">↗</span></a>
+          <a className="catch" href="https://www.catch.co.kr/" target="_blank" rel="noopener noreferrer">캐치 <span aria-hidden="true">↗</span></a>
+          <a className="jasoseol" href="https://jasoseol.com/" target="_blank" rel="noopener noreferrer">자소설닷컴 <span aria-hidden="true">↗</span></a>
+          <a className="indiswork" href="https://inthiswork.com/" target="_blank" rel="noopener noreferrer">인디스워크 <span aria-hidden="true">↗</span></a>
+        </nav>
+        {signedIn
+          ? <a className="btn small" href="#/analyze">내 커리어 <Icon name="arrow" /></a>
+          : <button className="btn small" data-action="login" onClick={onLogin}>로그인 <Icon name="arrow" /></button>}
       </header>
       <main className="landing-main">
         <section className="landing-hero" aria-labelledby="landing-title">
@@ -15,7 +23,9 @@ export function Landing({ onLogin }) {
             <h1 id="landing-title">당신의 경험이<br />좋은 기회와<br /><em>만나는 곳.</em></h1>
             <p>관심 있는 공고를 넣으면,<br />내 경험과 얼마나 맞는지 분석하는 온핏.</p>
             <div className="hero-actions">
-              <button className="btn" data-action="login" onClick={onLogin}>관심 공고 분석하기 <Icon name="arrow" /></button>
+              {signedIn
+                ? <a className="btn" href="#/analyze">관심 공고 분석하기 <Icon name="arrow" /></a>
+                : <button className="btn" data-action="login" onClick={onLogin}>관심 공고 분석하기 <Icon name="arrow" /></button>}
             </div>
             <div className="landing-note"><span className="tiny-dot" aria-hidden="true"></span> 작은 프로젝트도, 첫 경험도 충분한 시작이 돼요.</div>
           </div>

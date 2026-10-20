@@ -69,6 +69,14 @@ class JobAiClientTests {
             assertThatThrownBy(() -> disabled.extract("text")).hasMessage("LLM_DISABLED");
             var noToken = new JobAiClient(true, url, "", 5000, JsonMapper.builder().build());
             assertThatThrownBy(() -> noToken.extract("text")).hasMessage("LLM_DISABLED");
+
+            answer.set("{\"extractPromptVersion\":\"job-extract-v1\",\"rolePromptVersion\":\"role-analysis-v2\"}");
+            assertThat(client.promptVersions())
+                    .isEqualTo(new JobAiClient.PromptVersions("job-extract-v1", "role-analysis-v2"));
+            // Without an answer the versions are unknown, never an error: stored results stay usable.
+            status.set(500);
+            assertThat(client.promptVersions()).isNull();
+            assertThat(disabled.promptVersions()).isNull();
         } finally {
             MDC.remove("requestId");
             server.stop(0);

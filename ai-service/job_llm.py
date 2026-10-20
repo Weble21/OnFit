@@ -18,7 +18,7 @@ log = logging.getLogger("onfit.llm")
 
 LLM_MODEL = os.environ.get("AI_LLM_MODEL", "claude-opus-5-5")
 EXTRACT_PROMPT_VERSION = "job-extract-v1"
-ROLE_PROMPT_VERSION = "role-analysis-v1"
+ROLE_PROMPT_VERSION = "role-analysis-v2"
 MAX_SOURCE_CHARS = 15000
 MAX_ITEMS = 30
 
@@ -289,11 +289,11 @@ ROLE_SYSTEM = """당신은 지원자가 직접 입력한 채용공고를 지원�
 
 다음 7개 항목을 한국어로 작성합니다.
 1. summary: 이 직무를 한 문장으로 요약합니다.
-2. responsibilities: 핵심 업무.
-3. competencies: 핵심 요구 역량.
+2. responsibilities: 핵심 업무. text는 20자 안팎의 짧은 명사구로 씁니다. 예: "보안 취약점 점검 및 조치"
+3. competencies: 핵심 요구 역량. text는 20자 안팎의 짧은 명사구로 씁니다.
 4. keywords: 주요 직무 키워드. text는 원문에 나온 표기 그대로 쓰는 짧은 단어입니다.
 5. strengths: 공고 요구와 연결되는 지원자의 강점.
-6. unverified: 공고가 요구하지만 프로필에서 확인되지 않은 역량.
+6. unverified: 공고가 요구하지만 프로필에서 확인되지 않은 역량. text는 20자 안팎의 짧은 명사구로 씁니다.
 7. highlights: 지원할 때 강조하면 좋은 지원자의 실제 경험.
 
 근거 규칙:
