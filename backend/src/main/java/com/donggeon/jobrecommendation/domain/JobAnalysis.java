@@ -25,7 +25,7 @@ import org.hibernate.annotations.UpdateTimestamp;
 @Table(name = "job_analyses")
 public class JobAnalysis {
 
-    public enum InputType { TEXT, FILE }
+    public enum InputType { TEXT, FILE, URL }
     public enum SemanticStatus { OK, DISABLED, FAILED }
     public enum RoleStatus { COMPLETED, FAILED }
 
@@ -53,6 +53,10 @@ public class JobAnalysis {
 
     @Column(name = "source_text", nullable = false, columnDefinition = "text")
     private String sourceText;
+
+    /** Copied from the draft, which is cleaned up long before the analysis, so the result can link to the posting. */
+    @Column(name = "source_url", length = 2048)
+    private String sourceUrl;
 
     @Column(name = "source_hash", nullable = false, length = 64)
     private String sourceHash;
@@ -136,6 +140,7 @@ public class JobAnalysis {
         this.user = user;
         this.inputType = inputType;
         this.draft = draft;
+        this.sourceUrl = draft == null ? null : draft.getSourceUrl();
         this.sourceText = sourceText;
         this.sourceHash = sourceHash;
         this.profileSnapshot = profileSnapshot;
@@ -195,6 +200,7 @@ public class JobAnalysis {
     public String getRoleAnalysis() { return roleAnalysis; }
     public String getRoleModel() { return roleModel; }
     public String getRolePromptVersion() { return rolePromptVersion; }
+    public String getSourceUrl() { return sourceUrl; }
     public String getRoleErrorCode() { return roleErrorCode; }
     public Instant getCreatedAt() { return createdAt; }
     public Instant getUpdatedAt() { return updatedAt; }

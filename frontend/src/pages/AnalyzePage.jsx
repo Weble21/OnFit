@@ -95,7 +95,7 @@ function AnalysisResult({ state }) {
     return <>{title}<div className="analysis-placeholder">
       <div className="analysis-illustration" aria-hidden="true"><Icon name="file" /><span><Icon name="spark" /></span></div>
       <h3>이 공고, 나와 얼마나 잘 맞을까요?</h3>
-      <p>공고를 붙여넣으면 AI가 요구사항을 정리하고<br />등록한 프로필과 비교해 맞춤 점수와 직무 분석을 보여드려요.</p>
+      <p>공고를 넣으면 AI가 요구사항을 정리하고<br />등록한 프로필과 비교해 맞춤 점수와 직무 분석을 보여드려요.</p>
       <ol className="placeholder-steps" aria-label="분석 순서"><li>01 공고 입력</li><li><Icon name="chevron" />02 구조화·점수 계산</li><li><Icon name="chevron" />03 직무 분석</li></ol>
     </div></>;
   }
@@ -121,6 +121,7 @@ function AnalysisResult({ state }) {
     <section className="result-list"><h3><Icon name="plus" /> 프로필에서 확인되지 않은 필수 기술</h3><SkillResult skills={score.missing} className="missing" emptyText={score.noRequirements ? '공고에 필수 기술이 명시되지 않았어요.' : '필수 기술은 모두 프로필에 있어요.'} /></section>
     <section className="result-list" aria-labelledby="posting-title">
       <h3 id="posting-title"><Icon name="file" /> AI가 정리한 공고</h3>
+      {/^https?:\/\//i.test(analysis.sourceUrl || '') && <a className="btn text small source-link" href={analysis.sourceUrl} target="_blank" rel="noopener noreferrer">원문 보기 <Icon name="arrow" /></a>}
       <dl className="posting-facts">{POSTING_FIELDS.map(([key, label]) => <div key={key}><dt>{label}</dt><dd>{posting[key].value || '공고에 없음'}</dd></div>)}</dl>
       {posting.ambiguities.length > 0 && <ul className="role-items">{posting.ambiguities.map((item, i) => <li className="role-item" key={i}><p>모호한 조건: {item.text}</p><Evidence item={{ evidence: [item.evidence] }} labels={new Map()} /></li>)}</ul>}
     </section>
@@ -130,6 +131,14 @@ function AnalysisResult({ state }) {
       <p>구조화 {analysis.versions.extractionModel} · {analysis.versions.extractionPrompt} / 계산기 {analysis.versions.calculator} / 의미 유사도 {analysis.versions.semanticModel}{analysis.versions.roleModel && ' / 직무 분석 ' + analysis.versions.roleModel + ' · ' + analysis.versions.rolePrompt}</p>
     </details>
   </article></>;
+}
+
+/** What the server is reading now, from its progress events: the page itself, a linked file, or image n of total. */
+function linkProgress(progress) {
+  if (progress?.stage === 'IMAGES') {
+    return { label: `공고 이미지를 읽고 있어요 · ${progress.done}/${progress.total}`, ratio: progress.total ? progress.done / progress.total : 0 };
+  }
+  return { label: progress?.stage === 'FILE' ? '연결된 공고 파일을 읽고 있어요' : '공고 페이지를 읽고 있어요', ratio: null };
 }
 
 function AttachmentPreview({ attachment, onPick, onRemove }) {
@@ -176,7 +185,8 @@ export function AnalyzePage({ profile, analysis: state }) {
   if (!profile) {
     return <EmptyState title="비교할 프로필이 필요해요" text="프로젝트와 사용한 기술을 먼저 등록해 주세요." href="/profile" label="프로필 작성하기" level={1} />;
   }
-  const { fileMode, file, currentText, canAnalyze } = state;
+  const { fileMode, file, link, source, hasSource, currentText, canAnalyze } = state;
+  const reading = !fileMode && link.busy ? linkProgress(link.progress) : null;
   const pick = () => fileInput.current?.click();
   const remove = () => {
     flushSync(state.removeAttachment);
@@ -205,15 +215,14 @@ export function AnalyzePage({ profile, analysis: state }) {
 
   return (
     <>
-      <PageHeading kicker="FIND YOUR FIT" title="이 기회, 나와 얼마나 잘 맞을까요?" description="공고를 붙여넣거나 사진·PDF를 첨부해 나의 경험과 연결해 보세요." />
+      <PageHeading kicker="FIND YOUR FIT" title="이 기회, 나와 얼마나 잘 맞을까요?" description="공고 주소를 넣거나 사진·PDF를 첨부해 나의 경험과 연결해 보세요." />
       <div className="analysis-layout">
         <section className="panel jd-panel" aria-labelledby="jd-title">
           <header className="section-heading">
             <h2 id="jd-title"><Icon name="file" /> 채용공고 입력</h2>
-            {!fileMode && <button className="btn text small" data-action="sample-jd" onClick={state.loadSample}>예시 불러오기</button>}
           </header>
           <div className="input-mode-switch" role="group" aria-label="채용공고 입력 방식">
-            <button data-action="input-mode" data-mode="text" aria-pressed={!fileMode} className={!fileMode ? 'selected' : ''} onClick={() => state.setMode('text')}><Icon name="file" /> 텍스트 입력</button>
+            <button data-action="input-mode" data-mode="url" aria-pressed={!fileMode} className={!fileMode ? 'selected' : ''} onClick={() => state.setMode('url')}><Icon name="search" /> URL 입력</button>
             <button data-action="input-mode" data-mode="file" aria-pressed={fileMode} className={fileMode ? 'selected' : ''} onClick={() => state.setMode('file')}><Icon name="plus" /> 사진 · PDF 첨부</button>
           </div>
           <form id="analysis-form" onSubmit={event => { event.preventDefault(); state.analyze(); }}>
@@ -227,34 +236,49 @@ export function AnalyzePage({ profile, analysis: state }) {
                 <AttachmentPreview attachment={file.attachment} onPick={pick} onRemove={remove} />
               </div>
               <p id="attachment-error" className="upload-error" role="alert">{file.error}</p>
-              <div className="ocr-status" role="status">
-                <span><Icon name="file" /></span>
-                <div>
-                  <strong>{file.busy ? '파일에서 텍스트를 추출하고 있어요' : file.confirmed ? '텍스트 확인 완료' : '추출 결과를 확인해 주세요'}</strong>
-                  <p>{file.status || 'PDF 텍스트와 이미지·스캔 PDF의 OCR 결과를 아래에서 수정한 뒤 확인해 주세요.'}</p>
-                </div>
+            </> : <>
+              <label className="review-label" htmlFor="jd-url">채용공고 주소</label>
+              <div className="url-input" aria-busy={String(link.busy)}>
+                {/* Enter fetches the address; it must not submit the analysis form. */}
+                <input id="jd-url" type="url" inputMode="url" autoComplete="url" placeholder="https://"
+                  value={link.url} onChange={event => state.editUrl(event.target.value)}
+                  onKeyDown={event => { if (event.key === 'Enter') { event.preventDefault(); void state.fetchUrl(); } }} />
+                <button className="btn small" type="button" data-action="fetch-url" onClick={() => void state.fetchUrl()}
+                  disabled={link.busy || !link.url.trim()}>{link.busy ? '가져오는 중…' : '가져오기'}</button>
               </div>
-            </> : <p className="subtle input-help">담당 업무, 자격요건, 우대사항을 함께 넣어주세요.</p>}
-            {fileMode ? (
-              <div className="review-heading">
-                <label className="review-label" htmlFor="jd-text">공고 텍스트 확인·수정</label>
-                <div className="review-actions">
-                  {file.confirmed && <span className="confirmed-mark" role="status"><Icon name="check" /> 확인됨</span>}
-                  <button className="btn outline small" id="confirm-text" type="button" data-action="confirm-text" onClick={confirm}
-                    disabled={!file.attachment || file.busy || file.text.trim().length < 20 || file.confirmed}>텍스트 확인</button>
-                </div>
+              <p id="url-error" className="upload-error" role="alert">{link.error}</p>
+            </>}
+            <div className="ocr-status" role="status">
+              <span><Icon name="file" /></span>
+              <div>
+                <strong>{reading ? reading.label : source.busy ? '파일에서 텍스트를 추출하고 있어요'
+                  : source.confirmed ? '텍스트 확인 완료' : '추출 결과를 확인해 주세요'}</strong>
+                <p>{source.status || (fileMode ? 'PDF 텍스트와 이미지·스캔 PDF의 OCR 결과를 아래에서 수정한 뒤 확인해 주세요.'
+                  : source.busy ? '본문이 이미지인 공고는 OCR까지 거쳐 1분 정도 걸릴 수 있어요.'
+                    : '공고 페이지 주소를 넣고 가져오면, 페이지의 글과 공고 이미지를 읽어 아래에 보여드려요.')}</p>
+                {reading?.ratio != null && <div className="meter status-meter" aria-hidden="true"><span style={{ width: reading.ratio * 100 + '%' }}></span></div>}
               </div>
-            ) : <label className="sr-only" htmlFor="jd-text">채용공고 또는 Job Description</label>}
-            <textarea id="jd-text" name="jd" required minLength={20} maxLength={15000} disabled={fileMode && (!file.attachment || file.busy)}
-              placeholder={fileMode ? '추출 결과가 없으면 원본을 보며 직접 입력해 주세요.' : '분석할 공고를 붙여넣으세요.\n\n자격요건\n· Java, Spring Boot 기반의 개발 경험\n\n우대사항\n· Docker 기반 배포 경험'}
+            </div>
+            <div className="review-heading">
+              <label className="review-label" htmlFor="jd-text">공고 텍스트 확인·수정</label>
+              <div className="review-actions">
+                {source.confirmed && <span className="confirmed-mark" role="status"><Icon name="check" /> 확인됨</span>}
+                <button className="btn outline small" id="confirm-text" type="button" data-action="confirm-text" onClick={confirm}
+                  disabled={!hasSource || source.busy || source.text.trim().length < 20 || source.confirmed}>텍스트 확인</button>
+              </div>
+            </div>
+            <textarea id="jd-text" name="jd" required minLength={20} maxLength={15000} disabled={!(fileMode ? file.attachment : link.draftId) || source.busy}
+              placeholder={fileMode ? '추출 결과가 없으면 원본을 보며 직접 입력해 주세요.' : '주소에서 가져온 공고 내용이 여기에 표시돼요.'}
               value={currentText} onChange={event => state.editText(event.target.value)} />
             <div className="textarea-footer">
-              <span>{fileMode ? '입력·수정한 텍스트를 확인해야 분석합니다.' : '텍스트로 입력 · 최소 20자'}</span>
+              <span>추출한 텍스트를 확인해야 분석합니다.</span>
               <span id="jd-count">{currentText.length.toLocaleString()} / 15,000</span>
             </div>
             <button className="btn full" id="analyze-button" type="submit" disabled={!canAnalyze}><Icon name="spark" /> {state.analyzing ? '분석하는 중…' : '내 프로필과 비교하기'}</button>
           </form>
-          {fileMode && <p className="upload-help">파일은 텍스트 추출을 위해 서버에 전송되며 처리 후 삭제됩니다. 브라우저 미리보기와 수정 텍스트는 새로고침하면 사라집니다.</p>}
+          <p className="upload-help">{fileMode
+            ? '파일은 텍스트 추출을 위해 서버에 전송되며 처리 후 삭제됩니다. 브라우저 미리보기와 수정 텍스트는 새로고침하면 사라집니다.'
+            : '서버가 입력한 주소의 페이지를 대신 열어 글과 이미지를 읽습니다. 주소는 분석 결과와 함께 저장되어 원문 링크로 쓰입니다.'}</p>
           <p className="upload-help">분석하면 확인한 공고 텍스트와 프로필 요약(연락처 제외)이 Anthropic Claude API로 전송되고, 결과는 내 계정에만 30일간 저장됩니다.</p>
           <p className="jd-profile"><Icon name="user" /><span>{profile.roles.join(', ')} · {profile.career} 프로필로 비교</span><a href="#/profile" aria-label="비교할 프로필 수정">수정</a></p>
         </section>

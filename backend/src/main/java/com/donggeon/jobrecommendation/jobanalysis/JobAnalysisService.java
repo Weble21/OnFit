@@ -6,6 +6,7 @@ import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.HexFormat;
+import java.util.function.Consumer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -20,6 +21,7 @@ import com.donggeon.jobrecommendation.domain.JobAnalysisDraft;
 import com.donggeon.jobrecommendation.domain.User;
 import com.donggeon.jobrecommendation.domain.UserProfile;
 import com.donggeon.jobrecommendation.extraction.JobTextExtractionService;
+import com.donggeon.jobrecommendation.extraction.JobUrlExtractionService;
 import com.donggeon.jobrecommendation.profile.CurrentUser;
 import com.donggeon.jobrecommendation.profile.UserProfileRepository;
 import com.donggeon.jobrecommendation.profile.UserRepository;
@@ -44,6 +46,7 @@ public class JobAnalysisService {
     private final JobAnalysisRepository analyses;
     private final JobAnalysisDraftRepository drafts;
     private final JobTextExtractionService extraction;
+    private final JobUrlExtractionService urlExtraction;
     private final JobAiClient ai;
     private final JobMatchScorer scorer;
     private final JobAnalysisRetention retention;
@@ -53,7 +56,8 @@ public class JobAnalysisService {
 
     public JobAnalysisService(CurrentUser currentUser, UserRepository users, UserProfileRepository profiles,
                               JobAnalysisRepository analyses, JobAnalysisDraftRepository drafts,
-                              JobTextExtractionService extraction, JobAiClient ai, JobMatchScorer scorer,
+                              JobTextExtractionService extraction, JobUrlExtractionService urlExtraction,
+                              JobAiClient ai, JobMatchScorer scorer,
                               JobAnalysisRetention retention, JsonMapper json, PlatformTransactionManager transactions) {
         this.currentUser = currentUser;
         this.users = users;
@@ -61,6 +65,7 @@ public class JobAnalysisService {
         this.analyses = analyses;
         this.drafts = drafts;
         this.extraction = extraction;
+        this.urlExtraction = urlExtraction;
         this.ai = ai;
         this.scorer = scorer;
         this.retention = retention;
@@ -78,7 +83,20 @@ public class JobAnalysisService {
             User user = users.findByEmail(identity).orElseGet(() -> users.save(new User(identity, "OnFit User")));
             return drafts.save(new JobAnalysisDraft(user, result.text(), result.method(), result.pages(), result.truncated()));
         });
-        return new JobAnalysisResponse.Draft(draft.getId(), result.text(), result.method(), result.pages(), result.truncated());
+        return new JobAnalysisResponse.Draft(draft.getId(), result.text(), result.method(), result.pages(), result.truncated(), null);
+    }
+
+    /** Fetches a posting address and returns its text for review, like an uploaded file, reporting progress on the way. */
+    public JobAnalysisResponse.Draft createDraftFromUrl(String address, Consumer<JobUrlExtractionService.Progress> progress) {
+        String identity = currentUser.identity();
+        var result = urlExtraction.extract(address, progress);
+        JobAnalysisDraft draft = tx.execute(status -> {
+            User user = users.findByEmail(identity).orElseGet(() -> users.save(new User(identity, "OnFit User")));
+            return drafts.save(new JobAnalysisDraft(user, result.text(), result.method(), result.pages(), result.truncated(),
+                    result.sourceUrl()));
+        });
+        return new JobAnalysisResponse.Draft(draft.getId(), result.text(), result.method(), result.pages(), result.truncated(),
+                result.sourceUrl());
     }
 
     public JobAnalysisResponse analyze(JobAnalysisRequest request) {
@@ -93,7 +111,7 @@ public class JobAnalysisService {
         Prepared prepared = readOnly.execute(status -> {
             UserProfile profile = profiles.findByUserEmail(identity).orElseThrow(() ->
                     new ResponseStatusException(HttpStatus.NOT_FOUND, "비교할 프로필을 먼저 저장해 주세요."));
-            Long draftId = request.inputType() == JobAnalysis.InputType.FILE ? checkDraft(request, identity, sourceHash) : null;
+            Long draftId = request.inputType() == JobAnalysis.InputType.TEXT ? null : checkDraft(request, identity, sourceHash);
             ProfileSnapshot snapshot = ProfileSnapshot.of(profile); // also loads every collection the scorer reads
             String snapshotJson = json.writeValueAsString(snapshot);
             String profileHash = sha256(snapshotJson);
@@ -186,6 +204,10 @@ public class JobAnalysisService {
         }
         JobAnalysisDraft draft = drafts.findByIdAndUserEmail(request.draftId(), identity)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "추출한 파일 텍스트를 찾을 수 없습니다."));
+        // A file draft cannot be sent as a web posting or the other way round; the stored address would be wrong.
+        if ((draft.getSourceUrl() != null) != (request.inputType() == JobAnalysis.InputType.URL)) {
+            throw bad("입력 방식과 추출한 텍스트가 맞지 않습니다. 다시 가져와 주세요.");
+        }
         if (draft.getCreatedAt().isBefore(Instant.now().minus(DRAFT_TTL))) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "추출한 지 오래된 파일입니다. 파일을 다시 올려 주세요.");
         }
@@ -214,7 +236,7 @@ public class JobAnalysisService {
         var versions = new JobAnalysisResponse.Versions(analysis.getExtractionModel(), analysis.getExtractionPromptVersion(),
                 analysis.getCalculatorVersion(), analysis.getSemanticModelVersion(), analysis.getRoleModel(),
                 analysis.getRolePromptVersion());
-        return new JobAnalysisResponse(analysis.getId(), analysis.getInputType(), analysis.getCreatedAt(),
+        return new JobAnalysisResponse(analysis.getId(), analysis.getInputType(), analysis.getSourceUrl(), analysis.getCreatedAt(),
                 !analysis.getProfileHash().equals(currentHash), json.readTree(analysis.getStructuredPosting()), score,
                 analysis.getRoleStatus(), analysis.getRoleErrorCode() == null ? null : message(analysis.getRoleErrorCode()),
                 analysis.getRoleAnalysis() == null ? null : json.readTree(analysis.getRoleAnalysis()),

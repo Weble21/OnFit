@@ -8,7 +8,7 @@ import jakarta.validation.constraints.Size;
 import com.donggeon.jobrecommendation.domain.JobAnalysis;
 
 /**
- * TEXT: text typed by the user. FILE: text reviewed from draft {@code draftId}, where
+ * TEXT: text typed by the user. FILE and URL: text reviewed from draft {@code draftId}, where
  * {@code confirmedTextHash} is the SHA-256 of the text the user confirmed; an edit after confirming
  * changes the text but not the hash, so the request is refused until the user confirms again.
  */

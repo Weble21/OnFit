@@ -49,18 +49,41 @@ public class JobTextExtractionService {
                 && !file.getContentType().equals(mime) && !file.getContentType().equals("application/octet-stream")) {
             throw new ResponseStatusException(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "파일 이름과 형식이 맞지 않습니다.");
         }
+        byte[] bytes;
         try {
-            byte[] bytes = file.getBytes();
-            if (bytes.length == 0) throw bad("비어 있는 파일은 사용할 수 없습니다.");
-            if (bytes.length > MAX_BYTES) throw new ResponseStatusException(HttpStatus.PAYLOAD_TOO_LARGE,
-                    "10MB 이하의 파일을 선택해 주세요.");
-            if (!signature(bytes, suffix)) throw bad("파일 내용과 형식이 맞지 않습니다.");
-            if (suffix.equals("pdf")) return pdf(bytes);
-            validateImageSize(bytes, suffix);
-            return result(ocr.recognize(bytes, "." + suffix), "OCR", 1);
+            bytes = file.getBytes();
         } catch (IOException ex) {
             throw bad("파일을 읽지 못했습니다. 원본 파일을 확인해 주세요.");
         }
+        return extract(bytes, suffix);
+    }
+
+    /** A PDF or image already in memory, such as one a posting page links to. suffix: pdf, png, jpg, jpeg or webp. */
+    public Result extract(byte[] bytes, String suffix) {
+        if (bytes.length == 0) throw bad("비어 있는 파일은 사용할 수 없습니다.");
+        if (bytes.length > MAX_BYTES) throw new ResponseStatusException(HttpStatus.PAYLOAD_TOO_LARGE,
+                "10MB 이하의 파일을 선택해 주세요.");
+        if (suffix.equals("pdf")) {
+            if (!signature(bytes, suffix)) throw bad("파일 내용과 형식이 맞지 않습니다.");
+            return pdf(bytes);
+        }
+        return result(recognizeImage(bytes, suffix), "OCR", 1);
+    }
+
+    /** Reads the text of one image; callers that read several join the results themselves. */
+    public String recognizeImage(byte[] bytes, String suffix) {
+        if (!signature(bytes, suffix)) throw bad("파일 내용과 형식이 맞지 않습니다.");
+        try {
+            validateImageSize(bytes, suffix);
+        } catch (IOException ex) {
+            throw bad("이미지를 읽지 못했습니다.");
+        }
+        return ocr.recognize(bytes, "." + suffix);
+    }
+
+    /** Cleans and, past {@link #MAX_TEXT}, truncates text gathered from several sources. */
+    public static Result finish(String text, String method, int pages) {
+        return result(text, method, pages);
     }
 
     private Result pdf(byte[] bytes) {

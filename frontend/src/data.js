@@ -25,4 +25,3 @@ export function profileSkills(profile) {
     return !seen.has(key) && seen.add(key);
   });
 }
-export const sampleJD = '모노랩 | 백엔드 개발자 (신입)\n\n주요 업무\n커머스 서비스 API 개발과 데이터 모델 설계\n\n자격요건\n- Java, Spring Boot 기반의 프로젝트 경험\n- PostgreSQL을 사용한 데이터베이스 설계 경험\n\n우대사항\n- Docker 기반 서비스 배포 경험\n- Redis를 활용한 캐시 구현 경험';

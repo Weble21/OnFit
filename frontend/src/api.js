@@ -49,7 +49,52 @@ export async function textHash(text) {
   return [...new Uint8Array(digest)].map(byte => byte.toString(16).padStart(2, '0')).join('');
 }
 
-/** body: { inputType: 'TEXT', text } or { inputType: 'FILE', text, draftId, confirmedTextHash }. */
+/**
+ * The server opens the posting address and returns its text as a draft to review, like an uploaded file.
+ * The answer arrives as JSON lines: progress events ({ stage, done, total }) go to onProgress, then the draft.
+ */
+export async function extractJobDraftFromUrl(url, signal, onProgress = () => {}) {
+  const token = await accessTokenProvider();
+  let response;
+  try {
+    response = await fetch('/api/job-analysis/url', { method: 'POST', body: JSON.stringify({ url }), signal,
+      headers: { Accept: 'application/x-ndjson, application/json', 'Content-Type': 'application/json', Authorization: `Bearer ${token}` } });
+  } catch (error) {
+    if (error.name === 'AbortError') throw error;
+    throw new Error(BACKEND_DOWN);
+  }
+  if (!response.ok) {
+    // Refused before streaming started (bad address, login): an ordinary problem response.
+    const problem = await response.json().catch(() => null);
+    const error = new Error(problem?.detail || (response.status === 502 ? BACKEND_DOWN : '공고를 가져오지 못했습니다.'));
+    error.status = response.status;
+    throw error;
+  }
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffered = '';
+  for (;;) {
+    const { value, done } = await reader.read();
+    buffered += decoder.decode(value, { stream: !done });
+    let newline;
+    while ((newline = buffered.indexOf('\n')) >= 0) {
+      const line = buffered.slice(0, newline).trim();
+      buffered = buffered.slice(newline + 1);
+      if (!line) continue;
+      const event = JSON.parse(line);
+      if (event.type === 'progress') onProgress(event);
+      else if (event.type === 'draft') return event.draft;
+      else if (event.type === 'error') {
+        const error = new Error(event.detail || '공고를 가져오지 못했습니다.');
+        error.status = event.status;
+        throw error;
+      }
+    }
+    if (done) throw new Error('공고를 가져오는 중 연결이 끊어졌습니다. 다시 시도해 주세요.');
+  }
+}
+
+/** body: { inputType: 'TEXT', text } or { inputType: 'FILE' | 'URL', text, draftId, confirmedTextHash }. */
 export const analyzeJob = (body, signal) => request('/job-analysis/text', { method: 'POST', body: JSON.stringify(body), signal });
 export const retryRoleAnalysis = id => request(`/job-analysis/${encodeURIComponent(id)}/role-analysis`, { method: 'POST' });
 

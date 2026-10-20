@@ -12,7 +12,7 @@ import jakarta.persistence.Table;
 import java.time.Instant;
 import org.hibernate.annotations.CreationTimestamp;
 
-/** Text extracted from an uploaded posting file, waiting for the owner to review it. */
+/** Text extracted from an uploaded posting file or a posting address, waiting for the owner to review it. */
 @Entity
 @Table(name = "job_analysis_drafts")
 public class JobAnalysisDraft {
@@ -37,6 +37,10 @@ public class JobAnalysisDraft {
     @Column(nullable = false)
     private boolean truncated;
 
+    /** The posting address the text came from; null for an uploaded file. */
+    @Column(name = "source_url", length = 2048)
+    private String sourceUrl;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
@@ -52,11 +56,18 @@ public class JobAnalysisDraft {
         this.truncated = truncated;
     }
 
+    public JobAnalysisDraft(User user, String extractedText, String extractionMethod, int pages, boolean truncated,
+                            String sourceUrl) {
+        this(user, extractedText, extractionMethod, pages, truncated);
+        this.sourceUrl = sourceUrl;
+    }
+
     public Long getId() { return id; }
     public User getUser() { return user; }
     public String getExtractedText() { return extractedText; }
     public String getExtractionMethod() { return extractionMethod; }
     public int getPages() { return pages; }
     public boolean isTruncated() { return truncated; }
+    public String getSourceUrl() { return sourceUrl; }
     public Instant getCreatedAt() { return createdAt; }
 }
