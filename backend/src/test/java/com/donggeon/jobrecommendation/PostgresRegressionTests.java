@@ -49,7 +49,7 @@ class PostgresRegressionTests {
             """;
 
     @ParameterizedTest(name = "DB at V{0} upgrades and passes core APIs")
-    @ValueSource(ints = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12})
+    @ValueSource(ints = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13})
     void freshAndHistoricalDatabasesPassMigrationAndApis(int previousVersion) throws Exception {
         String schema = "regression_v" + previousVersion;
         var admin = new JdbcTemplate(new DriverManagerDataSource(
@@ -84,7 +84,7 @@ class PostgresRegressionTests {
             var mvc = MockMvcBuilders.webAppContextSetup((WebApplicationContext) context)
                     .addFilters(context.getBean(com.donggeon.jobrecommendation.config.RequestLogFilter.class)).build();
             assertThat(jdbc.queryForList("SELECT version FROM flyway_schema_history WHERE success ORDER BY installed_rank",
-                    String.class)).containsExactly("1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13");
+                    String.class)).containsExactly("1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14");
             // V13 adds user-owned analyses without touching earlier job or recommendation rows.
             assertThat(jdbc.queryForObject("SELECT count(*) FROM job_analyses", Long.class)).isZero();
             // V12: certificates kept from older versions become OTHER, and the issuer column is gone.
