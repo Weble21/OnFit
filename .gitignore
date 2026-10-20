@@ -1,6 +1,7 @@
 ﻿HELP.md
 .env
 .env.*
+!.env.example
 backups/
 logs/
 ai-service/.venv/
