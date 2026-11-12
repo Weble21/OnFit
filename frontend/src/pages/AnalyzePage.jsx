@@ -102,7 +102,7 @@ function AnalysisResult({ state }) {
   const { score, posting } = analysis;
   const semanticOk = score.semanticStatus === 'OK';
   return <>{title}<article className="analysis-result">
-    <div className="result-heading"><span className="eyebrow">YOUR FIT REPORT</span><Pill>AI 구조화 · 규칙 기반 점수</Pill></div>
+    <div className="result-heading"><span className="eyebrow">YOUR FIT REPORT · {analysis.targetRole}</span><Pill>AI 구조화 · 규칙 기반 점수</Pill></div>
     {analysis.stale && <p className="upload-error" role="alert">이 결과 이후 프로필이 바뀌었어요. 다시 비교하면 새 프로필로 계산합니다.</p>}
     <div className="result-score">
       <div className="score-circle" style={{ '--score': score.total / score.maxTotal * 100 }}><div><strong>{formatScore(score.total)}<small>점</small></strong><span>맞춤 점수</span></div></div>
@@ -226,6 +226,11 @@ export function AnalyzePage({ profile, analysis: state }) {
             <button data-action="input-mode" data-mode="file" aria-pressed={fileMode} className={fileMode ? 'selected' : ''} onClick={() => state.setMode('file')}><Icon name="plus" /> 사진 · PDF 첨부</button>
           </div>
           <form id="analysis-form" onSubmit={event => { event.preventDefault(); state.analyze(); }}>
+            <label className="review-label" htmlFor="target-role">지원 직무</label>
+            <input id="target-role" name="targetRole" className="target-role-input" type="text" required maxLength={120}
+              placeholder="예: 백엔드 개발자" value={state.targetRole}
+              onChange={event => state.editTargetRole(event.target.value)} />
+            <p className="upload-help">공고에 여러 직무가 있다면 분석할 직무 하나만 입력해 주세요.</p>
             {fileMode ? <>
               <div id="attachment-zone" ref={zoneRef} aria-busy={String(file.busy)} className={dragOver ? 'drag-over' : ''}
                 onDragOver={event => { if (!hasFiles(event)) return; event.preventDefault(); event.dataTransfer.dropEffect = 'copy'; setDragOver(true); }}

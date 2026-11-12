@@ -102,6 +102,8 @@ public class JobAnalysisService {
     public JobAnalysisResponse analyze(JobAnalysisRequest request) {
         long started = System.nanoTime();
         String text = normalize(request.text());
+        String targetRole = normalize(request.targetRole());
+        if (targetRole.isBlank()) throw bad("지원 직무를 입력해 주세요.");
         if (text.length() < MIN_TEXT) throw bad("공고 텍스트를 20자 이상 입력해 주세요.");
         String sourceHash = sha256(text);
         String identity = currentUser.identity();
@@ -115,8 +117,8 @@ public class JobAnalysisService {
             ProfileSnapshot snapshot = ProfileSnapshot.of(profile); // also loads every collection the scorer reads
             String snapshotJson = json.writeValueAsString(snapshot);
             String profileHash = sha256(snapshotJson);
-            Long existing = analyses.findFirstByUserIdAndSourceHashAndProfileHashAndCalculatorVersionAndCreatedAtGreaterThanEqualOrderByIdDesc(
-                    profile.getUser().getId(), sourceHash, profileHash, JobMatchScorer.CALCULATOR_VERSION, retention.cutoff())
+            Long existing = analyses.findFirstByUserIdAndSourceHashAndTargetRoleAndProfileHashAndCalculatorVersionAndCreatedAtGreaterThanEqualOrderByIdDesc(
+                    profile.getUser().getId(), sourceHash, targetRole, profileHash, JobMatchScorer.CALCULATOR_VERSION, retention.cutoff())
                     .filter(found -> fromCurrentPrompts(found, versions))
                     .map(JobAnalysis::getId).orElse(null);
             return new Prepared(profile, snapshot, snapshotJson, profileHash, draftId, existing);
@@ -128,7 +130,7 @@ public class JobAnalysisService {
 
         JobAiClient.Extraction extracted;
         try {
-            extracted = ai.extract(text);
+            extracted = ai.extract(text, targetRole);
         } catch (JobAiException ex) {
             log.warn("job_analysis_failed stage=extract code={}", ex.getCode());
             throw toHttp(ex);
@@ -137,7 +139,7 @@ public class JobAnalysisService {
         JobAiClient.RoleResult role = null;
         String roleError = null;
         try {
-            role = ai.analyzeRole(text, extracted.posting(), prepared.snapshot().evidenceItems(), facts(scoring));
+            role = ai.analyzeRole(text, targetRole, extracted.posting(), prepared.snapshot().evidenceItems(), facts(scoring));
         } catch (JobAiException ex) {
             // The score stands on its own; the explanation can be retried later.
             roleError = ex.getCode();
@@ -149,7 +151,7 @@ public class JobAnalysisService {
         Long id = tx.execute(status -> {
             User user = users.findByEmail(identity).orElseThrow();
             JobAnalysisDraft draft = prepared.draftId() == null ? null : drafts.getReferenceById(prepared.draftId());
-            var analysis = new JobAnalysis(user, request.inputType(), draft, text, sourceHash, prepared.snapshotJson(),
+            var analysis = new JobAnalysis(user, request.inputType(), draft, text, targetRole, sourceHash, prepared.snapshotJson(),
                     prepared.profileHash(), json.writeValueAsString(extracted.posting()), extracted.model(),
                     extracted.promptVersion(), scoring);
             if (roleResult != null) {
@@ -174,19 +176,23 @@ public class JobAnalysisService {
     /** Re-runs only the role analysis, from the stored text, structure, profile snapshot and score. */
     public JobAnalysisResponse retryRoleAnalysis(Long id) {
         String identity = currentUser.identity();
-        record Input(String text, StructuredPosting posting, ProfileSnapshot snapshot, JobAiClient.ScoreFacts facts) {}
+        record Input(String text, String targetRole, StructuredPosting posting, ProfileSnapshot snapshot, JobAiClient.ScoreFacts facts) {}
         Input input = readOnly.execute(status -> {
             JobAnalysis analysis = findOwned(id, identity);
             if (analysis.getRoleStatus() == JobAnalysis.RoleStatus.COMPLETED) return null;
             var detail = json.readValue(analysis.getScoreDetail(), JobMatchScorer.Detail.class);
-            return new Input(analysis.getSourceText(),
-                    json.readValue(analysis.getStructuredPosting(), StructuredPosting.class),
+            StructuredPosting posting = json.readValue(analysis.getStructuredPosting(), StructuredPosting.class);
+            // Analyses made before target-role selection have no stored role; use their extracted role when retrying.
+            String role = analysis.getTargetRole() == null
+                    ? (posting.roleName().value() == null ? "공고 직무" : posting.roleName().value())
+                    : analysis.getTargetRole();
+            return new Input(analysis.getSourceText(), role, posting,
                     json.readValue(analysis.getProfileSnapshot(), ProfileSnapshot.class),
                     new JobAiClient.ScoreFacts(detail.matchedRequired(), detail.matchedPreferred(), detail.missing()));
         });
         if (input == null) return get(id);
         try {
-            var role = ai.analyzeRole(input.text(), input.posting(), input.snapshot().evidenceItems(), input.facts());
+            var role = ai.analyzeRole(input.text(), input.targetRole(), input.posting(), input.snapshot().evidenceItems(), input.facts());
             tx.executeWithoutResult(status -> findOwned(id, identity).completeRoleAnalysis(
                     json.writeValueAsString(role.analysis()), role.model(), role.promptVersion()));
             log.info("job_analysis_role_retried analysis_id={} role_status=COMPLETED", id);
@@ -236,7 +242,7 @@ public class JobAnalysisService {
         var versions = new JobAnalysisResponse.Versions(analysis.getExtractionModel(), analysis.getExtractionPromptVersion(),
                 analysis.getCalculatorVersion(), analysis.getSemanticModelVersion(), analysis.getRoleModel(),
                 analysis.getRolePromptVersion());
-        return new JobAnalysisResponse(analysis.getId(), analysis.getInputType(), analysis.getSourceUrl(), analysis.getCreatedAt(),
+        return new JobAnalysisResponse(analysis.getId(), analysis.getInputType(), analysis.getTargetRole(), analysis.getSourceUrl(), analysis.getCreatedAt(),
                 !analysis.getProfileHash().equals(currentHash), json.readTree(analysis.getStructuredPosting()), score,
                 analysis.getRoleStatus(), analysis.getRoleErrorCode() == null ? null : message(analysis.getRoleErrorCode()),
                 analysis.getRoleAnalysis() == null ? null : json.readTree(analysis.getRoleAnalysis()),

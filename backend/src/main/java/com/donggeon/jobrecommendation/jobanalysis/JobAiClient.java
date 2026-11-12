@@ -34,9 +34,9 @@ public class JobAiClient {
 
     private static final Duration VERSIONS_TIMEOUT = Duration.ofSeconds(3);
 
-    record ExtractRequest(String text) {}
+    record ExtractRequest(String text, String targetRole) {}
     record VersionsResponse(String extractPromptVersion, String rolePromptVersion) {}
-    record RoleRequest(String sourceText, StructuredPosting posting, List<ProfileItem> profileItems,
+    record RoleRequest(String sourceText, String targetRole, StructuredPosting posting, List<ProfileItem> profileItems,
                        ScoreFacts scoreFacts) {}
     record Meta(String model, String promptVersion, Integer droppedItems) {}
     record ExtractResponse(StructuredPosting posting, Meta meta) {}
@@ -64,18 +64,18 @@ public class JobAiClient {
         this.client = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5)).build();
     }
 
-    public Extraction extract(String sourceText) {
-        var response = post("internal/jobs/extract", new ExtractRequest(sourceText), ExtractResponse.class);
+    public Extraction extract(String sourceText, String targetRole) {
+        var response = post("internal/jobs/extract", new ExtractRequest(sourceText, targetRole), ExtractResponse.class);
         if (response.posting() == null || response.meta() == null || response.meta().model() == null) {
             throw new JobAiException("LLM_INVALID_OUTPUT");
         }
         return new Extraction(response.posting(), response.meta().model(), response.meta().promptVersion());
     }
 
-    public RoleResult analyzeRole(String sourceText, StructuredPosting posting, List<ProfileItem> profileItems,
+    public RoleResult analyzeRole(String sourceText, String targetRole, StructuredPosting posting, List<ProfileItem> profileItems,
                                   ScoreFacts scoreFacts) {
         var response = post("internal/jobs/analyze-role",
-                new RoleRequest(sourceText, posting, profileItems, scoreFacts), RoleResponse.class);
+                new RoleRequest(sourceText, targetRole, posting, profileItems, scoreFacts), RoleResponse.class);
         if (response.analysis() == null || !response.analysis().isObject() || response.meta() == null
                 || response.meta().model() == null) {
             throw new JobAiException("LLM_INVALID_OUTPUT");

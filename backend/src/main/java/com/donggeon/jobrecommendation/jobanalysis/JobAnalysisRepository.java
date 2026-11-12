@@ -13,8 +13,8 @@ public interface JobAnalysisRepository extends JpaRepository<JobAnalysis, Long> 
     Optional<JobAnalysis> findByIdAndUserEmailAndCreatedAtGreaterThanEqual(Long id, String email, Instant cutoff);
 
     /** The same confirmed text and the same profile version give back the stored analysis. */
-    Optional<JobAnalysis> findFirstByUserIdAndSourceHashAndProfileHashAndCalculatorVersionAndCreatedAtGreaterThanEqualOrderByIdDesc(
-            Long userId, String sourceHash, String profileHash, String calculatorVersion, Instant cutoff);
+    Optional<JobAnalysis> findFirstByUserIdAndSourceHashAndTargetRoleAndProfileHashAndCalculatorVersionAndCreatedAtGreaterThanEqualOrderByIdDesc(
+            Long userId, String sourceHash, String targetRole, String profileHash, String calculatorVersion, Instant cutoff);
 
     @Modifying
     @Query(value = "delete from job_analyses where created_at < :cutoff", nativeQuery = true)

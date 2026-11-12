@@ -58,6 +58,9 @@ public class JobAnalysis {
     @Column(name = "source_url", length = 2048)
     private String sourceUrl;
 
+    @Column(name = "target_role", length = 120)
+    private String targetRole;
+
     @Column(name = "source_hash", nullable = false, length = 64)
     private String sourceHash;
 
@@ -134,7 +137,7 @@ public class JobAnalysis {
     protected JobAnalysis() {
     }
 
-    public JobAnalysis(User user, InputType inputType, JobAnalysisDraft draft, String sourceText, String sourceHash,
+    public JobAnalysis(User user, InputType inputType, JobAnalysisDraft draft, String sourceText, String targetRole, String sourceHash,
                        String profileSnapshot, String profileHash, String structuredPosting,
                        String extractionModel, String extractionPromptVersion, Scoring scoring) {
         this.user = user;
@@ -142,6 +145,7 @@ public class JobAnalysis {
         this.draft = draft;
         this.sourceUrl = draft == null ? null : draft.getSourceUrl();
         this.sourceText = sourceText;
+        this.targetRole = targetRole;
         this.sourceHash = sourceHash;
         this.profileSnapshot = profileSnapshot;
         this.profileHash = profileHash;
@@ -201,6 +205,7 @@ public class JobAnalysis {
     public String getRoleModel() { return roleModel; }
     public String getRolePromptVersion() { return rolePromptVersion; }
     public String getSourceUrl() { return sourceUrl; }
+    public String getTargetRole() { return targetRole; }
     public String getRoleErrorCode() { return roleErrorCode; }
     public Instant getCreatedAt() { return createdAt; }
     public Instant getUpdatedAt() { return updatedAt; }

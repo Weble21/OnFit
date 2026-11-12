@@ -18,6 +18,7 @@ import tools.jackson.databind.JsonNode;
 public record JobAnalysisResponse(
         Long id,
         JobAnalysis.InputType inputType,
+        String targetRole,
         String sourceUrl,
         Instant createdAt,
         boolean stale,

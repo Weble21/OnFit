@@ -30,7 +30,7 @@ class JobAiClientTests {
         AtomicReference<String> requestId = new AtomicReference<>();
         AtomicInteger status = new AtomicInteger(200);
         AtomicReference<String> answer = new AtomicReference<>(
-                "{\"posting\":" + POSTING + ",\"meta\":{\"model\":\"claude-opus-5-5\",\"promptVersion\":\"job-extract-v1\",\"droppedItems\":0}}");
+                "{\"posting\":" + POSTING + ",\"meta\":{\"model\":\"claude-opus-5-5\",\"promptVersion\":\"job-extract-v2\",\"droppedItems\":0}}");
         var server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
         server.createContext("/internal/jobs/", exchange -> {
             body.set(new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8));
@@ -45,34 +45,34 @@ class JobAiClientTests {
             String url = "http://127.0.0.1:" + server.getAddress().getPort();
             var client = new JobAiClient(true, url, "secret", 5000, JsonMapper.builder().build());
             MDC.put("requestId", "0b7c6a2e-1f4d-4c52-9b7e-2d9f0b7a1c33");
-            var result = client.extract("백엔드 개발자 공고 원문입니다. Java 경험");
+            var result = client.extract("백엔드 개발자 공고 원문입니다. Java 경험", "백엔드 개발자");
             assertThat(result.posting().requiredSkills().get(0).value()).isEqualTo("Java");
             assertThat(result.posting().companyName().value()).isNull();
             assertThat(result.model()).isEqualTo("claude-opus-5-5");
             assertThat(token.get()).isEqualTo("secret");
             assertThat(requestId.get()).isEqualTo("0b7c6a2e-1f4d-4c52-9b7e-2d9f0b7a1c33");
             // Only the text crosses the boundary; the service never learns who asked.
-            assertThat(body.get()).isEqualTo("{\"text\":\"백엔드 개발자 공고 원문입니다. Java 경험\"}");
+            assertThat(body.get()).isEqualTo("{\"text\":\"백엔드 개발자 공고 원문입니다. Java 경험\",\"targetRole\":\"백엔드 개발자\"}");
 
             status.set(504);
             answer.set("{\"detail\":{\"code\":\"LLM_TIMEOUT\"}}");
-            assertThatThrownBy(() -> client.extract("text")).isInstanceOf(JobAiException.class).hasMessage("LLM_TIMEOUT");
+            assertThatThrownBy(() -> client.extract("text", "백엔드 개발자")).isInstanceOf(JobAiException.class).hasMessage("LLM_TIMEOUT");
             status.set(500);
             answer.set("<html>Internal Server Error</html>");
-            assertThatThrownBy(() -> client.extract("text")).hasMessage("LLM_UPSTREAM");
+            assertThatThrownBy(() -> client.extract("text", "백엔드 개발자")).hasMessage("LLM_UPSTREAM");
             status.set(200);
             answer.set("{\"analysis\":[],\"meta\":{\"model\":\"m\"}}");
-            assertThatThrownBy(() -> client.analyzeRole("text", result.posting(), List.of(),
+            assertThatThrownBy(() -> client.analyzeRole("text", "백엔드 개발자", result.posting(), List.of(),
                     new JobAiClient.ScoreFacts(List.of(), List.of(), List.of()))).hasMessage("LLM_INVALID_OUTPUT");
 
             var disabled = new JobAiClient(false, url, "secret", 5000, JsonMapper.builder().build());
-            assertThatThrownBy(() -> disabled.extract("text")).hasMessage("LLM_DISABLED");
+            assertThatThrownBy(() -> disabled.extract("text", "백엔드 개발자")).hasMessage("LLM_DISABLED");
             var noToken = new JobAiClient(true, url, "", 5000, JsonMapper.builder().build());
-            assertThatThrownBy(() -> noToken.extract("text")).hasMessage("LLM_DISABLED");
+            assertThatThrownBy(() -> noToken.extract("text", "백엔드 개발자")).hasMessage("LLM_DISABLED");
 
-            answer.set("{\"extractPromptVersion\":\"job-extract-v1\",\"rolePromptVersion\":\"role-analysis-v2\"}");
+            answer.set("{\"extractPromptVersion\":\"job-extract-v2\",\"rolePromptVersion\":\"role-analysis-v3\"}");
             assertThat(client.promptVersions())
-                    .isEqualTo(new JobAiClient.PromptVersions("job-extract-v1", "role-analysis-v2"));
+                    .isEqualTo(new JobAiClient.PromptVersions("job-extract-v2", "role-analysis-v3"));
             // Without an answer the versions are unknown, never an error: stored results stay usable.
             status.set(500);
             assertThat(client.promptVersions()).isNull();

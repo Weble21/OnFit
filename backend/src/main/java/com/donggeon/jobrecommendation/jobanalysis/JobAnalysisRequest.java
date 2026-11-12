@@ -15,6 +15,7 @@ import com.donggeon.jobrecommendation.domain.JobAnalysis;
 public record JobAnalysisRequest(
         @NotNull JobAnalysis.InputType inputType,
         @NotBlank @Size(max = JobAnalysisService.MAX_TEXT) String text,
+        @NotBlank @Size(max = 120) String targetRole,
         Long draftId,
         @Pattern(regexp = "^[0-9a-f]{64}$") String confirmedTextHash
 ) {}

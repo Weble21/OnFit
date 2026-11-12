@@ -44,6 +44,7 @@
 .upload-error{font-size:11px;color:#ab4834;line-height:1.8;margin:8px 0;overflow-wrap:anywhere}.upload-error:empty{display:none}
 .ocr-status{display:flex;align-items:flex-start;gap:10px;background:#f3ecdf;border-radius:9px;padding:14px;margin:17px 0}
 .ocr-status>span{color:#ac8663}.ocr-status .icon{width:17px}.ocr-status strong{display:block;font-size:11px;font-weight:500;color:#8b684a}.ocr-status p{font-size:10px;color:#93836e;line-height:1.9;margin-top:5px}.ocr-status>div{flex:1;min-width:0}.status-meter{margin-top:8px;background:#e9dfcd}.status-meter>span{background:var(--accent);transition:width .3s}
+.target-role-input{width:100%}
 .review-label{display:block;font-size:11px;font-weight:500;color:#757e64;margin:18px 0 10px}
 .jd-panel:has(.review-label) textarea{min-height:180px}.jd-panel textarea:disabled{background:#f2f1eb;cursor:not-allowed}
 #analyze-button:disabled{transform:none;background:#c4baab;color:#fff}

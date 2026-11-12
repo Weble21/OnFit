@@ -58,6 +58,7 @@ public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
 
     private static final Map<String, String> FIELD_LABELS = Map.ofEntries(
             Map.entry("targetRoles", "희망 직무"),
+            Map.entry("targetRole", "지원 직무"),
             Map.entry("preferredLocations", "희망 지역"),
             Map.entry("skills", "기술"),
             Map.entry("certificates", "자격증"),

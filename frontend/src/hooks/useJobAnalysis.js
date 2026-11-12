@@ -32,6 +32,7 @@ export function useJobAnalysis(profile, onToast) {
   const [file, setFile] = useState(EMPTY_ATTACHMENT);
   const [link, setLink] = useState(EMPTY_LINK);
   const [analysis, setAnalysis] = useState(null);
+  const [targetRole, setTargetRole] = useState('');
   const [analyzing, setAnalyzing] = useState(false);
   const [analysisError, setAnalysisError] = useState('');
   const [retrying, setRetrying] = useState(false);
@@ -51,7 +52,7 @@ export function useJobAnalysis(profile, onToast) {
   const source = fileMode ? file : link;
   const hasSource = fileMode ? !!file.attachment : !!link.draftId;
   const currentText = source.text;
-  const canAnalyze = !analyzing && currentText.trim().length >= 20 && hasSource && !source.busy && source.confirmed;
+  const canAnalyze = !analyzing && targetRole.trim().length > 0 && currentText.trim().length >= 20 && hasSource && !source.busy && source.confirmed;
   const update = changes => setFile(current => ({ ...current, ...changes }));
   const updateLink = changes => setLink(current => ({ ...current, ...changes }));
   const updateSource = fileMode ? update : updateLink;
@@ -153,7 +154,7 @@ export function useJobAnalysis(profile, onToast) {
         : file.draftId
           ? { inputType: 'FILE', text: file.text, draftId: file.draftId, confirmedTextHash: await textHash(file.confirmedText) }
           : { inputType: 'TEXT', text: file.text };
-      const result = await analyzeJob(body, controller.signal);
+      const result = await analyzeJob({ ...body, targetRole: targetRole.trim() }, controller.signal);
       if (request !== analysisRef.current) return;
       setAnalysis(result);
     } catch (error) {
@@ -185,7 +186,8 @@ export function useJobAnalysis(profile, onToast) {
   }, []);
 
   return {
-    inputMode, fileMode, file, link, source, hasSource, analysis, analyzing, analysisError, retrying, currentText, canAnalyze,
+    inputMode, fileMode, file, link, source, hasSource, analysis, analyzing, analysisError, retrying, currentText, canAnalyze, targetRole,
+    editTargetRole(value) { setTargetRole(value); resetAnalysis(); },
     setMode(mode) { setInputMode(mode); resetAnalysis(); },
     editUrl,
     fetchUrl,

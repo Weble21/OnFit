@@ -78,6 +78,7 @@ def calibrate(cosine: float) -> Decimal:
 
 class ExtractRequest(StrictModel):
     text: str = Field(min_length=20, max_length=job_llm.MAX_SOURCE_CHARS)
+    targetRole: str = Field(min_length=1, max_length=120)
 
     @field_validator("text")
     @classmethod
@@ -147,7 +148,7 @@ def create_app(embedder: Any = None, token: str | None = None, llm: Any = None) 
                     x_onfit_request_id: str | None = Header(default=None)) -> dict:
         authorize(x_onfit_ai_token)
         request_id = x_onfit_request_id if x_onfit_request_id and REQUEST_ID.match(x_onfit_request_id) else None
-        return llm_call(lambda: job_llm.extract_job_posting(app.state.llm, request.text, request_id))
+        return llm_call(lambda: job_llm.extract_job_posting(app.state.llm, request.text, request.targetRole, request_id))
 
     @app.post("/internal/jobs/analyze-role")
     def analyze_role(request: job_llm.RoleRequest, x_onfit_ai_token: str | None = Header(default=None),

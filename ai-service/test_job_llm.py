@@ -67,8 +67,8 @@ def client_with(llm):
 def test_extract_returns_grounded_structure_and_keeps_text_out_of_instructions():
     llm = FakeLlm(posting())
     with client_with(llm) as client:
-        assert client.post("/internal/jobs/extract", json={"text": SOURCE}).status_code == 401
-        response = client.post("/internal/jobs/extract", json={"text": SOURCE}, headers=HEADERS)
+        assert client.post("/internal/jobs/extract", json={"text": SOURCE, "targetRole": "백엔드 개발자"}).status_code == 401
+        response = client.post("/internal/jobs/extract", json={"text": SOURCE, "targetRole": "백엔드 개발자"}, headers=HEADERS)
     assert response.status_code == 200
     body = response.json()
     assert [item["value"] for item in body["posting"]["requiredSkills"]] == ["Java", "Spring Boot", "PostgreSQL"]
@@ -78,6 +78,7 @@ def test_extract_returns_grounded_structure_and_keeps_text_out_of_instructions()
     call = llm.calls[0]
     # The posting travels as tagged data in the user turn; the system prompt says not to follow it.
     assert SOURCE in call["user"] and "<job_posting>" in call["user"]
+    assert "<target_role>\n백엔드 개발자\n</target_role>" in call["user"]
     assert SOURCE not in call["system"] and "지시문" in call["system"]
     assert call["schema"]["additionalProperties"] is False
 
@@ -119,25 +120,25 @@ def test_quotes_survive_ocr_line_wrapping_and_full_width_characters():
 ])
 def test_llm_failures_map_to_codes_without_text(error, status, code):
     with client_with(FakeLlm(error)) as client:
-        response = client.post("/internal/jobs/extract", json={"text": SOURCE}, headers=HEADERS)
+        response = client.post("/internal/jobs/extract", json={"text": SOURCE, "targetRole": "백엔드 개발자"}, headers=HEADERS)
     assert response.status_code == status
     assert response.json() == {"detail": {"code": code}}
 
 
 def test_schema_mismatch_from_model_is_rejected():
     with client_with(FakeLlm({"companyName": "모노랩"})) as client:
-        response = client.post("/internal/jobs/extract", json={"text": SOURCE}, headers=HEADERS)
+        response = client.post("/internal/jobs/extract", json={"text": SOURCE, "targetRole": "백엔드 개발자"}, headers=HEADERS)
     assert response.status_code == 502
     assert response.json()["detail"]["code"] == "LLM_INVALID_OUTPUT"
 
 
 def test_disabled_llm_and_input_limits():
     with TestClient(create_app(FakeEmbedder(), token="private-test-token")) as client:
-        assert client.post("/internal/jobs/extract", json={"text": SOURCE}, headers=HEADERS).json() == \
+        assert client.post("/internal/jobs/extract", json={"text": SOURCE, "targetRole": "백엔드 개발자"}, headers=HEADERS).json() == \
             {"detail": {"code": "LLM_DISABLED"}}
         for text in ["짧은 글", " " * 30, "x" * (job_llm.MAX_SOURCE_CHARS + 1)]:
-            assert client.post("/internal/jobs/extract", json={"text": text}, headers=HEADERS).status_code == 422
-        assert client.post("/internal/jobs/extract", json={"text": SOURCE, "userId": 7},
+            assert client.post("/internal/jobs/extract", json={"text": text, "targetRole": "백엔드 개발자"}, headers=HEADERS).status_code == 422
+        assert client.post("/internal/jobs/extract", json={"text": SOURCE, "targetRole": "백엔드 개발자", "userId": 7},
                            headers=HEADERS).status_code == 422
 
 
@@ -151,6 +152,7 @@ def test_versions_name_the_prompts_in_use():
 def role_request(**overrides):
     request = {
         "sourceText": SOURCE,
+        "targetRole": "백엔드 개발자",
         "posting": posting(),
         "profileItems": [
             {"id": "project:12", "kind": "project",
@@ -203,6 +205,7 @@ def test_role_analysis_keeps_seven_sections_and_only_grounded_claims():
     assert response.json()["meta"]["droppedItems"] == 3
     assert "score" not in analysis
     assert '<profile_item id="project:12"' in llm.calls[0]["user"]
+    assert "<target_role>\n백엔드 개발자\n</target_role>" in llm.calls[0]["user"]
 
 
 def test_role_request_rejects_untrusted_shapes():
@@ -211,6 +214,7 @@ def test_role_request_rejects_untrusted_shapes():
             role_request(profileItems=[{"id": "user:1", "kind": "x", "text": "a"}]),
             role_request(userId=3),
             role_request(sourceText="짧음"),
+            role_request(targetRole=""),
         ]:
             assert client.post("/internal/jobs/analyze-role", json=request, headers=HEADERS).status_code == 422
 

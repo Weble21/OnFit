@@ -81,10 +81,10 @@ class JobAnalysisApiTests {
                  "projects":[{"name":"추천 서비스","description":"Spring Boot API 설계. 문의 dev@example.com",
                               "techStack":"Java, Spring Boot","projectUrl":"https://private.example"}]}
                 """, true);
-        when(ai.extract(anyString())).thenReturn(new JobAiClient.Extraction(posting(
+        when(ai.extract(anyString(), anyString())).thenReturn(new JobAiClient.Extraction(posting(
                 List.of(item("Java"), item("Spring Boot"), item("Postgres")), List.of(item("Redis"))),
-                "claude-opus-5-5", "job-extract-v1"));
-        when(ai.analyzeRole(anyString(), any(), anyList(), any())).thenReturn(role());
+                "claude-opus-5-5", "job-extract-v2"));
+        when(ai.analyzeRole(anyString(), anyString(), any(), anyList(), any())).thenReturn(role());
     }
 
     @Test
@@ -92,6 +92,7 @@ class JobAnalysisApiTests {
         String body = mvc.perform(analyze("TEXT", TEXT, null, null))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.inputType").value("TEXT"))
+                .andExpect(jsonPath("$.targetRole").value("백엔드 개발자"))
                 .andExpect(jsonPath("$.stale").value(false))
                 .andExpect(jsonPath("$.posting.requiredSkills[2].value").value("Postgres"))
                 // Postgres matches the profile's PostgreSQL through the alias table.
@@ -118,7 +119,7 @@ class JobAnalysisApiTests {
         @SuppressWarnings("unchecked")
         ArgumentCaptor<List<JobAiClient.ProfileItem>> items = ArgumentCaptor.forClass(List.class);
         ArgumentCaptor<JobAiClient.ScoreFacts> facts = ArgumentCaptor.forClass(JobAiClient.ScoreFacts.class);
-        verify(ai).analyzeRole(anyString(), any(), items.capture(), facts.capture());
+        verify(ai).analyzeRole(anyString(), anyString(), any(), items.capture(), facts.capture());
         String sent = items.getValue().toString();
         assertThat(sent).contains("project:", "[EMAIL]").doesNotContain("dev@example.com", "private.example");
         assertThat(facts.getValue().matchedRequired()).containsExactly("Java", "Spring Boot", "Postgres");
@@ -132,7 +133,7 @@ class JobAnalysisApiTests {
         long again = id(mvc.perform(analyze("TEXT", "  " + TEXT.replace("\n", "\r\n") + "\n", null, null))
                 .andExpect(status().isOk()));
         assertThat(again).isEqualTo(first);
-        verify(ai, times(1)).extract(anyString());
+        verify(ai, times(1)).extract(anyString(), anyString());
 
         // A saved profile makes the old result stale and a new request recomputes against the new profile.
         saveProfile("""
@@ -142,29 +143,42 @@ class JobAnalysisApiTests {
         long recomputed = id(mvc.perform(analyze("TEXT", TEXT, null, null)).andExpect(status().isOk())
                 .andExpect(jsonPath("$.stale").value(false)));
         assertThat(recomputed).isNotEqualTo(first);
-        verify(ai, times(2)).extract(anyString());
+        verify(ai, times(2)).extract(anyString(), anyString());
     }
 
     @Test
     void storedAnalysisFromAnOlderPromptIsRecomputed() throws Exception {
-        when(ai.promptVersions()).thenReturn(new JobAiClient.PromptVersions("job-extract-v1", "role-analysis-v1"));
+        when(ai.promptVersions()).thenReturn(new JobAiClient.PromptVersions("job-extract-v2", "role-analysis-v3"));
         long first = id(mvc.perform(analyze("TEXT", TEXT, null, null)).andExpect(status().isOk()));
         assertThat(id(mvc.perform(analyze("TEXT", TEXT, null, null)).andExpect(status().isOk()))).isEqualTo(first);
-        verify(ai, times(1)).extract(anyString());
+        verify(ai, times(1)).extract(anyString(), anyString());
 
         // The AI service now runs a newer role prompt, so the same text and profile are analyzed again.
-        when(ai.promptVersions()).thenReturn(new JobAiClient.PromptVersions("job-extract-v1", "role-analysis-v2"));
+        when(ai.promptVersions()).thenReturn(new JobAiClient.PromptVersions("job-extract-v2", "role-analysis-v4"));
         long recomputed = id(mvc.perform(analyze("TEXT", TEXT, null, null)).andExpect(status().isOk()));
         assertThat(recomputed).isNotEqualTo(first);
-        verify(ai, times(2)).extract(anyString());
+        verify(ai, times(2)).extract(anyString(), anyString());
+    }
+
+    @Test
+    void samePostingWithDifferentTargetRolesGetsSeparateAnalysis() throws Exception {
+        long backend = id(mvc.perform(analyze("TEXT", TEXT, null, null, "백엔드 개발자"))
+                .andExpect(status().isOk()));
+        long frontend = id(mvc.perform(analyze("TEXT", TEXT, null, null, "프론트엔드 개발자"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.targetRole").value("프론트엔드 개발자")));
+        assertThat(frontend).isNotEqualTo(backend);
+        verify(ai).extract(anyString(), org.mockito.ArgumentMatchers.eq("프론트엔드 개발자"));
+        verify(ai).analyzeRole(anyString(), org.mockito.ArgumentMatchers.eq("프론트엔드 개발자"),
+                any(), anyList(), any());
     }
 
     @Test
     void postingWithoutRecognizedRequirementsIsNeverAPerfectFit() throws Exception {
-        when(ai.extract(anyString())).thenReturn(new JobAiClient.Extraction(new StructuredPosting(
+        when(ai.extract(anyString(), anyString())).thenReturn(new JobAiClient.Extraction(new StructuredPosting(
                 new TextField(null, null), new TextField(null, null), new TextField(null, null),
                 new TextField(null, null), new TextField(null, null), List.of(), List.of(), List.of(), List.of(), List.of()),
-                "claude-opus-5-5", "job-extract-v1"));
+                "claude-opus-5-5", "job-extract-v2"));
         mvc.perform(analyze("TEXT", "성실하고 협업을 잘하는 동료를 찾습니다. 함께 성장해요.", null, null))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.score.noRequirements").value(true))
@@ -187,7 +201,7 @@ class JobAnalysisApiTests {
         mvc.perform(analyze("FILE", edited, mine, sha256(TEXT.trim()))).andExpect(status().isConflict())
                 .andExpect(jsonPath("$.detail").value("확인한 뒤 텍스트가 바뀌었습니다. 수정한 텍스트를 다시 확인해 주세요."));
         mvc.perform(analyze("FILE", edited, theirs, sha256(edited))).andExpect(status().isNotFound());
-        verify(ai, never()).extract(anyString());
+        verify(ai, never()).extract(anyString(), anyString());
 
         mvc.perform(analyze("FILE", edited, mine, sha256(edited))).andExpect(status().isOk())
                 .andExpect(jsonPath("$.inputType").value("FILE"));
@@ -200,19 +214,19 @@ class JobAnalysisApiTests {
         var scoring = new JobAnalysis.Scoring("v", JobAnalysis.SemanticStatus.DISABLED, "rules-only-v1",
                 BigDecimal.ONE, BigDecimal.ONE, BigDecimal.ONE, BigDecimal.ZERO, BigDecimal.ONE, BigDecimal.ONE,
                 "{\"matchedRequired\":[],\"matchedPreferred\":[],\"missing\":[],\"evidence\":[],\"noRequirements\":true}");
-        long theirs = analyses.save(new JobAnalysis(other, JobAnalysis.InputType.TEXT, null, TEXT, "h", "{}", "p",
+        long theirs = analyses.save(new JobAnalysis(other, JobAnalysis.InputType.TEXT, null, TEXT, "백엔드 개발자", "h", "{}", "p",
                 "{}", "m", "p", scoring)).getId();
         mvc.perform(get("/api/job-analysis/" + theirs)).andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.detail").value("분석 결과를 찾을 수 없습니다."));
         mvc.perform(post("/api/job-analysis/" + theirs + "/role-analysis")).andExpect(status().isNotFound());
-        verify(ai, never()).analyzeRole(anyString(), any(), anyList(), any());
+        verify(ai, never()).analyzeRole(anyString(), anyString(), any(), anyList(), any());
         mvc.perform(get("/api/job-analysis/abc")).andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.detail").value("분석 ID는 숫자로 입력해 주세요."));
     }
 
     @Test
     void failedRoleAnalysisKeepsTheScoreAndOnlyTheExplanationIsRetried() throws Exception {
-        when(ai.analyzeRole(anyString(), any(), anyList(), any())).thenThrow(new JobAiException("LLM_TIMEOUT"));
+        when(ai.analyzeRole(anyString(), anyString(), any(), anyList(), any())).thenThrow(new JobAiException("LLM_TIMEOUT"));
         String first = mvc.perform(analyze("TEXT", TEXT, null, null)).andExpect(status().isOk())
                 .andExpect(jsonPath("$.roleStatus").value("FAILED"))
                 .andExpect(jsonPath("$.roleError").value("AI 분석 시간이 초과되었습니다. 잠시 후 다시 시도해 주세요."))
@@ -222,21 +236,23 @@ class JobAnalysisApiTests {
         long id = json.readTree(first).path("id").asLong();
 
         mvc.perform(post("/api/job-analysis/" + id + "/role-analysis")).andExpect(status().isGatewayTimeout());
-        doReturn(role()).when(ai).analyzeRole(anyString(), any(), anyList(), any());
+        doReturn(role()).when(ai).analyzeRole(anyString(), anyString(), any(), anyList(), any());
         String retried = mvc.perform(post("/api/job-analysis/" + id + "/role-analysis")).andExpect(status().isOk())
                 .andExpect(jsonPath("$.roleStatus").value("COMPLETED"))
                 .andExpect(jsonPath("$.roleError").value(org.hamcrest.Matchers.nullValue()))
                 .andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
         assertThat(json.readTree(retried).path("score")).isEqualTo(json.readTree(first).path("score"));
-        verify(ai, times(1)).extract(anyString());
+        verify(ai, times(1)).extract(anyString(), anyString());
+        verify(ai, times(3)).analyzeRole(anyString(), org.mockito.ArgumentMatchers.eq("백엔드 개발자"),
+                any(), anyList(), any());
     }
 
     @Test
     void failedStructuringStoresNothingAndInputIsValidated() throws Exception {
-        when(ai.extract(anyString())).thenThrow(new JobAiException("LLM_TIMEOUT"));
+        when(ai.extract(anyString(), anyString())).thenThrow(new JobAiException("LLM_TIMEOUT"));
         mvc.perform(analyze("TEXT", TEXT, null, null)).andExpect(status().isGatewayTimeout())
                 .andExpect(jsonPath("$.detail").value("AI 분석 시간이 초과되었습니다. 잠시 후 다시 시도해 주세요."));
-        doThrow(new JobAiException("LLM_DISABLED")).when(ai).extract(anyString());
+        doThrow(new JobAiException("LLM_DISABLED")).when(ai).extract(anyString(), anyString());
         mvc.perform(analyze("TEXT", TEXT, null, null)).andExpect(status().isServiceUnavailable());
         assertThat(jdbc.queryForObject("select count(*) from job_analyses", Integer.class)).isZero();
 
@@ -244,13 +260,20 @@ class JobAnalysisApiTests {
                 .andExpect(jsonPath("$.detail").value("공고 텍스트를 20자 이상 입력해 주세요."));
         mvc.perform(analyze("TEXT", "x".repeat(15_001), null, null)).andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.detail").value("공고 텍스트 입력값을 확인해 주세요."));
-        mvc.perform(post("/api/job-analysis/text").contentType(MediaType.APPLICATION_JSON).content("{\"text\":\"" + "가".repeat(30) + "\"}"))
+        mvc.perform(post("/api/job-analysis/text").contentType(MediaType.APPLICATION_JSON).content("{\"inputType\":\"TEXT\",\"text\":\"" + "가".repeat(30) + "\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").value("지원 직무 입력값을 확인해 주세요."));
+        mvc.perform(post("/api/job-analysis/text").contentType(MediaType.APPLICATION_JSON).content("{\"text\":\"" + "가".repeat(30) + "\",\"targetRole\":\"백엔드 개발자\"}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.detail").value("입력 방식 입력값을 확인해 주세요."));
     }
 
     private org.springframework.test.web.servlet.RequestBuilder analyze(String type, String text, Long draftId, String hash) {
-        var body = new java.util.LinkedHashMap<String, Object>(Map.of("inputType", type, "text", text));
+        return analyze(type, text, draftId, hash, "백엔드 개발자");
+    }
+
+    private org.springframework.test.web.servlet.RequestBuilder analyze(String type, String text, Long draftId, String hash, String targetRole) {
+        var body = new java.util.LinkedHashMap<String, Object>(Map.of("inputType", type, "text", text, "targetRole", targetRole));
         if (draftId != null) body.put("draftId", draftId);
         if (hash != null) body.put("confirmedTextHash", hash);
         return post("/api/job-analysis/text").contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsString(body));
@@ -279,7 +302,7 @@ class JobAnalysisApiTests {
         return new JobAiClient.RoleResult(json.readTree("""
                 {"summary":{"text":"커머스 API 백엔드 직무","evidence":["백엔드 개발자"]},"responsibilities":[],
                  "competencies":[],"keywords":[],"strengths":[],"unverified":[],"highlights":[]}
-                """), "claude-opus-5-5", "role-analysis-v1");
+                """), "claude-opus-5-5", "role-analysis-v3");
     }
 
     private static String sha256(String value) throws Exception {
