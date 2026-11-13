@@ -5,6 +5,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import java.time.LocalDate;
 import java.util.List;
@@ -16,8 +17,25 @@ public record ProfileRequest(
         @NotNull @Size(max = 100) List<@NotBlank @Size(max = 120) String> skills,
         @NotNull @Size(max = 50) List<@NotNull @Valid CertificateInput> certificates,
         @Size(max = 50) List<@NotNull @Valid ProjectInput> projects,
-        @Size(max = 50) List<@NotNull @Valid ExperienceInput> experiences
+        @Size(max = 50) List<@NotNull @Valid ExperienceInput> experiences,
+        @Valid EducationInput education,
+        @Size(max = 10) List<@NotNull @Valid ActivityInput> trainings,
+        @Size(max = 50) List<@NotNull @Valid ActivityInput> activities
 ) {
+    public record ActivityInput(
+            @NotBlank @Size(max = 200) String title,
+            @Size(max = 200) String organization,
+            @Size(max = 2000) String description,
+            LocalDate startedOn,
+            LocalDate endedOn
+    ) {}
+
+    public record EducationInput(
+            @NotBlank @Size(max = 200) String universityName,
+            @Size(max = 200) String major,
+            @Pattern(regexp = "^(ENROLLED|GRADUATED|LEAVE|COMPLETED|WITHDRAWN)$") String status
+    ) {}
+
     public record CertificateInput(
             @NotBlank @Size(max = 200) String name,
             @NotNull CertificateCategory category,

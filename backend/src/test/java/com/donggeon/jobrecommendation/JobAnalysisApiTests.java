@@ -78,6 +78,9 @@ class JobAnalysisApiTests {
         saveProfile("""
                 {"targetRoles":["백엔드 개발자"],"preferredLocations":["서울"],
                  "skills":["Java","Spring Boot","PostgreSQL","Docker"],"certificates":[],
+                 "education":{"universityName":"한국대학교","major":"컴퓨터공학","status":"GRADUATED"},
+                 "trainings":[{"title":"백엔드 교육","description":"Spring Boot 실습"}],
+                 "activities":[{"title":"봉사 동아리","description":"지역 봉사"}],
                  "projects":[{"name":"추천 서비스","description":"Spring Boot API 설계. 문의 dev@example.com",
                               "techStack":"Java, Spring Boot","projectUrl":"https://private.example"}]}
                 """, true);
@@ -100,28 +103,28 @@ class JobAnalysisApiTests {
                 .andExpect(jsonPath("$.score.matchedRequired.length()").value(3))
                 .andExpect(jsonPath("$.score.preferred").value(0.0))
                 .andExpect(jsonPath("$.score.experience").value(66.67))
-                .andExpect(jsonPath("$.score.preference").value(100.0))
-                // 100*.35 + 0*.20 + 0*.20 + 66.67*.15 + 100*.10; the semantic model is off, so 80 is the ceiling.
-                .andExpect(jsonPath("$.score.total").value(55.0))
-                .andExpect(jsonPath("$.score.maxTotal").value(80.0))
+                .andExpect(jsonPath("$.score.preference").value(0.0))
+                // 100*.50 + 0*.20 + 66.67*.30; semantic similarity is not used.
+                .andExpect(jsonPath("$.score.total").value(70.0))
+                .andExpect(jsonPath("$.score.maxTotal").value(100.0))
                 .andExpect(jsonPath("$.score.semanticStatus").value("DISABLED"))
                 .andExpect(jsonPath("$.roleStatus").value("COMPLETED"))
                 .andExpect(jsonPath("$.roleAnalysis.summary.text").value("커머스 API 백엔드 직무"))
-                .andExpect(jsonPath("$.profileItems[2].label").value("프로젝트 · 추천 서비스"))
+                .andExpect(jsonPath("$.profileItems[3].label").value("프로젝트 · 추천 서비스"))
                 .andExpect(jsonPath("$.versions.extractionModel").value("claude-opus-5-5"))
-                .andExpect(jsonPath("$.versions.calculator").value("rules-v1/weights-default/adapter-v1"))
+                .andExpect(jsonPath("$.versions.calculator").value("rules-v1/preference-items/adapter-v7"))
                 .andExpect(jsonPath("$.versions.semanticModel").value("rules-only-v1"))
                 .andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
         long id = json.readTree(body).path("id").asLong();
         mvc.perform(get("/api/job-analysis/" + id)).andExpect(status().isOk())
-                .andExpect(jsonPath("$.score.total").value(55.0));
+                .andExpect(jsonPath("$.score.total").value(70.0));
 
         @SuppressWarnings("unchecked")
         ArgumentCaptor<List<JobAiClient.ProfileItem>> items = ArgumentCaptor.forClass(List.class);
         ArgumentCaptor<JobAiClient.ScoreFacts> facts = ArgumentCaptor.forClass(JobAiClient.ScoreFacts.class);
         verify(ai).analyzeRole(anyString(), anyString(), any(), items.capture(), facts.capture());
         String sent = items.getValue().toString();
-        assertThat(sent).contains("project:", "[EMAIL]").doesNotContain("dev@example.com", "private.example");
+        assertThat(sent).contains("project:", "[EMAIL]", "education:university", "한국대학교", "컴퓨터공학", "졸업", "training:", "백엔드 교육", "Spring Boot 실습").doesNotContain("dev@example.com", "private.example", "희망 직무", "봉사 동아리", "지역 봉사");
         assertThat(facts.getValue().matchedRequired()).containsExactly("Java", "Spring Boot", "Postgres");
         assertThat(jdbc.queryForObject("select source_text from job_analyses where id = ?", String.class, id))
                 .isEqualTo(TEXT.trim());
@@ -184,7 +187,7 @@ class JobAnalysisApiTests {
                 .andExpect(jsonPath("$.score.noRequirements").value(true))
                 .andExpect(jsonPath("$.score.required").value(0.0))
                 .andExpect(jsonPath("$.score.preferred").value(0.0))
-                .andExpect(jsonPath("$.score.total").value(0.0));
+                .andExpect(jsonPath("$.score.total").value(org.hamcrest.Matchers.nullValue()));
     }
 
     @Test
@@ -231,7 +234,7 @@ class JobAnalysisApiTests {
                 .andExpect(jsonPath("$.roleStatus").value("FAILED"))
                 .andExpect(jsonPath("$.roleError").value("AI 분석 시간이 초과되었습니다. 잠시 후 다시 시도해 주세요."))
                 .andExpect(jsonPath("$.roleAnalysis").value(org.hamcrest.Matchers.nullValue()))
-                .andExpect(jsonPath("$.score.total").value(55.0))
+                .andExpect(jsonPath("$.score.total").value(70.0))
                 .andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
         long id = json.readTree(first).path("id").asLong();
 
@@ -252,6 +255,9 @@ class JobAnalysisApiTests {
         when(ai.extract(anyString(), anyString())).thenThrow(new JobAiException("LLM_TIMEOUT"));
         mvc.perform(analyze("TEXT", TEXT, null, null)).andExpect(status().isGatewayTimeout())
                 .andExpect(jsonPath("$.detail").value("AI 분석 시간이 초과되었습니다. 잠시 후 다시 시도해 주세요."));
+        doThrow(new JobAiException("LLM_REQUEST_INVALID")).when(ai).extract(anyString(), anyString());
+        mvc.perform(analyze("TEXT", TEXT, null, null)).andExpect(status().isBadGateway())
+                .andExpect(jsonPath("$.detail").value("AI 분석 요청 설정에 문제가 있습니다. 관리자에게 문의해 주세요."));
         doThrow(new JobAiException("LLM_DISABLED")).when(ai).extract(anyString(), anyString());
         mvc.perform(analyze("TEXT", TEXT, null, null)).andExpect(status().isServiceUnavailable());
         assertThat(jdbc.queryForObject("select count(*) from job_analyses", Integer.class)).isZero();

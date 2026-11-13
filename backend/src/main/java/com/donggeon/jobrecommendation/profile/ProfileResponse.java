@@ -8,6 +8,7 @@ import com.donggeon.jobrecommendation.domain.Certificate;
 import com.donggeon.jobrecommendation.domain.CertificateCategory;
 import com.donggeon.jobrecommendation.domain.Experience;
 import com.donggeon.jobrecommendation.domain.Project;
+import com.donggeon.jobrecommendation.domain.ProfileActivity;
 import com.donggeon.jobrecommendation.domain.Skill;
 import com.donggeon.jobrecommendation.domain.UserProfile;
 
@@ -20,6 +21,9 @@ public record ProfileResponse(
         List<CertificateView> certificates,
         List<ProjectView> projects,
         List<ExperienceView> experiences,
+        EducationView education,
+        List<ActivityView> trainings,
+        List<ActivityView> activities,
         Instant createdAt,
         Instant updatedAt
 ) {
@@ -33,10 +37,23 @@ public record ProfileResponse(
                 profile.getCertificates().stream().map(CertificateView::from).toList(),
                 profile.getProjects().stream().map(ProjectView::from).toList(),
                 profile.getExperiences().stream().map(ExperienceView::from).toList(),
+                profile.getUniversityName() == null ? null : new EducationView(profile.getUniversityName(), profile.getUniversityMajor(), profile.getUniversityStatus()),
+                profile.getActivities().stream().filter(a -> a.getKind() == ProfileActivity.Kind.TRAINING).map(ActivityView::from).toList(),
+                profile.getActivities().stream().filter(a -> a.getKind() == ProfileActivity.Kind.ACTIVITY).map(ActivityView::from).toList(),
                 profile.getCreatedAt(),
                 profile.getUpdatedAt()
         );
     }
+
+    public record ActivityView(Long id, String title, String organization, String description,
+                               LocalDate startedOn, LocalDate endedOn) {
+        static ActivityView from(ProfileActivity activity) {
+            return new ActivityView(activity.getId(), activity.getTitle(), activity.getOrganization(),
+                    activity.getDescription(), activity.getStartedOn(), activity.getEndedOn());
+        }
+    }
+
+    public record EducationView(String universityName, String major, String status) {}
 
     public record CertificateView(Long id, String name, CertificateCategory category, LocalDate acquiredOn, String score) {
         static CertificateView from(Certificate certificate) {

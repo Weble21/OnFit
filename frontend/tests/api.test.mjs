@@ -46,9 +46,12 @@ test('experiences, certificates and fields the form does not edit survive a save
   const profile = fromProfileResponse({ targetRoles: ['백엔드 개발자'], preferredLocations: [], skills: ['Java'],
     certificates: [{ id: 7, name: '정보처리기사', category: 'TECHNICAL', acquiredOn: '2024-06-14', score: null }],
     projects: [{ name: 'API', description: '구현', techStack: 'Java', startedOn: '2024-01-01', endedOn: null, projectUrl: 'https://example.com' }],
-    experiences: [{ companyName: '가상 회사', roleName: '백엔드 개발자', description: '결제 API', startedOn: '2023-03-01', endedOn: null }] });
+    experiences: [{ companyName: '가상 회사', roleName: '백엔드 개발자', description: '결제 API', startedOn: '2023-03-01', endedOn: null }],
+    education: { universityName: '한국대학교', major: '컴퓨터공학', status: 'GRADUATED' },
+    trainings: [{ title: '백엔드 교육', organization: '교육원', description: 'Spring', startedOn: '2024-01-01', endedOn: '2024-06-01' }],
+    activities: [{ title: '봉사 동아리', organization: null, description: '봉사', startedOn: null, endedOn: null }] });
   assert.equal(profile.career, '경력');
-  assert.deepEqual(profile.experiences[0], { company: '가상 회사', role: '백엔드 개발자', start: '2023-03', end: '', extra: { description: '결제 API' } });
+  assert.deepEqual(profile.experiences[0], { company: '가상 회사', role: '백엔드 개발자', start: '2023-03', end: '', description: '결제 API' });
 
   const request = toProfileRequest(profile);
   // The form shows empty strings for missing values; the request sends them back as null.
@@ -57,7 +60,10 @@ test('experiences, certificates and fields the form does not edit survive a save
   assert.deepEqual(request.experiences, [{ description: '결제 API', companyName: '가상 회사', roleName: '백엔드 개발자', startedOn: '2023-03-01', endedOn: null }]);
   assert.equal(request.projects[0].projectUrl, 'https://example.com');
   assert.equal(request.projects[0].startedOn, '2024-01-01');
-  assert.deepEqual(toProfileRequest({ ...profile, career: '신입' }).experiences, []);
+  assert.deepEqual(request.education, { universityName: '한국대학교', major: '컴퓨터공학', status: 'GRADUATED' });
+  assert.deepEqual(request.trainings, [{ title: '백엔드 교육', organization: '교육원', description: 'Spring', startedOn: '2024-01-01', endedOn: '2024-06-01' }]);
+  assert.deepEqual(request.activities, [{ title: '봉사 동아리', organization: null, description: '봉사', startedOn: null, endedOn: null }]);
+  assert.deepEqual(toProfileRequest({ ...profile, experiences: [] }).experiences, []);
 });
 
 test('server problem details reach the user instead of a generic message', async () => {

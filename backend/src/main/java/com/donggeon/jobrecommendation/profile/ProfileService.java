@@ -14,6 +14,7 @@ import org.springframework.web.server.ResponseStatusException;
 import com.donggeon.jobrecommendation.domain.Certificate;
 import com.donggeon.jobrecommendation.domain.Experience;
 import com.donggeon.jobrecommendation.domain.Project;
+import com.donggeon.jobrecommendation.domain.ProfileActivity;
 import com.donggeon.jobrecommendation.domain.Skill;
 import com.donggeon.jobrecommendation.domain.User;
 import com.donggeon.jobrecommendation.domain.UserProfile;
@@ -71,6 +72,7 @@ public class ProfileService {
         profile.getCertificates().clear();
         profile.getProjects().clear();
         profile.getExperiences().clear();
+        profile.getActivities().clear();
         fillProfile(profile, request, skills);
         profile.markUpdated();
         entityManager.flush();
@@ -84,6 +86,10 @@ public class ProfileService {
     }
 
     private void fillProfile(UserProfile profile, ProfileRequest request, List<Skill> skills) {
+        var education = request.education();
+        profile.setUniversityEducation(education == null ? null : SkillNormalizer.displayName(education.universityName()),
+                education == null ? null : optionalText(education.major()),
+                education == null ? null : education.status());
         request.targetRoles().stream().map(SkillNormalizer::displayName)
                 .forEach(profile.getTargetRoles()::add);
         request.preferredLocations().stream().map(SkillNormalizer::displayName)
@@ -99,11 +105,18 @@ public class ProfileService {
                     input.description(), input.techStack(), input.startedOn(),
                     input.endedOn(), input.projectUrl()));
         }
+        for (ProfileRequest.ActivityInput input : optional(request.trainings())) addActivity(profile, input, ProfileActivity.Kind.TRAINING);
+        for (ProfileRequest.ActivityInput input : optional(request.activities())) addActivity(profile, input, ProfileActivity.Kind.ACTIVITY);
         for (ProfileRequest.ExperienceInput input : optional(request.experiences())) {
             profile.addExperience(new Experience(SkillNormalizer.displayName(input.companyName()),
                     SkillNormalizer.displayName(input.roleName()), input.description(),
                     input.startedOn(), input.endedOn()));
         }
+    }
+
+    private void addActivity(UserProfile profile, ProfileRequest.ActivityInput input, ProfileActivity.Kind kind) {
+        profile.addActivity(new ProfileActivity(kind, SkillNormalizer.displayName(input.title()),
+                optionalText(input.organization()), optionalText(input.description()), input.startedOn(), input.endedOn()));
     }
 
     private List<Skill> buildSkills(List<String> names) {
@@ -122,6 +135,8 @@ public class ProfileService {
     }
 
     private void validateDates(ProfileRequest request) {
+        for (ProfileRequest.ActivityInput item : optional(request.trainings())) checkDateRange(item.startedOn(), item.endedOn());
+        for (ProfileRequest.ActivityInput item : optional(request.activities())) checkDateRange(item.startedOn(), item.endedOn());
         for (ProfileRequest.ProjectInput project : optional(request.projects())) {
             checkDateRange(project.startedOn(), project.endedOn());
         }

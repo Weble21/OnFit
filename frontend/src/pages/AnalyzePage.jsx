@@ -81,7 +81,7 @@ function AnalysisResult({ state }) {
     return <>{title}<div className="analysis-placeholder" aria-busy="true">
       <span className="round-icon" aria-hidden="true"><Icon name="spark" /></span>
       <h3>공고를 구조화하고 프로필과 비교하고 있어요.</h3>
-      <p>AI 구조화와 직무 분석까지 1~2분 정도 걸릴 수 있어요.<br />텍스트를 수정하면 진행 중인 분석은 취소됩니다.</p>
+      <p>{state.comparisonMode && state.comparisonProgress ? `${state.comparisonProgress.completed}/${state.comparisonProgress.total}개 직무 분석 완료. ` : ''}AI 구조화와 직무 분석까지 시간이 걸릴 수 있어요.<br />텍스트를 수정하면 진행 중인 분석은 취소됩니다.</p>
     </div></>;
   }
   if (analysisError) {
@@ -92,6 +92,7 @@ function AnalysisResult({ state }) {
     </div></>;
   }
   if (!analysis) {
+    if (state.comparison?.length) return <>{title}<div className="analysis-placeholder"><h3>비교할 결과를 만들지 못했어요.</h3><p>직무별 오류를 확인하고 다시 시도해 주세요.</p></div></>;
     return <>{title}<div className="analysis-placeholder">
       <div className="analysis-illustration" aria-hidden="true"><Icon name="file" /><span><Icon name="spark" /></span></div>
       <h3>이 공고, 나와 얼마나 잘 맞을까요?</h3>
@@ -101,24 +102,67 @@ function AnalysisResult({ state }) {
   }
   const { score, posting } = analysis;
   const semanticOk = score.semanticStatus === 'OK';
+  const legacyScoring = !['rules-v1/analysis-web-duty/adapter-v5', 'rules-v1/analysis-certificates/adapter-v6', 'rules-v1/preference-items/adapter-v7'].includes(analysis.versions.calculator);
+  const primarySkills = posting.requiredSkills.length ? posting.requiredSkills : (posting.dutySkills || []);
+  const skillBasis = posting.requiredSkills.length ? '필수 기술' : '업무 기술';
+  const insufficient = score.noRequirements;
+  const relatedRequirements = new Set((score.relatedMatches || []).map(item => item.requirement));
   return <>{title}<article className="analysis-result">
     <div className="result-heading"><span className="eyebrow">YOUR FIT REPORT · {analysis.targetRole}</span><Pill>AI 구조화 · 규칙 기반 점수</Pill></div>
     {analysis.stale && <p className="upload-error" role="alert">이 결과 이후 프로필이 바뀌었어요. 다시 비교하면 새 프로필로 계산합니다.</p>}
     <div className="result-score">
-      <div className="score-circle" style={{ '--score': score.total / score.maxTotal * 100 }}><div><strong>{formatScore(score.total)}<small>점</small></strong><span>맞춤 점수</span></div></div>
+      <div className="score-circle" style={{ '--score': insufficient ? 0 : score.total / score.maxTotal * 100 }}><div><strong>{insufficient ? '—' : formatScore(score.total)}{!insufficient && <small>점</small>}</strong><span>{insufficient ? '정보 부족' : '맞춤 점수'}</span></div></div>
       <div>
-        <h3>{score.noRequirements ? '공고에서 요구 기술을 찾지 못했어요.' : '나의 프로필과 비교했어요.'}</h3>
-        <p>{semanticOk ? '100점 만점' : '현재 최대 ' + formatScore(score.maxTotal) + '점'} · 필수 기술 {score.matchedRequired.length}/{score.matchedRequired.length + score.missing.length}개 일치</p>
+        <h3>{insufficient ? '총점을 산정하기에 정보가 부족해요.' : '나의 프로필과 비교했어요.'}</h3>
+        <p>{insufficient ? '비교할 기술을 확인하지 못해 총점 표시를 보류합니다. 낮은 적합도를 뜻하지 않습니다.' : <>{score.maxTotal === 100 ? '100점 만점' : '현재 최대 ' + formatScore(score.maxTotal) + '점'} · {skillBasis} {score.matchedRequired.length}/{primarySkills.length}개 일치·관련</>}</p>
       </div>
     </div>
-    <Metric label="필수 기술 (35%)" value={score.noRequirements ? null : score.required} note="요구 기술 없음" />
-    <Metric label="우대 기술 (20%)" value={posting.preferredSkills.length ? score.preferred : null} note="우대 기술 없음" />
-    <Metric label="의미 유사도 (20%)" value={semanticOk ? score.semantic : null} note={score.semanticStatus === 'FAILED' ? '계산 실패' : '사용 안 함'} />
-    <Metric label="경력·프로젝트 연관 (15%)" value={score.experience} />
-    <Metric label="희망 직무·지역 (10%)" value={score.preference} />
-    {!semanticOk && <p className="subtle score-note">{SEMANTIC_NOTE[score.semanticStatus]}</p>}
-    <section className="result-list"><h3><Icon name="check" /> 일치하는 기술</h3><SkillResult skills={[...score.matchedRequired, ...score.matchedPreferred]} className="matched" emptyText="등록된 기술 중 일치하는 항목이 없어요." /></section>
-    <section className="result-list"><h3><Icon name="plus" /> 프로필에서 확인되지 않은 필수 기술</h3><SkillResult skills={score.missing} className="missing" emptyText={score.noRequirements ? '공고에 필수 기술이 명시되지 않았어요.' : '필수 기술은 모두 프로필에 있어요.'} /></section>
+    <Metric label={skillBasis + " (" + (score.requiredWeight ?? 40) + "%)"} value={primarySkills.length ? score.required : null} note="비교 기준 없음" />
+    {(score.dutyWeight ?? 0) > 0 && <Metric label={"업무 기술 (" + score.dutyWeight + "%)"} value={score.duty} note="비교 기준 없음" />}
+    <Metric label="우대사항 (20%)" value={score.preferredCriteria?.length || posting.preferredSkills.length || score.preferredCertificates?.length ? score.preferred : null} note="비교할 우대사항 없음" />
+    {legacyScoring && <Metric label="의미 유사도 (20%)" value={semanticOk ? score.semantic : null} note={score.semanticStatus === 'FAILED' ? '계산 실패' : '사용 안 함'} />}
+    <Metric label={'경력·프로젝트 연관 (' + (legacyScoring ? 20 : 30) + '%)'} value={insufficient ? null : score.experience} note="평가 정보 부족" />
+    {!posting.requiredSkills.length && primarySkills.length > 0 && <p className="subtle score-note">필수 기술이 별도로 명시되지 않아 담당 업무에 나온 기술을 비교했습니다. 필수 자격요건을 뜻하지 않습니다.</p>}
+    {legacyScoring && <p className="subtle score-note">이전 점수 기준으로 계산된 결과입니다. 다시 비교하면 의미 유사도를 제외한 새 기준이 적용됩니다.</p>}
+    {legacyScoring && !semanticOk && <p className="subtle score-note">{SEMANTIC_NOTE[score.semanticStatus]}</p>}
+    {score.requiredCertificates?.length > 0 && <section className="result-list">
+      <h3><Icon name="file" /> 필수 자격증</h3>
+      {score.requiredCertificates.map((item, i) => <div className="role-item" key={i}>
+        <p>{item.condition} · {item.matched ? '프로필에서 확인: ' + item.matchedCertificates.join(', ') : '프로필에서 확인되지 않음 · 총점 0점'}</p>
+        <Evidence item={{ evidence: [item.evidence] }} labels={new Map()} />
+      </div>)}
+      <p className="subtle">프로필에 등록된 자격증을 기준으로 비교합니다. 실제 지원 자격은 공고 원문에서 확인해 주세요.</p>
+    </section>}
+    {score.preferredCriteria?.length > 0 && <section className="result-list">
+      <h3><Icon name="check" /> 우대사항 비교</h3>
+      <p className="subtle">공고의 우대 항목을 각각 같은 비중으로 비교합니다. 프로필에 명확한 근거가 없으면 확인되지 않은 항목으로 표시합니다.</p>
+      {score.preferredCriteria.map((item, i) => <div className="role-item" key={i}>
+        <p>{item.condition} · {item.matched ? '확인: ' + item.profileEvidence.join(', ') : '프로필에서 확인되지 않음'}</p>
+        <Evidence item={{ evidence: [item.evidence] }} labels={new Map()} />
+      </div>)}
+    </section>}
+    {!score.preferredCriteria?.length && score.preferredCertificates?.length > 0 && <section className="result-list">
+      <h3><Icon name="check" /> 우대 자격증</h3>
+      {score.preferredCertificates.map((item, i) => <div className="role-item" key={i}>
+        <p>{item.condition} · {item.matched ? '프로필에서 확인: ' + item.matchedCertificates.join(', ') : '프로필에서 확인되지 않음'}</p>
+        <Evidence item={{ evidence: [item.evidence] }} labels={new Map()} />
+      </div>)}
+    </section>}
+    <section className="result-list"><h3><Icon name="check" /> 일치하는 기술</h3><SkillResult skills={[...new Set([...score.matchedRequired, ...score.matchedPreferred, ...(score.matchedDuty || [])])].filter(item => !relatedRequirements.has(item))} className="matched" emptyText={relatedRequirements.size ? '정확히 일치한 기술은 없으며, 아래에 관련 기술 근거가 있어요.' : '등록된 기술 중 일치하는 항목이 없어요.'} /></section>
+    {(score.matchedDuty?.length > 0 || score.missingDuty?.length > 0) && <section className="result-list">
+      <h3><Icon name="file" /> 공고 업무 기술 비교</h3>
+      <p className="subtle">업무 기술은 공고의 담당 업무에 나온 기술이며, 필수 자격요건을 뜻하지 않습니다.</p>
+      <SkillResult skills={(score.matchedDuty || []).filter(item => !relatedRequirements.has(item))} className="matched" emptyText="일치하는 업무 기술이 없어요." />
+      {score.missingDuty?.length > 0 && <><p className="subtle">프로필에서 확인되지 않은 업무 기술</p>
+        <SkillResult skills={score.missingDuty} className="missing" emptyText="" /></>}
+    </section>}
+    {score.relatedMatches?.length > 0 && <section className="result-list">
+      <h3><Icon name="check" /> 관련 기술 근거</h3>
+      <p className="subtle">공고의 기술과 프로필의 관련 기술을 연결한 근거이며, 같은 기술을 직접 사용했다는 뜻은 아닙니다.</p>
+      <ul className="role-items">{score.relatedMatches.map((item, i) =>
+        <li className="role-item" key={i}><p>{item.requirement} · {item.evidence.join(', ')}</p></li>)}</ul>
+    </section>}
+    <section className="result-list"><h3><Icon name="plus" /> 프로필에서 확인되지 않은 {skillBasis}</h3><SkillResult skills={score.missing} className="missing" emptyText={insufficient ? '공고에서 비교할 기술을 확인하지 못했어요.' : '비교한 기술은 모두 프로필에 있어요.'} /></section>
     <section className="result-list" aria-labelledby="posting-title">
       <h3 id="posting-title"><Icon name="file" /> AI가 정리한 공고</h3>
       {/^https?:\/\//i.test(analysis.sourceUrl || '') && <a className="btn text small source-link" href={analysis.sourceUrl} target="_blank" rel="noopener noreferrer">원문 보기 <Icon name="arrow" /></a>}
@@ -128,17 +172,33 @@ function AnalysisResult({ state }) {
     <RoleAnalysis analysis={analysis} retrying={state.retrying} onRetry={state.retryRole} />
     <p className="analysis-caveat" role="note">점수는 AI가 아닌 규칙 기반 계산기가 정하고, AI 직무 분석은 점수를 바꾸지 않습니다. 모든 설명은 공고 원문이나 프로필 항목에서 인용 근거를 찾은 내용만 표시합니다. 프로필에 없는 기술은 실제 역량 부족을 의미하지 않습니다.</p>
     <details className="analysis-versions"><summary>계산 정보</summary>
-      <p>구조화 {analysis.versions.extractionModel} · {analysis.versions.extractionPrompt} / 계산기 {analysis.versions.calculator} / 의미 유사도 {analysis.versions.semanticModel}{analysis.versions.roleModel && ' / 직무 분석 ' + analysis.versions.roleModel + ' · ' + analysis.versions.rolePrompt}</p>
+      <p>구조화 {analysis.versions.extractionModel} · {analysis.versions.extractionPrompt} / 계산기 {analysis.versions.calculator}{legacyScoring && ' / 의미 유사도 ' + analysis.versions.semanticModel}{analysis.versions.roleModel && ' / 직무 분석 ' + analysis.versions.roleModel + ' · ' + analysis.versions.rolePrompt}</p>
     </details>
   </article></>;
 }
 
-/** What the server is reading now, from its progress events: the page itself, a linked file, or image n of total. */
-function linkProgress(progress) {
-  if (progress?.stage === 'IMAGES') {
-    return { label: `공고 이미지를 읽고 있어요 · ${progress.done}/${progress.total}`, ratio: progress.total ? progress.done / progress.total : 0 };
-  }
-  return { label: progress?.stage === 'FILE' ? '연결된 공고 파일을 읽고 있어요' : '공고 페이지를 읽고 있어요', ratio: null };
+function ComparisonResults({ state }) {
+  if (!state.comparison?.length || state.analyzing) return <AnalysisResult state={state} />;
+  const hasFailures = state.comparison.some(item => item.error || item.rank == null);
+  return <>
+    <div className="comparison-results">
+      <span className="eyebrow">ROLE COMPARISON</span>
+      <h2>직무별 적합도 비교</h2>
+      <p className="subtle">입력한 직무를 같은 프로필로 각각 분석한 결과입니다. 공고별 요구 정보가 다를 수 있으니 점수와 근거를 함께 확인해 주세요.</p>
+      {hasFailures && <p className="upload-error" role="status">분석에 실패했거나 점수 산정 정보가 부족한 직무는 순위에서 제외했어요.</p>}
+      <ol className="comparison-list">{state.comparison.map(item => <li key={item.role}>
+        <button type="button" className={'comparison-row' + (state.analysis?.id === item.result?.id && item.result ? ' selected' : '')}
+          onClick={() => item.result && state.selectComparison(item.result.id)} disabled={!item.result}
+          aria-pressed={item.result ? state.analysis?.id === item.result.id : undefined}>
+          <span className="comparison-rank">{item.rank == null ? '—' : item.rank + '위'}</span>
+          <span><strong>{item.role}</strong>{item.error && <small>{item.error}</small>}{item.result?.score.noRequirements && <small>점수 산정 정보 부족</small>}</span>
+          <strong>{item.result?.score.total != null && !item.result.score.noRequirements ? formatScore(item.result.score.total) + '점' : '점수 없음'}</strong>
+        </button>
+      </li>)}</ol>
+      {state.analysis && <p className="subtle">선택한 직무의 상세 분석을 아래에서 확인하세요.</p>}
+    </div>
+    <AnalysisResult state={state} />
+  </>;
 }
 
 function AttachmentPreview({ attachment, onPick, onRemove }) {
@@ -185,8 +245,7 @@ export function AnalyzePage({ profile, analysis: state }) {
   if (!profile) {
     return <EmptyState title="비교할 프로필이 필요해요" text="프로젝트와 사용한 기술을 먼저 등록해 주세요." href="/profile" label="프로필 작성하기" level={1} />;
   }
-  const { fileMode, file, link, source, hasSource, currentText, canAnalyze } = state;
-  const reading = !fileMode && link.busy ? linkProgress(link.progress) : null;
+  const { fileMode, file, source, hasSource, currentText, canAnalyze } = state;
   const pick = () => fileInput.current?.click();
   const remove = () => {
     flushSync(state.removeAttachment);
@@ -215,22 +274,35 @@ export function AnalyzePage({ profile, analysis: state }) {
 
   return (
     <>
-      <PageHeading kicker="FIND YOUR FIT" title="이 기회, 나와 얼마나 잘 맞을까요?" description="공고 주소를 넣거나 사진·PDF를 첨부해 나의 경험과 연결해 보세요." />
+      <PageHeading kicker="FIND YOUR FIT" title="이 기회, 나와 얼마나 잘 맞을까요?" description="공고를 직접 입력하거나 사진·PDF를 첨부해 나의 경험과 연결해 보세요." />
       <div className="analysis-layout">
         <section className="panel jd-panel" aria-labelledby="jd-title">
           <header className="section-heading">
             <h2 id="jd-title"><Icon name="file" /> 채용공고 입력</h2>
           </header>
           <div className="input-mode-switch" role="group" aria-label="채용공고 입력 방식">
-            <button data-action="input-mode" data-mode="url" aria-pressed={!fileMode} className={!fileMode ? 'selected' : ''} onClick={() => state.setMode('url')}><Icon name="search" /> URL 입력</button>
+            <button data-action="input-mode" data-mode="text" aria-pressed={!fileMode} className={!fileMode ? 'selected' : ''} onClick={() => state.setMode('text')}><Icon name="file" /> 텍스트 입력</button>
             <button data-action="input-mode" data-mode="file" aria-pressed={fileMode} className={fileMode ? 'selected' : ''} onClick={() => state.setMode('file')}><Icon name="plus" /> 사진 · PDF 첨부</button>
           </div>
           <form id="analysis-form" onSubmit={event => { event.preventDefault(); state.analyze(); }}>
-            <label className="review-label" htmlFor="target-role">지원 직무</label>
-            <input id="target-role" name="targetRole" className="target-role-input" type="text" required maxLength={120}
-              placeholder="예: 백엔드 개발자" value={state.targetRole}
-              onChange={event => state.editTargetRole(event.target.value)} />
-            <p className="upload-help">공고에 여러 직무가 있다면 분석할 직무 하나만 입력해 주세요.</p>
+            <div className="input-mode-switch" role="group" aria-label="직무 분석 방식">
+              <button type="button" className={!state.comparisonMode ? 'selected' : ''} aria-pressed={!state.comparisonMode} onClick={() => state.setComparisonMode(false)}>한 직무 분석</button>
+              <button type="button" className={state.comparisonMode ? 'selected' : ''} aria-pressed={state.comparisonMode} onClick={() => state.setComparisonMode(true)}>여러 직무 비교</button>
+            </div>
+            {state.comparisonMode ? <>
+              <label className="review-label" htmlFor="comparison-roles">비교할 직무</label>
+              <textarea id="comparison-roles" className="comparison-roles" required maxLength={604} rows={4}
+                placeholder={'공고에 적힌 직무명을 한 줄에 하나씩 입력해 주세요\n예: IT개발\n정보보호'} value={state.comparisonRoles}
+                onChange={event => state.editComparisonRoles(event.target.value)} aria-describedby="comparison-help" />
+              <p className="upload-help" id="comparison-help">같은 공고에 있는 직무를 2~5개 입력해 주세요. 직무마다 별도로 분석하므로 시간이 더 걸릴 수 있어요.</p>
+              {state.comparisonRoles.trim() && state.comparisonRoleError && <p className="upload-error" role="status">{state.comparisonRoleError}</p>}
+            </> : <>
+              <label className="review-label" htmlFor="target-role">지원 직무</label>
+              <input id="target-role" name="targetRole" className="target-role-input" type="text" required maxLength={120}
+                placeholder="예: 백엔드 개발자" value={state.targetRole}
+                onChange={event => state.editTargetRole(event.target.value)} />
+              <p className="upload-help">공고에 여러 직무가 있다면 분석할 직무 하나만 입력해 주세요.</p>
+            </>}
             {fileMode ? <>
               <div id="attachment-zone" ref={zoneRef} aria-busy={String(file.busy)} className={dragOver ? 'drag-over' : ''}
                 onDragOver={event => { if (!hasFiles(event)) return; event.preventDefault(); event.dataTransfer.dropEffect = 'copy'; setDragOver(true); }}
@@ -241,53 +313,38 @@ export function AnalyzePage({ profile, analysis: state }) {
                 <AttachmentPreview attachment={file.attachment} onPick={pick} onRemove={remove} />
               </div>
               <p id="attachment-error" className="upload-error" role="alert">{file.error}</p>
-            </> : <>
-              <label className="review-label" htmlFor="jd-url">채용공고 주소</label>
-              <div className="url-input" aria-busy={String(link.busy)}>
-                {/* Enter fetches the address; it must not submit the analysis form. */}
-                <input id="jd-url" type="url" inputMode="url" autoComplete="url" placeholder="https://"
-                  value={link.url} onChange={event => state.editUrl(event.target.value)}
-                  onKeyDown={event => { if (event.key === 'Enter') { event.preventDefault(); void state.fetchUrl(); } }} />
-                <button className="btn small" type="button" data-action="fetch-url" onClick={() => void state.fetchUrl()}
-                  disabled={link.busy || !link.url.trim()}>{link.busy ? '가져오는 중…' : '가져오기'}</button>
-              </div>
-              <p id="url-error" className="upload-error" role="alert">{link.error}</p>
-            </>}
-            <div className="ocr-status" role="status">
+            </> : null}
+            {fileMode && <div className="ocr-status" role="status">
               <span><Icon name="file" /></span>
               <div>
-                <strong>{reading ? reading.label : source.busy ? '파일에서 텍스트를 추출하고 있어요'
-                  : source.confirmed ? '텍스트 확인 완료' : '추출 결과를 확인해 주세요'}</strong>
-                <p>{source.status || (fileMode ? 'PDF 텍스트와 이미지·스캔 PDF의 OCR 결과를 아래에서 수정한 뒤 확인해 주세요.'
-                  : source.busy ? '본문이 이미지인 공고는 OCR까지 거쳐 1분 정도 걸릴 수 있어요.'
-                    : '공고 페이지 주소를 넣고 가져오면, 페이지의 글과 공고 이미지를 읽어 아래에 보여드려요.')}</p>
-                {reading?.ratio != null && <div className="meter status-meter" aria-hidden="true"><span style={{ width: reading.ratio * 100 + '%' }}></span></div>}
+                <strong>{source.busy ? '파일에서 텍스트를 추출하고 있어요' : source.confirmed ? '텍스트 확인 완료' : '추출 결과를 확인해 주세요'}</strong>
+                <p>{source.status || 'PDF 텍스트와 이미지·스캔 PDF의 OCR 결과를 아래에서 수정한 뒤 확인해 주세요.'}</p>
               </div>
-            </div>
+            </div>}
             <div className="review-heading">
-              <label className="review-label" htmlFor="jd-text">공고 텍스트 확인·수정</label>
+              <label className="review-label" htmlFor="jd-text">{fileMode ? '공고 텍스트 확인·수정' : '채용공고 텍스트'}</label>
               <div className="review-actions">
                 {source.confirmed && <span className="confirmed-mark" role="status"><Icon name="check" /> 확인됨</span>}
-                <button className="btn outline small" id="confirm-text" type="button" data-action="confirm-text" onClick={confirm}
-                  disabled={!hasSource || source.busy || source.text.trim().length < 20 || source.confirmed}>텍스트 확인</button>
+                {fileMode && <button className="btn outline small" id="confirm-text" type="button" data-action="confirm-text" onClick={confirm}
+                  disabled={!hasSource || source.busy || source.text.trim().length < 20 || source.confirmed}>텍스트 확인</button>}
               </div>
             </div>
-            <textarea id="jd-text" name="jd" required minLength={20} maxLength={15000} disabled={!(fileMode ? file.attachment : link.draftId) || source.busy}
-              placeholder={fileMode ? '추출 결과가 없으면 원본을 보며 직접 입력해 주세요.' : '주소에서 가져온 공고 내용이 여기에 표시돼요.'}
+            <textarea id="jd-text" name="jd" required minLength={20} maxLength={15000} disabled={(fileMode && !file.attachment) || source.busy}
+              placeholder={fileMode ? '추출 결과가 없으면 원본을 보며 직접 입력해 주세요.' : '채용공고 내용을 여기에 붙여넣어 주세요.'}
               value={currentText} onChange={event => state.editText(event.target.value)} />
             <div className="textarea-footer">
-              <span>추출한 텍스트를 확인해야 분석합니다.</span>
+              <span>{fileMode ? '추출한 텍스트를 확인해야 분석합니다.' : '분석할 공고 내용을 입력해 주세요.'}</span>
               <span id="jd-count">{currentText.length.toLocaleString()} / 15,000</span>
             </div>
-            <button className="btn full" id="analyze-button" type="submit" disabled={!canAnalyze}><Icon name="spark" /> {state.analyzing ? '분석하는 중…' : '내 프로필과 비교하기'}</button>
+            <button className="btn full" id="analyze-button" type="submit" disabled={!canAnalyze}><Icon name="spark" /> {state.analyzing ? '분석하는 중…' : state.comparisonMode ? '직무별 적합도 비교하기' : '내 프로필과 비교하기'}</button>
           </form>
           <p className="upload-help">{fileMode
             ? '파일은 텍스트 추출을 위해 서버에 전송되며 처리 후 삭제됩니다. 브라우저 미리보기와 수정 텍스트는 새로고침하면 사라집니다.'
-            : '서버가 입력한 주소의 페이지를 대신 열어 글과 이미지를 읽습니다. 주소는 분석 결과와 함께 저장되어 원문 링크로 쓰입니다.'}</p>
-          <p className="upload-help">분석하면 확인한 공고 텍스트와 프로필 요약(연락처 제외)이 Anthropic Claude API로 전송되고, 결과는 내 계정에만 30일간 저장됩니다.</p>
-          <p className="jd-profile"><Icon name="user" /><span>{profile.roles.join(', ')} · {profile.career} 프로필로 비교</span><a href="#/profile" aria-label="비교할 프로필 수정">수정</a></p>
+            : '공고에 여러 직무가 있다면 직무별 구분이 보이도록 내용을 붙여넣어 주세요.'}</p>
+          <p className="upload-help">분석하면 확인한 공고 텍스트와 프로필 요약(연락처 제외)이 Anthropic Claude API로 전송되고, 결과는 내 계정에만 30일간 저장됩니다.{state.comparisonMode && ' 비교할 직무마다 별도의 분석 요청이 전송됩니다.'}</p>
+          <p className="jd-profile"><Icon name="user" /><span>등록한 프로필로 비교</span><a href="#/profile" aria-label="비교할 프로필 수정">수정</a></p>
         </section>
-        <section className="panel result-panel" id="analysis-output" aria-live="polite"><AnalysisResult state={state} /></section>
+        <section className="panel result-panel" id="analysis-output" aria-live="polite"><ComparisonResults state={state} /></section>
       </div>
     </>
   );

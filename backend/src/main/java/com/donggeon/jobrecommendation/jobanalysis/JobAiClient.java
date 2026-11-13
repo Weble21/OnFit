@@ -29,7 +29,12 @@ public class JobAiClient {
     public record Extraction(StructuredPosting posting, String model, String promptVersion) {}
     public record RoleResult(JsonNode analysis, String model, String promptVersion) {}
     public record ProfileItem(String id, String kind, String text) {}
-    public record ScoreFacts(List<String> matchedRequired, List<String> matchedPreferred, List<String> missing) {}
+    public record ScoreFacts(List<String> matchedRequired, List<String> matchedPreferred, List<String> missing,
+                             List<String> matchedPreferences) {
+        public ScoreFacts(List<String> matchedRequired, List<String> matchedPreferred, List<String> missing) {
+            this(matchedRequired, matchedPreferred, missing, List.of());
+        }
+    }
     public record PromptVersions(String extract, String role) {}
 
     private static final Duration VERSIONS_TIMEOUT = Duration.ofSeconds(3);

@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.donggeon.jobrecommendation.domain.Skill;
+import com.donggeon.jobrecommendation.domain.ProfileActivity;
 import com.donggeon.jobrecommendation.domain.UserProfile;
 import com.donggeon.jobrecommendation.recommendation.SemanticText;
 
@@ -14,8 +15,10 @@ import com.donggeon.jobrecommendation.recommendation.SemanticText;
  */
 public record ProfileSnapshot(List<String> targetRoles, List<String> preferredLocations, List<String> skills,
                               List<CertificateItem> certificates, List<ProjectItem> projects,
-                              List<ExperienceItem> experiences) {
+                              List<ExperienceItem> experiences, EducationItem education, List<TrainingItem> trainings) {
 
+    public record TrainingItem(Long id, String title, String organization, String description, LocalDate startedOn, LocalDate endedOn) {}
+    public record EducationItem(String universityName, String major, String status) {}
     public record CertificateItem(Long id, String name, String score) {}
     public record ProjectItem(Long id, String name, String description, String techStack) {}
     public record ExperienceItem(Long id, String companyName, String roleName, String description,
@@ -27,8 +30,8 @@ public record ProfileSnapshot(List<String> targetRoles, List<String> preferredLo
 
     public static ProfileSnapshot of(UserProfile profile) {
         return new ProfileSnapshot(
-                List.copyOf(profile.getTargetRoles()),
-                List.copyOf(profile.getPreferredLocations()),
+                List.of(),
+                List.of(),
                 profile.getSkills().stream().map(Skill::getName).toList(),
                 profile.getCertificates().stream()
                         .map(c -> new CertificateItem(c.getId(), c.getName(), c.getScore())).toList(),
@@ -36,14 +39,25 @@ public record ProfileSnapshot(List<String> targetRoles, List<String> preferredLo
                         .map(p -> new ProjectItem(p.getId(), p.getName(), p.getDescription(), p.getTechStack())).toList(),
                 profile.getExperiences().stream()
                         .map(e -> new ExperienceItem(e.getId(), e.getCompanyName(), e.getRoleName(), e.getDescription(),
-                                e.getStartedOn(), e.getEndedOn())).toList());
+                                e.getStartedOn(), e.getEndedOn())).toList(),
+                profile.getUniversityName() == null ? null : new EducationItem(profile.getUniversityName(),
+                        profile.getUniversityMajor(), profile.getUniversityStatus()),
+                profile.getActivities().stream().filter(a -> a.getKind() == ProfileActivity.Kind.TRAINING)
+                        .map(a -> new TrainingItem(a.getId(), a.getTitle(), a.getOrganization(), a.getDescription(),
+                                a.getStartedOn(), a.getEndedOn())).toList());
     }
 
     /** Evidence items for the AI service, with contact details masked. */
     public List<JobAiClient.ProfileItem> evidenceItems() {
         List<JobAiClient.ProfileItem> items = new ArrayList<>();
-        if (!targetRoles.isEmpty()) items.add(item("roles:all", "roles", "희망 직무: " + String.join(", ", targetRoles)));
         if (!skills.isEmpty()) items.add(item("skills:all", "skills", "보유 기술: " + String.join(", ", skills)));
+        if (education != null) items.add(item("education:university", "education", "대학교: " + education.universityName()
+                + optional(" / 전공: ", education.major()) + optional(" / 학적: ", educationStatus(education.status()))));
+        if (trainings != null) trainings.stream().limit(10).forEach(training -> items.add(item("training:" + training.id(), "training",
+                training.title() + optional(" / 교육기관: ", training.organization())
+                        + optional(" / 내용: ", training.description())
+                        + (training.startedOn() == null ? "" : " / 시작: " + training.startedOn())
+                        + (training.endedOn() == null ? "" : " / 종료: " + training.endedOn()))));
         projects.stream().limit(20).forEach(project -> items.add(item("project:" + project.id(), "project",
                 project.name() + optional(" — ", project.description()) + optional(" (기술: ", project.techStack(), ")"))));
         experiences.stream().limit(20).forEach(experience -> items.add(item("experience:" + experience.id(), "experience",
@@ -57,14 +71,28 @@ public record ProfileSnapshot(List<String> targetRoles, List<String> preferredLo
 
     public List<ItemLabel> labels() {
         List<ItemLabel> labels = new ArrayList<>();
-        labels.add(new ItemLabel("roles:all", "희망 직무"));
+        if (!targetRoles.isEmpty()) labels.add(new ItemLabel("roles:all", "희망 직무"));
         labels.add(new ItemLabel("skills:all", "보유 기술"));
+        if (education != null) labels.add(new ItemLabel("education:university", "대학교 학력"));
+        if (trainings != null) trainings.forEach(training -> labels.add(new ItemLabel("training:" + training.id(), "교육 이수 · " + training.title())));
         projects.forEach(project -> labels.add(new ItemLabel("project:" + project.id(), "프로젝트 · " + project.name())));
         experiences.forEach(experience -> labels.add(new ItemLabel("experience:" + experience.id(),
                 "경력 · " + experience.companyName() + " " + experience.roleName())));
         certificates.forEach(certificate -> labels.add(new ItemLabel("certificate:" + certificate.id(),
                 "자격증 · " + certificate.name())));
         return labels;
+    }
+
+    private static String educationStatus(String status) {
+        if (status == null) return null;
+        return switch (status) {
+            case "ENROLLED" -> "재학";
+            case "GRADUATED" -> "졸업";
+            case "LEAVE" -> "휴학";
+            case "COMPLETED" -> "수료";
+            case "WITHDRAWN" -> "중퇴";
+            default -> null;
+        };
     }
 
     private static JobAiClient.ProfileItem item(String id, String kind, String text) {

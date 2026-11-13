@@ -61,6 +61,19 @@ public class UserProfile {
     @OrderBy("id ASC")
     private List<Experience> experiences = new ArrayList<>();
 
+    @OneToMany(mappedBy = "profile", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderBy("id ASC")
+    private List<ProfileActivity> activities = new ArrayList<>();
+
+    @Column(name = "university_name", length = 200)
+    private String universityName;
+
+    @Column(name = "university_major", length = 200)
+    private String universityMajor;
+
+    @Column(name = "university_status", length = 20)
+    private String universityStatus;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
@@ -96,10 +109,25 @@ public class UserProfile {
         experience.setProfile(this);
     }
 
+    public void addActivity(ProfileActivity activity) {
+        activities.add(activity);
+        activity.setProfile(this);
+    }
+
+    public void setUniversityEducation(String name, String major, String status) {
+        this.universityName = name;
+        this.universityMajor = major;
+        this.universityStatus = status;
+    }
+
     public void markUpdated() {
         updatedAt = Instant.now();
     }
 
+    public List<ProfileActivity> getActivities() { return activities; }
+    public String getUniversityName() { return universityName; }
+    public String getUniversityMajor() { return universityMajor; }
+    public String getUniversityStatus() { return universityStatus; }
     public Long getId() { return id; }
     public User getUser() { return user; }
     public List<String> getTargetRoles() { return targetRoles; }

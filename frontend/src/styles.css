@@ -47,6 +47,11 @@
 .target-role-input{width:100%}
 .review-label{display:block;font-size:11px;font-weight:500;color:#757e64;margin:18px 0 10px}
 .jd-panel:has(.review-label) textarea{min-height:180px}.jd-panel textarea:disabled{background:#f2f1eb;cursor:not-allowed}
+.jd-panel:has(.review-label) textarea.comparison-roles{min-height:105px}
+.comparison-results{padding-bottom:24px;margin-bottom:24px;border-bottom:1px solid var(--line)}
+.comparison-results h2{font-size:18px;margin:8px 0}.comparison-results>.subtle{line-height:1.8}
+.comparison-list{display:grid;gap:8px;margin:16px 0}.comparison-row{width:100%;display:grid;grid-template-columns:42px minmax(0,1fr) auto;align-items:center;gap:10px;padding:12px;background:#f7f6ef;border:1px solid var(--line);border-radius:9px;text-align:left;color:var(--ink)}
+.comparison-row.selected{background:#eef1e8;border-color:#a8b599}.comparison-row span:nth-child(2){min-width:0;overflow-wrap:anywhere}.comparison-row small{display:block;color:#9a6653;line-height:1.5;margin-top:3px}.comparison-rank{color:var(--green);font-weight:700;font-size:12px}.comparison-row>strong{color:var(--green);white-space:nowrap}
 #analyze-button:disabled{transform:none;background:#c4baab;color:#fff}
 @media(max-width:650px){.input-mode-switch button{font-size:10px}.upload-zone{min-height:195px}.upload-zone strong{font-size:12px}.upload-zone>span:not(.round-icon){font-size:9px}.textarea-footer{flex-wrap:wrap}.pdf-preview{height:260px}}
 

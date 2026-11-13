@@ -51,6 +51,9 @@ class ProfileApiTests {
                     {"name":"정보처리기사", "category":"TECHNICAL", "acquiredOn":"2024-06-14", "score":"최종합격"},
                     {"name":" ADsP ", "category":"OTHER", "score":""}
                   ],
+                  "education": {"universityName":"한국대학교","major":"컴퓨터공학","status":"GRADUATED"},
+                  "trainings": [{"title":"백엔드 교육","organization":"교육원","description":"Spring 과정","startedOn":"2024-01-01","endedOn":"2024-06-01"}],
+                  "activities": [{"title":"봉사 동아리","organization":"학교","description":"지역 봉사"}],
                   "projects": [{"name":"추천 서비스", "description":"API 개발", "techStack":"Java, Spring Boot"}],
                   "experiences": [{"companyName":"테스트 기업", "roleName":"인턴", "startedOn":"2025-01-01"}]
                 }
@@ -60,11 +63,18 @@ class ProfileApiTests {
                 .andExpect(header().string("Location", "/api/profiles/me"))
                 .andExpect(jsonPath("$.userId").isNumber())
                 .andExpect(jsonPath("$.skills[1]").value("Spring Boot"))
-                .andExpect(jsonPath("$.projects[0].name").value("추천 서비스"));
+                .andExpect(jsonPath("$.projects[0].name").value("추천 서비스"))
+                .andExpect(jsonPath("$.education.universityName").value("한국대학교"))
+                .andExpect(jsonPath("$.education.major").value("컴퓨터공학"))
+                .andExpect(jsonPath("$.education.status").value("GRADUATED"))
+                .andExpect(jsonPath("$.trainings[0].title").value("백엔드 교육"))
+                .andExpect(jsonPath("$.activities[0].title").value("봉사 동아리"));
 
         mvc.perform(get("/api/profiles/me"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.targetRoles[0]").value("백엔드 개발자"))
+                .andExpect(jsonPath("$.trainings[0].description").value("Spring 과정"))
+                .andExpect(jsonPath("$.activities[0].description").value("지역 봉사"))
                 .andExpect(jsonPath("$.certificates[0].name").value("정보처리기사"))
                 .andExpect(jsonPath("$.certificates[0].category").value("TECHNICAL"))
                 .andExpect(jsonPath("$.certificates[0].acquiredOn").value("2024-06-14"))
@@ -92,7 +102,10 @@ class ProfileApiTests {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.skills.length()").value(3))
                 .andExpect(jsonPath("$.projects.length()").value(0))
-                .andExpect(jsonPath("$.experiences.length()").value(0));
+                .andExpect(jsonPath("$.experiences.length()").value(0))
+                .andExpect(jsonPath("$.trainings.length()").value(0))
+                .andExpect(jsonPath("$.activities.length()").value(0))
+                .andExpect(jsonPath("$.education").value(org.hamcrest.Matchers.nullValue()));
 
         List<String> normalized = jdbcTemplate.queryForList(
                 "SELECT normalized_name FROM skills ORDER BY id", String.class);

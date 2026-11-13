@@ -6,6 +6,7 @@ import { Icon, PageHeading } from '../components/ui.jsx';
 const emptyProfile = () => ({ roles: ['백엔드 개발자'], location: '', career: '신입', experiences: [], projects: [{ name: '', description: '', stack: '' }] });
 const emptyProject = () => ({ name: '', description: '', stack: '' });
 const emptyExperience = () => ({ company: '', role: '백엔드 개발자', start: '', end: '' });
+const emptyActivity = () => ({ title: '', organization: '', description: '', start: '', end: '' });
 const emptyCertificate = () => ({ name: '', category: '', acquiredOn: '', score: '' });
 // Server values of a certificate's kind, with the label and score example shown for each.
 const certificateCategories = [
@@ -29,16 +30,42 @@ function ExperienceFields({ experience, index, onRemove }) {
     <section className="experience-block">
       <div className="project-heading">
         <h3>경력 {index + 1}</h3>
-        <button className="btn text danger" type="button" data-action="remove-experience" hidden={index === 0} onClick={onRemove}>삭제</button>
+        <button className="btn text danger" type="button" data-action="remove-experience" onClick={onRemove}>삭제</button>
       </div>
       <div className="form-row">
         <label>회사명 <span>*</span><input name="experienceCompany" required maxLength={200} placeholder="예: 온핏 주식회사" defaultValue={experience.company} /></label>
-        <label>담당 직무 <span>*</span><select name="experienceRole" required defaultValue={experience.role}><Options values={roles} current={experience.role} /></select></label>
+        <label>담당 직무 <span>*</span><input name="experienceRole" required maxLength={200} placeholder="예: 백엔드 개발자" defaultValue={experience.role} /></label>
       </div>
       <div className="form-row">
         <label>시작 월 <span>*</span><input name="experienceStart" type="month" required defaultValue={experience.start} /></label>
         <label>종료 월 <span className="optional">재직 중이면 비워 두세요</span><input name="experienceEnd" type="month" defaultValue={experience.end} /></label>
       </div>
+      <label>담당 업무 <span className="optional">선택</span><textarea name="experienceDescription" rows={3} maxLength={2000} placeholder="담당한 업무와 성과를 적어주세요." defaultValue={experience.description || experience.extra?.description || ''} /></label>
+    </section>
+  );
+}
+
+function ActivityFields({ item, index, prefix, onRemove }) {
+  const training = prefix === 'training';
+  return (
+    <section className="experience-block">
+      <div className="project-heading">
+        <h3>{training ? '교육' : '학내외 활동'} {index + 1}</h3>
+        <button className="btn text danger" type="button" onClick={onRemove}>삭제</button>
+      </div>
+      <div className="form-row">
+        <label>{training ? '교육명' : '활동명'} <span>*</span><input name={prefix + 'Title'} required maxLength={200}
+          placeholder={training ? '예: 백엔드 개발 과정' : '예: 개발 동아리'} defaultValue={item.title} /></label>
+        <label>{training ? '교육기관' : '기관·단체'} <span className="optional">선택</span><input name={prefix + 'Organization'}
+          maxLength={200} defaultValue={item.organization} /></label>
+      </div>
+      <div className="form-row">
+        <label>시작 월 <span className="optional">선택</span><input name={prefix + 'Start'} type="month" defaultValue={item.start} /></label>
+        <label>종료 월 <span className="optional">선택</span><input name={prefix + 'End'} type="month" defaultValue={item.end} /></label>
+      </div>
+      <label>{training ? '교육 내용' : '활동 내용'} <span className="optional">선택</span>
+        <textarea name={prefix + 'Description'} maxLength={2000} rows={3} defaultValue={item.description}
+          placeholder={training ? '배운 내용과 활용한 기술을 적어주세요.' : '활동 내용과 맡은 역할을 적어주세요.'} /></label>
     </section>
   );
 }
@@ -87,9 +114,10 @@ function CertificateFields({ certificate, index, onRemove }) {
  */
 export function ProfilePage({ profile, onSave, onToast }) {
   const initial = profile || emptyProfile();
-  const [career, setCareer] = useState(initial.career);
   const [projects, setProjects] = useState(() => initial.projects.map(withKey));
-  const [experiences, setExperiences] = useState(() => (initial.experiences?.length ? initial.experiences : [emptyExperience()]).map(withKey));
+  const [experiences, setExperiences] = useState(() => (initial.experiences || []).map(withKey));
+  const [trainings, setTrainings] = useState(() => (initial.trainings || []).map(withKey));
+  const [activities, setActivities] = useState(() => (initial.activities || []).map(withKey));
   const [certificates, setCertificates] = useState(() => (initial.certificates || []).map(withKey));
   const [saving, setSaving] = useState(false);
   const savingRef = useRef(false);
@@ -99,7 +127,7 @@ export function ProfilePage({ profile, onSave, onToast }) {
     if (!focusNew.current) return;
     document.querySelector(focusNew.current + ' > section:last-child input')?.focus();
     focusNew.current = null;
-  }, [projects, experiences, certificates]);
+  }, [projects, experiences, certificates, trainings, activities]);
 
   async function submit(event) {
     event.preventDefault();
@@ -115,18 +143,33 @@ export function ProfilePage({ profile, onSave, onToast }) {
     const [names, descriptions, stacks] = ['projectName', 'projectDescription', 'projectStack'].map(column);
     const nextProjects = projects.map((project, i) => ({ name: names[i], description: descriptions[i], stack: stacks[i], extra: project.extra || {} }));
     if (nextProjects.some(project => !splitSkills(project.stack).length)) { onToast('프로젝트에 기술을 한 개 이상 입력해 주세요.'); return; }
-    // A disabled fieldset leaves the experience inputs out of FormData, which is what 신입 means.
-    const [companies, experienceRoles, starts, ends] = ['experienceCompany', 'experienceRole', 'experienceStart', 'experienceEnd'].map(column);
-    const nextExperiences = career === '경력'
-      ? experiences.map((experience, i) => ({ company: companies[i], role: experienceRoles[i], start: starts[i], end: ends[i], extra: experience.extra || {} }))
-      : [];
+    const [companies, experienceRoles, starts, ends, duties] = ['experienceCompany', 'experienceRole', 'experienceStart', 'experienceEnd', 'experienceDescription'].map(column);
+    const nextExperiences = experiences.map((experience, i) => ({ company: companies[i], role: experienceRoles[i], start: starts[i], end: ends[i], description: duties[i] }));
     if (nextExperiences.some(experience => experience.end && experience.end < experience.start)) { onToast('경력 종료 월은 시작 월보다 빠를 수 없어요.'); return; }
+    const readActivities = (list, prefix) => {
+      const [titles, organizations, descriptions, starts, ends] =
+        ['Title', 'Organization', 'Description', 'Start', 'End'].map(suffix => column(prefix + suffix));
+      return list.map((_, i) => ({ title: titles[i], organization: organizations[i],
+        description: descriptions[i], start: starts[i], end: ends[i] }));
+    };
+    const nextTrainings = readActivities(trainings, 'training');
+    const nextActivities = readActivities(activities, 'activity');
+    if ([...nextTrainings, ...nextActivities].some(item => item.start && item.end && item.end < item.start)) {
+      onToast('종료 월은 시작 월보다 빠를 수 없어요.'); return;
+    }
     const [certificateNames, categories, acquiredOns, scores] = ['certificateName', 'certificateCategory', 'certificateAcquiredOn', 'certificateScore'].map(column);
     const nextCertificates = certificateNames.map((name, i) => ({ name, category: categories[i], acquiredOn: acquiredOns[i], score: scores[i] }));
+    const education = { universityName: String(data.get('universityName') || '').trim(),
+      major: String(data.get('universityMajor') || '').trim(), status: String(data.get('universityStatus') || '') };
+    if (!education.universityName && (education.major || education.status)) {
+      onToast('대학교명을 입력해 주세요.');
+      form.querySelector('[name="universityName"]')?.focus();
+      return;
+    }
     const next = {
-      roles: nextRoles,
+      education, trainings: nextTrainings, activities: nextActivities, roles: nextRoles,
       location: data.get('location') || '',
-      career, experiences: nextExperiences, certificates: nextCertificates, projects: nextProjects,
+      career: nextExperiences.length ? '경력' : '신입', experiences: nextExperiences, certificates: nextCertificates, projects: nextProjects,
     };
     savingRef.current = true;
     // Disable the button before this handler returns so a second click cannot slip in.
@@ -139,6 +182,8 @@ export function ProfilePage({ profile, onSave, onToast }) {
   const roleChoices = [...roles, ...initial.roles.filter(role => !roles.includes(role))];
   const addProject = () => { focusNew.current = '#projects'; setProjects(list => [...list, withKey(emptyProject())]); };
   const addExperience = () => { focusNew.current = '#experiences'; setExperiences(list => [...list, withKey(emptyExperience())]); };
+  const addTraining = () => { focusNew.current = '#trainings'; setTrainings(list => [...list, withKey(emptyActivity())]); };
+  const addActivity = () => { focusNew.current = '#activities'; setActivities(list => [...list, withKey(emptyActivity())]); };
   const addCertificate = () => { focusNew.current = '#certificates'; setCertificates(list => [...list, withKey(emptyCertificate())]); };
 
   return (
@@ -163,20 +208,28 @@ export function ProfilePage({ profile, onSave, onToast }) {
             <div className="form-row">
               <label>희망 지역 <span className="optional">선택</span><select name="location" defaultValue={initial.location}><Options values={regions} current={initial.location} blank="선택 안 함" /></select></label>
             </div>
-            <fieldset className="career-options">
-              <legend>경력 구분 <span>*</span></legend>
-              {['신입', '경력'].map(value => (
-                <label key={value}><input type="radio" name="career" value={value} defaultChecked={initial.career === value} onChange={() => setCareer(value)} /> {value}</label>
-              ))}
+            <fieldset className="experience-options">
+              <legend>대학교 학력 <span>*</span></legend>
+              <div className="form-row">
+                <label>대학교명 <span>*</span><input name="universityName" required maxLength={200} placeholder="예: 한국대학교" defaultValue={initial.education?.universityName || ''} /></label>
+                <label>전공 <span className="optional">선택</span><input name="universityMajor" maxLength={200} placeholder="예: 컴퓨터공학" defaultValue={initial.education?.major || ''} /></label>
+              </div>
+              <label>재학 상태 <span className="optional">선택</span>
+                <select name="universityStatus" defaultValue={initial.education?.status || ''}>
+                  <option value="">선택 안 함</option><option value="ENROLLED">재학</option><option value="GRADUATED">졸업</option>
+                  <option value="LEAVE">휴학</option><option value="COMPLETED">수료</option><option value="WITHDRAWN">중퇴</option>
+                </select>
+              </label>
             </fieldset>
-            <fieldset id="experience-field" className="experience-options" hidden={career !== '경력'} disabled={career !== '경력'}>
-              <legend>경력 사항 <span>*</span></legend>
+            <fieldset id="experience-field" className="experience-options">
+              <legend>경력 사항 <span className="optional">선택</span></legend>
               <div id="experiences">
                 {experiences.map((experience, index) => (
                   <ExperienceFields key={experience.key} experience={experience} index={index}
                     onRemove={() => setExperiences(list => list.filter(item => item.key !== experience.key))} />
                 ))}
               </div>
+              {!experiences.length && <p className="field-help">경력이 있다면 추가해 주세요.</p>}
               <button className="btn outline add-project" type="button" data-action="add-experience" onClick={addExperience}><Icon name="plus" /> 경력 추가</button>
             </fieldset>
           </section>
@@ -189,9 +242,30 @@ export function ProfilePage({ profile, onSave, onToast }) {
               ))}
             </div>
             <button className="btn outline add-project" type="button" data-action="add-project" onClick={addProject}><Icon name="plus" /> 프로젝트 추가</button>
+            <fieldset className="experience-options">
+              <legend>학내외 활동 <span className="optional">선택</span></legend>
+              <p className="field-help">학내외 활동은 프로필에 저장되지만 현재 직무 분석과 적합도 점수에는 사용되지 않습니다.</p>
+              <div id="activities">
+                {activities.map((item, index) => <ActivityFields key={item.key} item={item} index={index} prefix="activity"
+                  onRemove={() => setActivities(list => list.filter(entry => entry.key !== item.key))} />)}
+              </div>
+              <button className="btn outline add-project" type="button" onClick={addActivity} disabled={activities.length >= 50}>
+                <Icon name="plus" /> 활동 추가
+              </button>
+            </fieldset>
+          </section>
+          <section className="form-section" aria-labelledby="profile-training">
+            <header className="form-section-heading"><span aria-hidden="true">03</span><div><h2 id="profile-training">교육</h2><p>대학교 수업이나 이수한 교육의 이름과 내용을 입력하면 공고의 관련 교육 조건을 비교하는 데 활용됩니다.</p></div></header>
+            <div id="trainings">
+              {trainings.map((item, index) => <ActivityFields key={item.key} item={item} index={index} prefix="training"
+                onRemove={() => setTrainings(list => list.filter(entry => entry.key !== item.key))} />)}
+            </div>
+            <button className="btn outline add-project" type="button" onClick={addTraining} disabled={trainings.length >= 10}>
+              <Icon name="plus" /> 교육 추가
+            </button>
           </section>
           <section className="form-section" aria-labelledby="profile-step-3">
-            <header className="form-section-heading"><span aria-hidden="true">03</span><div><h2 id="profile-step-3">어떤 자격을 갖추고 있나요?</h2><p>자격증과 어학 점수가 있다면 알려주세요. 없으면 비워 두어도 괜찮아요.</p></div></header>
+            <header className="form-section-heading"><span aria-hidden="true">04</span><div><h2 id="profile-step-3">어떤 자격을 갖추고 있나요?</h2><p>자격증과 어학 점수가 있다면 알려주세요. 없으면 비워 두어도 괜찮아요.</p></div></header>
             <div id="certificates">
               {certificates.map((certificate, index) => (
                 <CertificateFields key={certificate.key} certificate={certificate} index={index}
@@ -202,7 +276,7 @@ export function ProfilePage({ profile, onSave, onToast }) {
             <button className="btn outline add-project" type="button" data-action="add-certificate" onClick={addCertificate}><Icon name="plus" /> 자격증 추가</button>
           </section>
           <div className="form-actions">
-            <span>직무·지역·경력·기술·프로젝트·자격증은 서버에 저장됩니다.</span>
+            <span>직무·지역·학력·경력·기술·프로젝트·교육·활동·자격증은 서버에 저장됩니다.</span>
             <button className="btn" type="submit" disabled={saving}>프로필 저장하고 공고 분석하기 <Icon name="arrow" /></button>
           </div>
         </form>

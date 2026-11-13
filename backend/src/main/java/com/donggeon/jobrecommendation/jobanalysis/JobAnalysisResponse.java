@@ -34,7 +34,11 @@ public record JobAnalysisResponse(
                         BigDecimal semantic, BigDecimal experience, BigDecimal preference,
                         JobAnalysis.SemanticStatus semanticStatus, boolean noRequirements,
                         List<String> matchedRequired, List<String> matchedPreferred, List<String> missing,
-                        List<String> evidence) {}
+                        List<String> evidence, BigDecimal duty, List<String> matchedDuty, List<String> missingDuty,
+                        List<JobMatchScorer.RelatedMatch> relatedMatches, Integer requiredWeight, Integer dutyWeight,
+                        List<JobMatchScorer.CertificateMatch> requiredCertificates,
+                        List<JobMatchScorer.CertificateMatch> preferredCertificates,
+                        List<JobMatchScorer.PreferenceMatch> preferredCriteria) {}
 
     public record Versions(String extractionModel, String extractionPrompt, String calculator,
                            String semanticModel, String roleModel, String rolePrompt) {}

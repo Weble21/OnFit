@@ -66,6 +66,12 @@ class SemanticIntegrationTests {
             assertThat(success.modelVersion()).isEqualTo(HttpSemanticScoreProvider.MODEL_VERSION);
             assertThat(success.score(7L)).isEqualByComparingTo("55.50");
             assertThat(body.get()).doesNotContain("hello@example.com", "private.example", "홍길동", "demo@example.invalid");
+            assertThat(JsonMapper.builder().build().readTree(body.get()).path("profileText").asText()).contains("희망 직무");
+            answer.set("{\"modelVersion\":\"" + HttpSemanticScoreProvider.MODEL_VERSION
+                    + "\",\"scores\":[{\"jobId\":1,\"score\":55.50}]}");
+            assertThat(provider.scoreSingle(profile, job).score()).isEqualByComparingTo("55.50");
+            assertThat(JsonMapper.builder().build().readTree(body.get()).path("profileText").asText())
+                    .doesNotContain("희망 직무", "백엔드 개발자");
             answer.set("{\"modelVersion\":\"wrong\",\"scores\":[{\"jobId\":7,\"score\":55.50}]}");
             assertThat(provider.score(profile, List.of(job)).modelVersion()).isEqualTo(SemanticScoreProvider.FALLBACK_VERSION);
             answer.set("{\"modelVersion\":\"" + HttpSemanticScoreProvider.MODEL_VERSION

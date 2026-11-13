@@ -59,17 +59,17 @@ public class HttpSemanticScoreProvider implements SemanticScoreProvider {
 
     @Override
     public Result score(UserProfile profile, List<JobPosting> jobs) {
-        return request(profile, jobs.stream().map(job -> new JobRequest(job.getId(), SemanticText.job(job))).toList());
+        return request(profile, jobs.stream().map(job -> new JobRequest(job.getId(), SemanticText.job(job))).toList(), true);
     }
 
     /** A user-submitted posting has no database id; a request-local id stands in for it. */
     @Override
     public Single scoreSingle(UserProfile profile, JobPosting job) {
-        Result result = request(profile, List.of(new JobRequest(1L, SemanticText.job(job))));
+        Result result = request(profile, List.of(new JobRequest(1L, SemanticText.job(job))), false);
         return new Single(result.modelVersion(), result.score(1L));
     }
 
-    private Result request(UserProfile profile, List<JobRequest> jobs) {
+    private Result request(UserProfile profile, List<JobRequest> jobs, boolean includeTargetRoles) {
         if (!enabled) return new Result(RULES_VERSION, Map.of());
         if (jobs.isEmpty()) return new Result(MODEL_VERSION, Map.of());
         if (token.isBlank()) {
@@ -79,7 +79,7 @@ public class HttpSemanticScoreProvider implements SemanticScoreProvider {
         try {
             // Keep one bounded request. If a later phase exceeds 50 open jobs, chunk with an overall deadline.
             if (jobs.size() > 50) throw new IllegalStateException("Too many open jobs for one AI batch");
-            var body = new ScoreRequest(MODEL_VERSION, SemanticText.profile(profile, includeProjectDescriptions), jobs);
+            var body = new ScoreRequest(MODEL_VERSION, SemanticText.profile(profile, includeProjectDescriptions, includeTargetRoles), jobs);
             var request = HttpRequest.newBuilder(endpoint).timeout(timeout)
                     .header("Content-Type", "application/json")
                     .header("X-OnFit-AI-Token", token)

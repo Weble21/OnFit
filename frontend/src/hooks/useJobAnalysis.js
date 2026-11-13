@@ -1,17 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
-import { analyzeJob, extractJobDraft, extractJobDraftFromUrl, retryRoleAnalysis, textHash } from '../api.js';
+import { analyzeJob, extractJobDraft, retryRoleAnalysis, textHash } from '../api.js';
 import { validateAttachment } from '../upload.js';
+import { compareRoles, parseComparisonRoles, rankComparison } from '../roleComparison.js';
 
 const EMPTY_ATTACHMENT = { attachment: null, text: '', error: '', busy: false, confirmed: false, confirmedText: '', draftId: null, status: '' };
-const EMPTY_LINK = { url: '', text: '', error: '', busy: false, confirmed: false, confirmedText: '', draftId: null, status: '', progress: null };
-
-/** An address typed without a scheme gets https; anything that still is not http(s) is refused. */
-function normalizeUrl(value) {
-  const trimmed = value.trim();
-  const address = /^[a-z][a-z\d+.-]*:/i.test(trimmed) ? trimmed : 'https://' + trimmed;
-  return /^https?:\/\/[^\s/?#]+/i.test(address) ? address : null;
-}
-
 function draftStatus(result) {
   const how = {
     URL_HTML: '웹페이지 텍스트 추출 완료',
@@ -25,14 +17,18 @@ function draftStatus(result) {
 /**
  * State of the JD analysis page. It lives above the page so typed text and the attached file
  * survive moving to another screen and back, as before.
- * Flow: posting address or file -> review and confirm the extracted text -> server structuring, score and role analysis.
+ * Flow: typed posting text or a reviewed file -> server structuring, score and role analysis.
  */
 export function useJobAnalysis(profile, onToast) {
-  const [inputMode, setInputMode] = useState('url');
+  const [inputMode, setInputMode] = useState('text');
+  const [manual, setManual] = useState({ text: '', busy: false, confirmed: false, status: '' });
   const [file, setFile] = useState(EMPTY_ATTACHMENT);
-  const [link, setLink] = useState(EMPTY_LINK);
   const [analysis, setAnalysis] = useState(null);
   const [targetRole, setTargetRole] = useState('');
+  const [comparisonMode, setComparisonMode] = useState(false);
+  const [comparisonRoles, setComparisonRoles] = useState('');
+  const [comparison, setComparison] = useState(null);
+  const [comparisonProgress, setComparisonProgress] = useState(null);
   const [analyzing, setAnalyzing] = useState(false);
   const [analysisError, setAnalysisError] = useState('');
   const [retrying, setRetrying] = useState(false);
@@ -40,22 +36,19 @@ export function useJobAnalysis(profile, onToast) {
   const requestRef = useRef(0);
   const abortRef = useRef(null);
   const attachmentRef = useRef(null);
-  // Same for the posting address: a newer fetch or an edited address makes an older answer irrelevant.
-  const linkRequestRef = useRef(0);
-  const linkAbortRef = useRef(null);
   // Same for analyses: an edit, a new file or a new request makes an older response irrelevant.
   const analysisRef = useRef(0);
   const analysisAbortRef = useRef(null);
 
   const fileMode = inputMode === 'file';
-  // The draft under review: text read from the attached file or from the posting address.
-  const source = fileMode ? file : link;
-  const hasSource = fileMode ? !!file.attachment : !!link.draftId;
+  // The draft under review: text typed directly or read from the attached file.
+  const source = fileMode ? file : manual;
+  const hasSource = fileMode ? !!file.attachment : true;
   const currentText = source.text;
-  const canAnalyze = !analyzing && targetRole.trim().length > 0 && currentText.trim().length >= 20 && hasSource && !source.busy && source.confirmed;
+  const roleInput = parseComparisonRoles(comparisonRoles);
+  const canAnalyze = !analyzing && (comparisonMode ? !roleInput.error : targetRole.trim().length > 0) && currentText.trim().length >= 20 && hasSource && !source.busy && (!fileMode || source.confirmed);
   const update = changes => setFile(current => ({ ...current, ...changes }));
-  const updateLink = changes => setLink(current => ({ ...current, ...changes }));
-  const updateSource = fileMode ? update : updateLink;
+  const updateSource = fileMode ? update : changes => setManual(current => ({ ...current, ...changes }));
 
   function resetAnalysis() {
     analysisRef.current++;
@@ -64,6 +57,8 @@ export function useJobAnalysis(profile, onToast) {
     setAnalyzing(false);
     setAnalysisError('');
     setAnalysis(null);
+    setComparison(null);
+    setComparisonProgress(null);
   }
 
   function removeAttachment() {
@@ -107,39 +102,9 @@ export function useJobAnalysis(profile, onToast) {
     }
   }
 
-  function editUrl(value) {
-    linkRequestRef.current++;
-    linkAbortRef.current?.abort();
-    linkAbortRef.current = null;
-    setLink({ ...EMPTY_LINK, url: value });
-    resetAnalysis();
-  }
-
-  async function fetchUrl() {
-    const address = normalizeUrl(link.url);
-    if (!address) { updateLink({ error: 'http 또는 https로 시작하는 공고 주소를 입력해 주세요.' }); return; }
-    const request = ++linkRequestRef.current;
-    linkAbortRef.current?.abort();
-    const controller = new AbortController();
-    linkAbortRef.current = controller;
-    setLink({ ...EMPTY_LINK, url: address, busy: true });
-    resetAnalysis();
-    try {
-      const result = await extractJobDraftFromUrl(address, controller.signal,
-        progress => { if (request === linkRequestRef.current) updateLink({ progress }); });
-      if (request !== linkRequestRef.current) return;
-      updateLink({ text: result.text || '', draftId: result.draftId, status: draftStatus(result) });
-    } catch (error) {
-      if (request !== linkRequestRef.current || error.name === 'AbortError') return;
-      updateLink({ error: error.message });
-    } finally {
-      if (request === linkRequestRef.current) { updateLink({ busy: false, progress: null }); linkAbortRef.current = null; }
-    }
-  }
-
   async function analyze() {
     if (!canAnalyze) {
-      if (!analyzing) onToast((fileMode ? '파일을 올리고' : '공고 주소에서 내용을 가져오고') + ' 추출한 텍스트를 확인해 주세요.');
+      if (!analyzing) onToast(fileMode ? '파일을 올리고 추출한 텍스트를 확인해 주세요.' : '지원 직무와 공고 텍스트를 입력해 주세요.');
       return;
     }
     resetAnalysis();
@@ -150,13 +115,23 @@ export function useJobAnalysis(profile, onToast) {
     try {
       // Text typed by hand next to a file whose extraction failed has no draft, so it is analyzed as typed text.
       const body = !fileMode
-        ? { inputType: 'URL', text: link.text, draftId: link.draftId, confirmedTextHash: await textHash(link.confirmedText) }
+        ? { inputType: 'TEXT', text: manual.text }
         : file.draftId
           ? { inputType: 'FILE', text: file.text, draftId: file.draftId, confirmedTextHash: await textHash(file.confirmedText) }
           : { inputType: 'TEXT', text: file.text };
-      const result = await analyzeJob({ ...body, targetRole: targetRole.trim() }, controller.signal);
-      if (request !== analysisRef.current) return;
-      setAnalysis(result);
+      if (comparisonMode) {
+        const entries = await compareRoles(roleInput.roles, body, analyzeJob, controller.signal, (completed, total) => {
+          if (request === analysisRef.current) setComparisonProgress({ completed: completed.length, total });
+        });
+        if (request !== analysisRef.current) return;
+        const ranked = rankComparison(entries);
+        setComparison(ranked);
+        setAnalysis(ranked.find(item => item.result)?.result || null);
+      } else {
+        const result = await analyzeJob({ ...body, targetRole: targetRole.trim() }, controller.signal);
+        if (request !== analysisRef.current) return;
+        setAnalysis(result);
+      }
     } catch (error) {
       if (request !== analysisRef.current || error.name === 'AbortError') return;
       setAnalysisError(error.message);
@@ -171,7 +146,10 @@ export function useJobAnalysis(profile, onToast) {
     setRetrying(true);
     try {
       const result = await retryRoleAnalysis(analysis.id);
-      if (request === analysisRef.current) setAnalysis(result);
+      if (request === analysisRef.current) {
+        setAnalysis(result);
+        setComparison(current => current?.map(item => item.result?.id === result.id ? { ...item, result } : item) || null);
+      }
     } catch (error) {
       if (request === analysisRef.current) onToast(error.message);
     } finally {
@@ -186,11 +164,13 @@ export function useJobAnalysis(profile, onToast) {
   }, []);
 
   return {
-    inputMode, fileMode, file, link, source, hasSource, analysis, analyzing, analysisError, retrying, currentText, canAnalyze, targetRole,
+    inputMode, fileMode, file, source, hasSource, analysis, analyzing, analysisError, retrying, currentText, canAnalyze, targetRole,
+    comparisonMode, comparisonRoles, comparison, comparisonProgress, comparisonRoleError: roleInput.error,
+    setComparisonMode(value) { setComparisonMode(value); resetAnalysis(); },
+    editComparisonRoles(value) { setComparisonRoles(value); resetAnalysis(); },
+    selectComparison(id) { const found = comparison?.find(item => item.result?.id === id); if (found) setAnalysis(found.result); },
     editTargetRole(value) { setTargetRole(value); resetAnalysis(); },
     setMode(mode) { setInputMode(mode); resetAnalysis(); },
-    editUrl,
-    fetchUrl,
     editText(value) {
       updateSource({ text: value, confirmed: false, status: '수정한 텍스트를 다시 확인해 주세요.' });
       resetAnalysis();

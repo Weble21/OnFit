@@ -11,8 +11,12 @@ public final class SemanticText {
     private SemanticText() {}
 
     public static String profile(UserProfile profile, boolean includeProjectDescriptions) {
+        return profile(profile, includeProjectDescriptions, true);
+    }
+
+    public static String profile(UserProfile profile, boolean includeProjectDescriptions, boolean includeTargetRoles) {
         StringBuilder text = new StringBuilder();
-        append(text, "희망 직무", String.join(", ", profile.getTargetRoles()));
+        if (includeTargetRoles) append(text, "희망 직무", String.join(", ", profile.getTargetRoles()));
         append(text, "기술", profile.getSkills().stream().map(skill -> skill.getNormalizedName())
                 .distinct().sorted().collect(Collectors.joining(", ")));
         profile.getProjects().stream().limit(5).forEach(project -> {

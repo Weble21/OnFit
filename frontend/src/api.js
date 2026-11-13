@@ -131,10 +131,20 @@ export function toProfileRequest(profile) {
     projects: profile.projects.map(project => ({
       ...project.extra, name: project.name, description: project.description, techStack: project.stack,
     })),
-    experiences: profile.career === '경력' ? (profile.experiences || []).map(experience => ({
-      ...experience.extra, companyName: experience.company, roleName: experience.role,
+    trainings: (profile.trainings || []).map(item => ({
+      title: item.title, organization: item.organization || null, description: item.description || null,
+      startedOn: item.start ? item.start + '-01' : null, endedOn: item.end ? item.end + '-01' : null,
+    })),
+    activities: (profile.activities || []).map(item => ({
+      title: item.title, organization: item.organization || null, description: item.description || null,
+      startedOn: item.start ? item.start + '-01' : null, endedOn: item.end ? item.end + '-01' : null,
+    })),
+    education: profile.education?.universityName ? { universityName: profile.education.universityName,
+      major: profile.education.major || null, status: profile.education.status || null } : null,
+    experiences: (profile.experiences || []).map(experience => ({
+      ...experience.extra, companyName: experience.company, roleName: experience.role, description: experience.description || null,
       startedOn: experience.start + '-01', endedOn: experience.end ? experience.end + '-01' : null,
-    })) : [],
+    })),
   };
 }
 
@@ -142,13 +152,23 @@ export function fromProfileResponse(response, previous = null) {
   const experiences = (response.experiences || []).map(experience => ({
     company: experience.companyName, role: experience.roleName,
     start: experience.startedOn.slice(0, 7), end: experience.endedOn ? experience.endedOn.slice(0, 7) : '',
-    extra: { description: experience.description },
+    description: experience.description || '',
   }));
   return {
     roles: response.targetRoles.length ? response.targetRoles : ['백엔드 개발자'],
     location: response.preferredLocations[0] || '',
     career: experiences.length ? '경력' : previous?.career || '신입',
     experiences,
+    trainings: (response.trainings || []).map(item => ({
+      title: item.title, organization: item.organization || '', description: item.description || '',
+      start: item.startedOn?.slice(0, 7) || '', end: item.endedOn?.slice(0, 7) || '',
+    })),
+    activities: (response.activities || []).map(item => ({
+      title: item.title, organization: item.organization || '', description: item.description || '',
+      start: item.startedOn?.slice(0, 7) || '', end: item.endedOn?.slice(0, 7) || '',
+    })),
+    education: response.education ? { universityName: response.education.universityName,
+      major: response.education.major || '', status: response.education.status || '' } : { universityName: '', major: '', status: '' },
     certificates: (response.certificates || []).map(certificate => ({
       name: certificate.name, category: certificate.category || 'OTHER',
       acquiredOn: certificate.acquiredOn || '', score: certificate.score || '',

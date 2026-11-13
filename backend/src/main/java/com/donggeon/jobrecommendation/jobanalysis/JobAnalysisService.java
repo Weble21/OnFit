@@ -188,7 +188,7 @@ public class JobAnalysisService {
                     : analysis.getTargetRole();
             return new Input(analysis.getSourceText(), role, posting,
                     json.readValue(analysis.getProfileSnapshot(), ProfileSnapshot.class),
-                    new JobAiClient.ScoreFacts(detail.matchedRequired(), detail.matchedPreferred(), detail.missing()));
+                    scoreFacts(detail));
         });
         if (input == null) return get(id);
         try {
@@ -234,11 +234,18 @@ public class JobAnalysisService {
                 .map(profile -> sha256(json.writeValueAsString(ProfileSnapshot.of(profile)))).orElse(null);
         var detail = json.readValue(analysis.getScoreDetail(), JobMatchScorer.Detail.class);
         var snapshot = json.readValue(analysis.getProfileSnapshot(), ProfileSnapshot.class);
-        var score = new JobAnalysisResponse.Score(analysis.getTotalScore(), JobMatchScorer.maxTotal(analysis.getSemanticStatus()),
+        var score = new JobAnalysisResponse.Score(detail.noRequirements() ? null : analysis.getTotalScore(), JobMatchScorer.maxTotal(analysis.getCalculatorVersion(), analysis.getSemanticStatus()),
                 analysis.getRequiredScore(), analysis.getPreferredScore(), analysis.getSemanticScore(),
                 analysis.getExperienceScore(), analysis.getPreferenceScore(), analysis.getSemanticStatus(),
                 detail.noRequirements(), detail.matchedRequired(), detail.matchedPreferred(), detail.missing(),
-                detail.evidence());
+                detail.evidence(), detail.duty(), detail.matchedDuty() == null ? java.util.List.of() : detail.matchedDuty(),
+                detail.missingDuty() == null ? java.util.List.of() : detail.missingDuty(),
+                detail.relatedMatches() == null ? java.util.List.of() : detail.relatedMatches(),
+                detail.requiredWeight() == null ? 40 : detail.requiredWeight(),
+                detail.dutyWeight() == null ? 0 : detail.dutyWeight(),
+                detail.requiredCertificates() == null ? java.util.List.of() : detail.requiredCertificates(),
+                detail.preferredCertificates() == null ? java.util.List.of() : detail.preferredCertificates(),
+                detail.preferredCriteria() == null ? java.util.List.of() : detail.preferredCriteria());
         var versions = new JobAnalysisResponse.Versions(analysis.getExtractionModel(), analysis.getExtractionPromptVersion(),
                 analysis.getCalculatorVersion(), analysis.getSemanticModelVersion(), analysis.getRoleModel(),
                 analysis.getRolePromptVersion());
@@ -262,7 +269,14 @@ public class JobAnalysisService {
 
     private JobAiClient.ScoreFacts facts(JobAnalysis.Scoring scoring) {
         var detail = json.readValue(scoring.detailJson(), JobMatchScorer.Detail.class);
-        return new JobAiClient.ScoreFacts(detail.matchedRequired(), detail.matchedPreferred(), detail.missing());
+        return scoreFacts(detail);
+    }
+
+    private static JobAiClient.ScoreFacts scoreFacts(JobMatchScorer.Detail detail) {
+        var matched = detail.preferredCriteria() == null ? java.util.List.<String>of()
+                : detail.preferredCriteria().stream().filter(JobMatchScorer.PreferenceMatch::matched)
+                        .map(JobMatchScorer.PreferenceMatch::condition).toList();
+        return new JobAiClient.ScoreFacts(detail.matchedRequired(), detail.matchedPreferred(), detail.missing(), matched);
     }
 
     /** Same rule as the frontend: CRLF/CR become LF and control characters and spaces at both ends go. */
@@ -283,7 +297,7 @@ public class JobAnalysisService {
         HttpStatus status = switch (ex.getCode()) {
             case "LLM_DISABLED", "LLM_RATE_LIMITED", "LLM_UNAVAILABLE", "LLM_AUTH" -> HttpStatus.SERVICE_UNAVAILABLE;
             case "LLM_TIMEOUT" -> HttpStatus.GATEWAY_TIMEOUT;
-            case "LLM_REFUSAL" -> HttpStatus.UNPROCESSABLE_CONTENT;
+            case "LLM_REFUSAL", "LLM_ROLE_UNCLEAR" -> HttpStatus.UNPROCESSABLE_CONTENT;
             default -> HttpStatus.BAD_GATEWAY;
         };
         return new ResponseStatusException(status, message(ex.getCode()));
@@ -293,8 +307,11 @@ public class JobAnalysisService {
         return switch (code) {
             case "LLM_DISABLED" -> "AI 공고 분석이 아직 설정되지 않았습니다. 관리자에게 문의해 주세요.";
             case "LLM_TIMEOUT" -> "AI 분석 시간이 초과되었습니다. 잠시 후 다시 시도해 주세요.";
+            case "LLM_REQUEST_INVALID" -> "AI 분석 요청 설정에 문제가 있습니다. 관리자에게 문의해 주세요.";
             case "LLM_RATE_LIMITED" -> "AI 분석 요청이 많습니다. 잠시 후 다시 시도해 주세요.";
+            case "LLM_UNAVAILABLE" -> "AI 서비스에 연결하지 못했습니다. 인터넷 연결을 확인한 뒤 다시 시도해 주세요.";
             case "LLM_REFUSAL" -> "AI가 이 텍스트를 분석하지 못했습니다. 채용공고 내용인지 확인해 주세요.";
+            case "LLM_ROLE_UNCLEAR" -> "공고에서 지원 직무의 내용을 구분하지 못했습니다. 직무별 구분이 보이도록 텍스트를 수정해 주세요.";
             default -> "AI 분석에 실패했습니다. 잠시 후 다시 시도해 주세요.";
         };
     }
