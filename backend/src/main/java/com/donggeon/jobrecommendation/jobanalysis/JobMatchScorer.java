@@ -22,13 +22,13 @@ import com.donggeon.jobrecommendation.recommendation.WebSkillMatcher;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
- * Feeds one structured posting to the existing calculator. Weights and missing-value rules are the
- * calculator's own; this adapter only maps unknown posting fields to values that can never match.
+ * Builds legacy match details and the evidence-backed career rubric for one structured posting.
+ * The rubric alone supplies the current total; the AI explanation cannot change it.
  */
 @Component
 public class JobMatchScorer {
     /** Bump when the calculator, its weights or this adapter change how a score is produced. */
-    public static final String CALCULATOR_VERSION = "rules-v1/preference-items/adapter-v7";
+    public static final String CALCULATOR_VERSION = RubricScorer.POLICY_VERSION;
     private static final RecommendationWeights ANALYSIS_WEIGHTS = new RecommendationWeights(
             new BigDecimal("0.50"), new BigDecimal("0.20"), BigDecimal.ZERO,
             new BigDecimal("0.30"), BigDecimal.ZERO);
@@ -41,7 +41,49 @@ public class JobMatchScorer {
                          List<String> evidence, boolean noRequirements, BigDecimal duty, List<String> matchedDuty,
                          List<String> missingDuty, List<RelatedMatch> relatedMatches, Integer requiredWeight, Integer dutyWeight,
                          List<CertificateMatch> requiredCertificates, List<CertificateMatch> preferredCertificates,
-                         List<PreferenceMatch> preferredCriteria) {}
+                         List<PreferenceMatch> preferredCriteria, RubricScorer.Result rubric) {
+        Detail withRubric(RubricScorer.Result updated) {
+            return new Detail(matchedRequired, matchedPreferred, missing, evidence, updated.total() == null,
+                    duty, matchedDuty, missingDuty, relatedMatches, requiredWeight, dutyWeight,
+                    requiredCertificates, preferredCertificates, preferredCriteria, updated);
+        }
+    }
+
+    static List<JobAiClient.EvaluationCriterion> evaluationCriteria(Detail detail) {
+        if (detail.rubric() == null) return List.of();
+        var criteria = new java.util.ArrayList<JobAiClient.EvaluationCriterion>();
+        for (var category : detail.rubric().categories()) {
+            if (category.key().equals("userPreference")) continue;
+            for (int i = 0; i < category.criteria().size(); i++) {
+                var item = category.criteria().get(i);
+                boolean binary = detail.preferredCertificates() != null && detail.preferredCertificates().stream()
+                        .anyMatch(cert -> cert.condition().equals(item.requirement()));
+                criteria.add(new JobAiClient.EvaluationCriterion(category.key() + ":" + i, category.key(),
+                        item.requirement(), item.postingEvidence(), binary ? "BINARY" : "PERFORMANCE"));
+            }
+        }
+        for (int i = 0; i < detail.rubric().conditions().size(); i++) {
+            var item = detail.rubric().conditions().get(i);
+            criteria.add(new JobAiClient.EvaluationCriterion("eligibility:" + i, "eligibility", item.requirement(),
+                    item.postingEvidence(), "BINARY"));
+        }
+        return List.copyOf(criteria);
+    }
+
+    public JobAnalysis.Scoring applyEvaluation(JobAnalysis.Scoring original, JobAiClient.RoleResult role,
+                                               ProfileSnapshot snapshot) {
+        var detail = json.readValue(original.detailJson(), Detail.class);
+        var node = role.analysis().path("ratings");
+        // Older AI services and historical explanations can still be read during a rolling update.
+        if (node.isMissingNode() && !Set.of("role-analysis-v10", "role-analysis-v11", "role-analysis-v12").contains(role.promptVersion())) return original;
+        if (!node.isArray()) throw new JobAiException("LLM_INVALID_OUTPUT");
+        var ratings = json.readValue(node.toString(), JobAiClient.Rating[].class);
+        var rubric = RubricScorer.evaluate(detail.rubric(), evaluationCriteria(detail), List.of(ratings), snapshot.evidenceItems());
+        return new JobAnalysis.Scoring(CALCULATOR_VERSION, original.semanticStatus(), original.semanticModelVersion(),
+                rubric.total() == null ? BigDecimal.ZERO : rubric.total(), original.requiredScore(), original.preferredScore(),
+                original.semanticScore(), original.experienceScore(), original.preferenceScore(),
+                json.writeValueAsString(detail.withRubric(rubric)));
+    }
 
     private final RecommendationCalculator calculator;
     private final JsonMapper json;
@@ -81,7 +123,10 @@ public class JobMatchScorer {
                 .add(preferredScore.multiply(new BigDecimal("20")))
                 .add(combined.experienceScore().multiply(new BigDecimal("30")))
                 .divide(new BigDecimal("100"), 2, RoundingMode.HALF_UP);
-        if (requiredCertificates.stream().anyMatch(c -> !c.matched())) total = BigDecimal.ZERO.setScale(2);
+        var rubric = RubricScorer.score(profile, posting, requiredCertificates, preferredCriteria, preferredCertificates);
+        // The DB column is non-null. A pending lower bound is stored for replay, never exposed as a fit score.
+        total = rubric.total() != null ? rubric.total()
+                : rubric.lowerTotal() != null ? rubric.lowerTotal() : BigDecimal.ZERO.setScale(2);
         var skills = profile.getSkills().stream().map(s -> s.getNormalizedName()).collect(Collectors.toSet());
         var requirements = new java.util.ArrayList<String>();
         requirements.addAll(job.getRequiredSkills());
@@ -97,11 +142,11 @@ public class JobMatchScorer {
         if (both) evidence.addAll(dutyScore.matchedEvidence().stream()
                 .filter(e -> e.startsWith("필수 기술 일치:") || e.startsWith("필수 기술 연관:"))
                 .map(e -> e.replace("필수 기술", "업무 기술")).toList());
-        boolean noRequirements = job.getRequiredSkills().isEmpty() && preferredCount == 0 && requiredCertificates.isEmpty();
+        boolean noRequirements = rubric.lowerTotal() == null;
         var detail = new Detail(score.matchedRequiredSkills(), score.matchedPreferredSkills(), score.missingSkills(),
                 evidence, noRequirements, both ? dutyScore.requiredScore() : null,
                 both ? dutyScore.matchedRequiredSkills() : List.of(), both ? dutyScore.missingSkills() : List.of(),
-                related, requiredWeight, dutyWeight, requiredCertificates, preferredCertificates, preferredCriteria);
+                related, requiredWeight, dutyWeight, requiredCertificates, preferredCertificates, preferredCriteria, rubric);
         return new JobAnalysis.Scoring(CALCULATOR_VERSION, JobAnalysis.SemanticStatus.DISABLED, SemanticScoreProvider.RULES_VERSION,
                 total, score.requiredScore(), preferredScore, score.semanticScore(),
                 combined.experienceScore(), BigDecimal.ZERO.setScale(2), json.writeValueAsString(detail));
@@ -110,7 +155,8 @@ public class JobMatchScorer {
     /** The best total reachable with this semantic status, so a disabled model is not read as a weak fit. */
     public static BigDecimal maxTotal(String calculatorVersion, JobAnalysis.SemanticStatus status) {
         BigDecimal hundred = new BigDecimal("100.00");
-        return CALCULATOR_VERSION.equals(calculatorVersion) || "rules-v1/analysis-certificates/adapter-v6".equals(calculatorVersion) || "rules-v1/analysis-web-duty/adapter-v5".equals(calculatorVersion) || status == JobAnalysis.SemanticStatus.OK
+        return CALCULATOR_VERSION.equals(calculatorVersion) || "career-rubric-v1".equals(calculatorVersion)
+                || "rules-v1/analysis-certificates/adapter-v6".equals(calculatorVersion) || "rules-v1/analysis-web-duty/adapter-v5".equals(calculatorVersion) || status == JobAnalysis.SemanticStatus.OK
                 ? hundred : new BigDecimal("80.00");
     }
 

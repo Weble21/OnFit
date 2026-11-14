@@ -120,6 +120,7 @@ export function useJobAnalysis(profile, onToast) {
           ? { inputType: 'FILE', text: file.text, draftId: file.draftId, confirmedTextHash: await textHash(file.confirmedText) }
           : { inputType: 'TEXT', text: file.text };
       if (comparisonMode) {
+        setComparisonProgress({ completed: 0, total: roleInput.roles.length });
         const entries = await compareRoles(roleInput.roles, body, analyzeJob, controller.signal, (completed, total) => {
           if (request === analysisRef.current) setComparisonProgress({ completed: completed.length, total });
         });

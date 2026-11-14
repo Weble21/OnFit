@@ -179,6 +179,18 @@ public class JobAnalysis {
         this.roleStatus = RoleStatus.FAILED;
     }
 
+    public Scoring scoring() {
+        return new Scoring(calculatorVersion, semanticStatus, semanticModelVersion, totalScore, requiredScore,
+                preferredScore, semanticScore, experienceScore, preferenceScore, scoreDetail);
+    }
+
+    /** Stores the backend's recomputation from validated criterion ratings on a successful retry. */
+    public void updateEvaluationScore(Scoring scoring) {
+        this.calculatorVersion = scoring.calculatorVersion();
+        this.totalScore = scoring.totalScore();
+        this.scoreDetail = scoring.detailJson();
+    }
+
     public Long getId() { return id; }
     public User getUser() { return user; }
     public InputType getInputType() { return inputType; }

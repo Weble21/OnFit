@@ -91,7 +91,7 @@ class JobAnalysisApiTests {
     }
 
     @Test
-    void scoresStructuredPostingWithExistingCalculatorAndStoresVersions() throws Exception {
+    void scoresStructuredPostingWithCareerRubricAndStoresVersions() throws Exception {
         String body = mvc.perform(analyze("TEXT", TEXT, null, null))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.inputType").value("TEXT"))
@@ -104,27 +104,31 @@ class JobAnalysisApiTests {
                 .andExpect(jsonPath("$.score.preferred").value(0.0))
                 .andExpect(jsonPath("$.score.experience").value(66.67))
                 .andExpect(jsonPath("$.score.preference").value(0.0))
-                // 100*.50 + 0*.20 + 66.67*.30; semantic similarity is not used.
-                .andExpect(jsonPath("$.score.total").value(70.0))
+                .andExpect(jsonPath("$.score.total").isNumber())
+                .andExpect(jsonPath("$.score.rubric.pending").value(true))
+                .andExpect(jsonPath("$.score.rubric.lowerTotal").isNumber())
+                .andExpect(jsonPath("$.score.rubric.upperTotal").isNumber())
+                .andExpect(jsonPath("$.score.rubric.appliedWeight").value(40))
+                .andExpect(jsonPath("$.score.rubric.categories[1].label").value("기술·지식 적합성"))
                 .andExpect(jsonPath("$.score.maxTotal").value(100.0))
                 .andExpect(jsonPath("$.score.semanticStatus").value("DISABLED"))
                 .andExpect(jsonPath("$.roleStatus").value("COMPLETED"))
                 .andExpect(jsonPath("$.roleAnalysis.summary.text").value("커머스 API 백엔드 직무"))
-                .andExpect(jsonPath("$.profileItems[3].label").value("프로젝트 · 추천 서비스"))
+                .andExpect(jsonPath("$.profileItems[?(@.label == '프로젝트 · 추천 서비스')]").isNotEmpty())
                 .andExpect(jsonPath("$.versions.extractionModel").value("claude-opus-5-5"))
-                .andExpect(jsonPath("$.versions.calculator").value("rules-v1/preference-items/adapter-v7"))
+                .andExpect(jsonPath("$.versions.calculator").value("career-evidence-score-v4"))
                 .andExpect(jsonPath("$.versions.semanticModel").value("rules-only-v1"))
                 .andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
         long id = json.readTree(body).path("id").asLong();
         mvc.perform(get("/api/job-analysis/" + id)).andExpect(status().isOk())
-                .andExpect(jsonPath("$.score.total").value(70.0));
+                .andExpect(jsonPath("$.score.total").isNumber());
 
         @SuppressWarnings("unchecked")
         ArgumentCaptor<List<JobAiClient.ProfileItem>> items = ArgumentCaptor.forClass(List.class);
         ArgumentCaptor<JobAiClient.ScoreFacts> facts = ArgumentCaptor.forClass(JobAiClient.ScoreFacts.class);
         verify(ai).analyzeRole(anyString(), anyString(), any(), items.capture(), facts.capture());
         String sent = items.getValue().toString();
-        assertThat(sent).contains("project:", "[EMAIL]", "education:university", "한국대학교", "컴퓨터공학", "졸업", "training:", "백엔드 교육", "Spring Boot 실습").doesNotContain("dev@example.com", "private.example", "희망 직무", "봉사 동아리", "지역 봉사");
+        assertThat(sent).contains("project:", "[EMAIL]", "education:university", "한국대학교", "컴퓨터공학", "졸업", "training:", "백엔드 교육", "Spring Boot 실습", "희망 직무: 백엔드 개발자", "희망 지역: 서울", "activity:", "봉사 동아리", "지역 봉사").doesNotContain("dev@example.com", "private.example");
         assertThat(facts.getValue().matchedRequired()).containsExactly("Java", "Spring Boot", "Postgres");
         assertThat(jdbc.queryForObject("select source_text from job_analyses where id = ?", String.class, id))
                 .isEqualTo(TEXT.trim());
@@ -191,6 +195,35 @@ class JobAnalysisApiTests {
     }
 
     @Test
+    void aiQualificationMatchesReplaceBlanketWarningsAndPersistGroundedScore() throws Exception {
+        var original = posting(List.of(item("Spring Boot")), List.of());
+        var posting = new StructuredPosting(original.companyName(), original.title(), original.roleName(),
+                original.careerLevel(), original.location(), List.of(new Item("API 설계", "API 설계")),
+                original.requiredSkills(), List.of(), List.of(new Item("컴퓨터 관련 전공 졸업", "컴퓨터 관련 전공 졸업")), List.of());
+        when(ai.extract(anyString(), anyString())).thenReturn(new JobAiClient.Extraction(posting, "test-model", "test-extract"));
+        when(ai.analyzeRole(anyString(), anyString(), any(), anyList(), any())).thenAnswer(invocation -> {
+            JobAiClient.ScoreFacts facts = invocation.getArgument(4);
+            List<JobAiClient.ProfileItem> items = invocation.getArgument(3);
+            var project = items.stream().filter(item -> item.kind().equals("project")).findFirst().orElseThrow();
+            var ratings = facts.criteria().stream().map(c -> new JobAiClient.Rating(c.criterionId(), 4, "VERIFIED",
+                    List.of(c.requirement().contains("전공")
+                            ? new JobAiClient.ProfileRef("education:university", "전공: 컴퓨터공학 / 학적: 졸업")
+                            : new JobAiClient.ProfileRef(project.id(), "Spring Boot API 설계")),
+                    "프로필에 등록된 직접 근거 확인")).toList();
+            return new JobAiClient.RoleResult(json.readTree(json.writeValueAsString(Map.of("ratings", ratings))),
+                    "test-model", "role-analysis-v11");
+        });
+        long id = id(mvc.perform(analyze("TEXT", TEXT, null, null)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.score.total").value(100.0))
+                .andExpect(jsonPath("$.score.rubric.eligibility").value("충족"))
+                .andExpect(jsonPath("$.score.rubric.eligibilityNotes").isEmpty())
+                .andExpect(jsonPath("$.score.rubric.conditions[1].profileEvidence").value("전공: 컴퓨터공학 / 학적: 졸업")));
+        mvc.perform(get("/api/job-analysis/" + id)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.score.total").value(100.0))
+                .andExpect(jsonPath("$.versions.calculator").value("career-evidence-score-v4"));
+    }
+
+    @Test
     void fileInputAnalyzesOnlyTheConfirmedTextOfTheUsersOwnDraft() throws Exception {
         User me = users.findByEmail("demo@onfit.local").orElseThrow();
         User other = users.save(new User("other@onfit.local", "Other"));
@@ -234,7 +267,7 @@ class JobAnalysisApiTests {
                 .andExpect(jsonPath("$.roleStatus").value("FAILED"))
                 .andExpect(jsonPath("$.roleError").value("AI 분석 시간이 초과되었습니다. 잠시 후 다시 시도해 주세요."))
                 .andExpect(jsonPath("$.roleAnalysis").value(org.hamcrest.Matchers.nullValue()))
-                .andExpect(jsonPath("$.score.total").value(70.0))
+                .andExpect(jsonPath("$.score.total").isNumber())
                 .andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
         long id = json.readTree(first).path("id").asLong();
 

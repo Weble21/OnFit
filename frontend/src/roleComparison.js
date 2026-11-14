@@ -8,13 +8,25 @@ export function parseComparisonRoles(text) {
   return { roles: lines, error: '' };
 }
 
-/** Unscored and failed analyses never receive a rank. Equal scores share a rank. */
+const points = (item, key) => Number(item.result?.score.rubric?.categories?.find(category => category.key === key)?.points ?? 0);
+
+/** Required-condition failures stay outside recommendations; ties use the rubric's stated order. */
 export function rankComparison(entries) {
-  const scored = entries.filter(item => item.result && item.result.score.total != null && !item.result.score.noRequirements)
-    .sort((a, b) => Number(b.result.score.total) - Number(a.result.score.total));
-  return [...scored.map((item, index) => ({ ...item, rank: index && Number(item.result.score.total) === Number(scored[index - 1].result.score.total) ? null : index + 1 }))
-    .map((item, index, items) => ({ ...item, rank: item.rank ?? items.slice(0, index).reverse().find(previous => previous.rank != null)?.rank ?? 1 })),
-    ...entries.filter(item => !item.result || item.result.score.total == null || item.result.score.noRequirements).map(item => ({ ...item, rank: null }))];
+  const eligible = entries.filter(item => item.result?.score.total != null && !item.result.score.noRequirements && item.result.score.rubric?.eligibility !== '미충족');
+  eligible.sort((a, b) => Number(b.result.score.total) - Number(a.result.score.total)
+    || points(b, 'work') - points(a, 'work')
+    || points(b, 'technology') - points(a, 'technology')
+    || points(b, 'userPreference') - points(a, 'userPreference'));
+  const ranked = eligible.map((item, index) => {
+    const previous = eligible[index - 1];
+    const tied = previous && Number(previous.result.score.total) === Number(item.result.score.total)
+      && ['work', 'technology', 'userPreference'].every(key => points(previous, key) === points(item, key));
+    return { ...item, rank: tied ? null : index + 1,
+      similarFit: !!previous && Math.abs(Number(previous.result.score.total) - Number(item.result.score.total)) <= 3,
+      provisional: item.result.score.rubric?.evidenceLevel === '낮음' };
+  });
+  for (let i = 0; i < ranked.length; i++) if (ranked[i].rank == null) ranked[i].rank = ranked[i - 1].rank;
+  return [...ranked, ...entries.filter(item => !eligible.includes(item)).map(item => ({ ...item, rank: null }))];
 }
 
 export async function compareRoles(roles, body, analyze, signal, onProgress = () => {}) {

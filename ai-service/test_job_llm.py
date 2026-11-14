@@ -353,7 +353,7 @@ def test_role_analysis_keeps_seven_sections_and_only_grounded_claims():
     assert response.status_code == 200
     analysis = response.json()["analysis"]
     assert list(analysis) == ["summary", "responsibilities", "competencies", "keywords", "strengths",
-                              "unverified", "highlights"]
+                              "unverified", "highlights", "ratings"]
     assert analysis["summary"]["text"].startswith("커머스 API")
     # Keywords must be the posting's own words; "MSA" is not in the quote.
     assert [item["text"] for item in analysis["keywords"]] == ["Spring Boot"]
@@ -364,6 +364,54 @@ def test_role_analysis_keeps_seven_sections_and_only_grounded_claims():
     assert "score" not in analysis
     assert '<profile_item id="project:12"' in llm.calls[0]["user"]
     assert "<target_role>\n백엔드 개발자\n</target_role>" in llm.calls[0]["user"]
+
+
+def test_role_ratings_reach_response_with_grounded_semantic_evidence():
+    criteria = [{"criterionId": "work:0", "category": "work", "requirement": "웹 애플리케이션 개발",
+                 "postingEvidence": "커머스 서비스 API 개발과 데이터 모델 설계", "evaluationType": "PERFORMANCE"}]
+    ratings = [{"criterionId": "work:0", "level": 3, "status": "PARTIAL",
+                "profileEvidence": [{"itemId": "project:12", "quote": "Spring Boot API와 PostgreSQL 데이터 모델을 설계했습니다"}],
+                "reason": "웹 API 직접 설계 경험으로 개발 업무 일부가 입증됨"}]
+    output = {**ROLE_OUTPUT, "ratings": ratings}
+    request = role_request(scoreFacts={"matchedRequired": [], "matchedPreferred": [], "missing": [], "criteria": criteria})
+    with client_with(FakeLlm(output)) as client:
+        response = client.post("/internal/jobs/analyze-role", json=request, headers=HEADERS)
+    assert response.status_code == 200
+    assert response.json()["analysis"]["ratings"] == ratings
+
+
+def test_verified_qualification_is_not_repeated_as_missing_information():
+    requirement = "컴퓨터 관련 전공 졸업"
+    request = job_llm.RoleRequest.model_validate(role_request(
+        posting=posting(qualifications=[field(requirement, requirement)]),
+        scoreFacts={"matchedRequired": [], "matchedPreferred": [], "missing": [], "criteria": [
+            {"criterionId": "eligibility:0", "category": "eligibility", "requirement": requirement,
+             "postingEvidence": requirement, "evaluationType": "BINARY"}]}))
+    rating = {"criterionId": "eligibility:0", "level": 4, "status": "VERIFIED", "reason": "전공과 졸업 확인",
+              "profileEvidence": [{"itemId": "education:university", "quote": "전공: 컴퓨터공학 / 학적: 졸업"}]}
+    raw = job_llm.RoleAnalysis.model_validate({**ROLE_OUTPUT, "unverified": [quoted(requirement, requirement)], "ratings": [rating]})
+    grounded, _ = job_llm.ground_role(raw, request)
+    assert grounded.unverified == []
+    assert grounded.ratings[0].level == 4
+
+
+@pytest.mark.parametrize("case", ["missing", "duplicate", "forged", "unknown_level", "mismatch_without_quote", "binary_partial"])
+def test_invalid_ratings_are_evaluation_errors_not_missing_profile_information(case):
+    criterion = {"criterionId": "work:0", "category": "work", "requirement": "API 개발",
+                 "postingEvidence": "API 개발", "evaluationType": "PERFORMANCE"}
+    rating = {"criterionId": "work:0", "level": 3, "status": "PARTIAL",
+              "profileEvidence": [{"itemId": "project:12", "quote": "Spring Boot API"}], "reason": "직접 구현"}
+    ratings = [rating]
+    if case == "missing": ratings = []
+    if case == "duplicate": ratings = [rating, rating]
+    if case == "forged": rating["profileEvidence"][0]["quote"] = "100만명 서비스 운영"
+    if case == "unknown_level": rating["status"] = "UNVERIFIED"
+    if case == "mismatch_without_quote": rating.update(level=0, status="VERIFIED_MISMATCH", profileEvidence=[])
+    if case == "binary_partial": criterion["evaluationType"] = "BINARY"
+    request = job_llm.RoleRequest.model_validate(role_request(scoreFacts={
+        "matchedRequired": [], "matchedPreferred": [], "missing": [], "criteria": [criterion]}))
+    with pytest.raises(job_llm.LlmError):
+        job_llm.validate_ratings([job_llm.Rating.model_validate(item) for item in ratings], request)
 
 
 def test_confirmed_preference_is_not_shown_as_unverified():
@@ -410,7 +458,7 @@ def test_claude_client_sends_structured_output_request_and_handles_stop_reasons(
     client = job_llm.ClaudeJsonClient(client=fake)
     result = client.complete("system", "user", {"type": "object"}, 1000)
     assert result.data == {"ok": True} and result.input_tokens == 10
-    assert sent["model"] == "claude-opus-5-5"
+    assert sent["model"] == job_llm.LLM_MODEL
     assert sent["output_config"]["format"] == {"type": "json_schema", "schema": {"type": "object"}}
     assert sent["fallbacks"] == "default" and sent["betas"] == ["server-side-fallback-2026-07-01"]
     assert "temperature" not in sent and "thinking" not in sent

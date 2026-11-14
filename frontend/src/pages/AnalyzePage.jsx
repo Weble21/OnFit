@@ -16,6 +16,22 @@ const ROLE_SECTIONS = [
   ['strengths', '내 강점', false], ['unverified', '프로필에서 확인되지 않은 역량', true],
 ];
 const formatScore = value => Number(value).toFixed(Number.isInteger(Number(value)) ? 0 : 1);
+const scoreRange = rubric => `${formatScore(rubric.lowerTotal)}~${formatScore(rubric.upperTotal)}점`;
+const evidenceSummary = rubric => {
+  const criteria = rubric.categories.filter(category => category.key !== 'userPreference').flatMap(category => {
+    const weights = category.criteria.reduce((sum, item) => sum + item.weight, 0);
+    return category.criteria.map(item => ({ ...item, impact: category.weight * item.weight / weights }));
+  });
+  const unique = items => [...new Set(items.map(item => item.requirement))].slice(0, 2).join(', ');
+  return {
+    confirmed: unique(criteria.filter(item => item.level >= 3 && item.profileEvidence)),
+    needed: unique(criteria.filter(item => item.level == null).sort((a, b) => b.impact - a.impact)),
+  };
+};
+const scoreMeaning = value => value >= 85 ? '직접 수행 경험이 중심인 높은 적합도'
+  : value >= 65 ? '관련 경험이 충분하며 일부 보완 필요'
+    : value >= 40 ? '기초·관련 경험이 혼재하며 추가 입증 또는 학습 필요'
+      : '현재 자료에서 직무와 연결되는 근거가 제한적';
 
 function Metric({ label, value, note }) {
   return (
@@ -24,6 +40,50 @@ function Metric({ label, value, note }) {
       <div className="meter" aria-hidden="true"><span style={{ width: (value ?? 0) + '%' }}></span></div>
     </div>
   );
+}
+
+function RubricResult({ rubric }) {
+  const summary = evidenceSummary(rubric);
+  const questions = [...rubric.categories.flatMap(category => category.criteria.filter(item => item.level == null).map(item => `${item.requirement} 관련 경험이나 증빙을 프로필에 추가해 주세요.`)),
+    ...rubric.eligibilityNotes.map(note => `${note}에 대한 증빙이 있나요?`)]
+    .filter((item, index, all) => all.indexOf(item) === index).slice(0, 3);
+  return <section className="rubric-result" aria-label="항목별 적합도 점수">
+    <div className="rubric-heading"><strong>항목별 평가</strong><span>적용 배점 {rubric.appliedWeight}/100 · N/A 항목 제외 후 재환산</span></div>
+    <div className="rubric-grid">{rubric.categories.map(category => <div key={category.key} className="rubric-cell">
+      <span>{category.label}</span><strong>{!category.criteria.length ? 'N/A' : category.points == null
+        ? '추가 확인 필요'
+        : `${formatScore(category.points)} / ${category.weight}`}</strong>
+    </div>)}</div>
+    {rubric.pending && <div className="rubric-questions">
+      <strong>프로필에서 확인한 내용</strong>
+      <p>{summary.confirmed ? `확인된 근거: ${summary.confirmed}` : '직무 요구사항과 연결되는 구체적인 수행 경험을 더 확인해야 해요.'}</p>
+      {summary.needed && <p>먼저 보완할 근거: {summary.needed}</p>}
+    </div>}
+    {rubric.total != null && <p className="rubric-meta">{scoreMeaning(Number(rubric.total))} · 제출자료 기준 점수이며 합격 확률은 아닙니다.</p>}
+    {!rubric.pending && rubric.appliedWeight < 50 && <p className="rubric-limitation">평가할 수 있는 기준이 적어 재환산 총점이 높게 보일 수 있습니다.</p>}
+    <p className="rubric-meta">필수조건 <strong>{rubric.eligibility}</strong></p>
+    {rubric.eligibilityNotes.length > 0 && <ul className="rubric-notes">{rubric.eligibilityNotes.map(note => <li key={note}>{note}</li>)}</ul>}
+    {questions.length > 0 && <div className="rubric-questions"><strong>추가 확인 사항</strong><ol>{questions.map(question => <li key={question}>{question}</li>)}</ol></div>}
+    <details className="rubric-details"><summary>평가 기준과 근거 보기</summary>
+      {!!rubric.conditions?.length && <div><h4>지원조건 판정</h4><ul>{rubric.conditions.map((condition, index) => <li key={index}>
+        <strong>{condition.requirement}</strong> · {condition.level === 4 ? '충족' : condition.level === 0 ? '미충족' : '확인 필요'}
+        <small>공고: {condition.postingEvidence}</small>
+        <small>프로필: {condition.profileEvidence || '확인된 근거 없음'}</small>
+        {condition.reason && <small>판정 이유: {condition.reason}</small>}
+      </li>)}</ul></div>}
+      {rubric.pending && <p className="rubric-limitation">미확인 항목은 현재 자료에서 입증된 점수를 부여하지 않았습니다. 실제 역량 부족과 구분해 기록하며, 프로필을 보완하면 점수와 순위가 달라질 수 있습니다.</p>}
+      <p className="rubric-meta">근거 충실도: {rubric.evidenceCoverage == null ? '평가 불가' : `${formatScore(rubric.evidenceCoverage)}% (${rubric.evidenceLevel})`}</p>
+      {rubric.categories.filter(category => category.criteria.length).map(category => <div key={category.key}>
+        <h4>{category.label}</h4>
+        <ul>{category.criteria.map((criterion, index) => <li key={index}>
+          <strong>{criterion.requirement}</strong> · 수준 {criterion.level == null ? '미확인' : `${criterion.level}/4`} · {criterion.status}
+          <small>공고: {criterion.postingEvidence}</small>
+          <small>프로필: {criterion.profileEvidence || '확인된 근거 없음'}</small>
+          {criterion.reason && <small>판정 이유: {criterion.reason}</small>}
+        </li>)}</ul>
+      </div>)}
+    </details>
+  </section>;
 }
 
 /** Quotes are shown with each claim so the user can check it against the posting or their own profile. */
@@ -71,6 +131,12 @@ function RoleAnalysis({ analysis, retrying, onRetry }) {
         {key === 'unverified' && <p className="subtle role-note">프로필에 적혀 있지 않다는 뜻이며, 역량이 없다는 뜻은 아닙니다.</p>}
       </section>
     ))}
+    {role.highlights?.length > 0 && <section className="result-list" aria-labelledby="role-highlights">
+      <h3 id="role-highlights"><Icon name="check" /> 지원서·면접에서 강조할 경험</h3>
+      <ul className="role-items">{role.highlights.map((item, i) => <li className="role-item" key={i}>
+        <p>{item.text}</p><Evidence item={item} labels={labels} />
+      </li>)}</ul>
+    </section>}
   </>;
 }
 
@@ -78,10 +144,23 @@ function AnalysisResult({ state }) {
   const { analysis, analyzing, analysisError } = state;
   const title = <h2 className="sr-only">적합도 분석 결과</h2>;
   if (analyzing) {
+    const progress = state.comparisonMode ? state.comparisonProgress : null;
+    const completed = progress?.completed ?? 0;
+    const total = progress?.total ?? 0;
+    const ringOffset = total > 0 ? 276.46 * (1 - Math.min(completed / total, 1)) : 0;
     return <>{title}<div className="analysis-placeholder" aria-busy="true">
-      <span className="round-icon" aria-hidden="true"><Icon name="spark" /></span>
+      <div className={'analysis-progress' + (total ? '' : ' analysis-progress-indeterminate')}
+        role="progressbar" aria-label="분석 진행 상태" aria-valuemin={total ? 0 : undefined}
+        aria-valuemax={total || undefined} aria-valuenow={total ? completed : undefined}
+        aria-valuetext={total ? `${total}개 직무 중 ${completed}개 처리 완료` : '분석 중'}>
+        <svg viewBox="0 0 100 100" aria-hidden="true">
+          <circle className="analysis-progress-track" cx="50" cy="50" r="44" />
+          <circle className="analysis-progress-fill" cx="50" cy="50" r="44" style={total ? { strokeDashoffset: ringOffset } : undefined} />
+        </svg>
+        <span className="analysis-progress-center" aria-hidden="true">{total ? <strong>{completed}<small>/{total}</small></strong> : <Icon name="spark" />}</span>
+      </div>
       <h3>공고를 구조화하고 프로필과 비교하고 있어요.</h3>
-      <p>{state.comparisonMode && state.comparisonProgress ? `${state.comparisonProgress.completed}/${state.comparisonProgress.total}개 직무 분석 완료. ` : ''}AI 구조화와 직무 분석까지 시간이 걸릴 수 있어요.<br />텍스트를 수정하면 진행 중인 분석은 취소됩니다.</p>
+      <p>AI 구조화와 직무 분석까지 시간이 걸릴 수 있어요.<br />텍스트를 수정하면 진행 중인 분석은 취소됩니다.</p>
     </div></>;
   }
   if (analysisError) {
@@ -101,22 +180,26 @@ function AnalysisResult({ state }) {
     </div></>;
   }
   const { score, posting } = analysis;
+  const rubric = score.rubric;
   const semanticOk = score.semanticStatus === 'OK';
-  const legacyScoring = !['rules-v1/analysis-web-duty/adapter-v5', 'rules-v1/analysis-certificates/adapter-v6', 'rules-v1/preference-items/adapter-v7'].includes(analysis.versions.calculator);
+  const legacyScoring = !rubric && !['rules-v1/analysis-web-duty/adapter-v5', 'rules-v1/analysis-certificates/adapter-v6', 'rules-v1/preference-items/adapter-v7'].includes(analysis.versions.calculator);
   const primarySkills = posting.requiredSkills.length ? posting.requiredSkills : (posting.dutySkills || []);
   const skillBasis = posting.requiredSkills.length ? '필수 기술' : '업무 기술';
   const insufficient = score.noRequirements;
+  const pending = !!rubric?.pending;
   const relatedRequirements = new Set((score.relatedMatches || []).map(item => item.requirement));
   return <>{title}<article className="analysis-result">
     <div className="result-heading"><span className="eyebrow">YOUR FIT REPORT · {analysis.targetRole}</span><Pill>AI 구조화 · 규칙 기반 점수</Pill></div>
     {analysis.stale && <p className="upload-error" role="alert">이 결과 이후 프로필이 바뀌었어요. 다시 비교하면 새 프로필로 계산합니다.</p>}
+    {analysis.roleStatus === 'FAILED' && <p className="upload-error" role="alert">AI 프로필 평가에 실패했습니다. 아래 점수와 지원조건은 기본 규칙으로 계산한 임시 결과입니다. 다시 분석해 주세요.</p>}
     <div className="result-score">
-      <div className="score-circle" style={{ '--score': insufficient ? 0 : score.total / score.maxTotal * 100 }}><div><strong>{insufficient ? '—' : formatScore(score.total)}{!insufficient && <small>점</small>}</strong><span>{insufficient ? '정보 부족' : '맞춤 점수'}</span></div></div>
+      <div className="score-circle" style={{ '--score': insufficient ? 0 : score.total / score.maxTotal * 100 }}><div><strong>{insufficient ? '—' : formatScore(score.total)}{!insufficient && <small>점</small>}</strong><span>{insufficient ? '정보 부족' : '직무 적합도'}</span></div></div>
       <div>
-        <h3>{insufficient ? '총점을 산정하기에 정보가 부족해요.' : '나의 프로필과 비교했어요.'}</h3>
-        <p>{insufficient ? '비교할 기술을 확인하지 못해 총점 표시를 보류합니다. 낮은 적합도를 뜻하지 않습니다.' : <>{score.maxTotal === 100 ? '100점 만점' : '현재 최대 ' + formatScore(score.maxTotal) + '점'} · {skillBasis} {score.matchedRequired.length}/{primarySkills.length}개 일치·관련</>}</p>
+        <h3>{insufficient ? '공고에서 평가 기준을 찾지 못했어요.' : '제출한 프로필을 기준으로 평가했어요.'}</h3>
+        <p>{insufficient ? '공고의 업무와 자격요건이 포함되어 있는지 확인해 주세요.' : rubric ? `100점 만점 · 신입·경력 수준에 맞춘 경험 평가` : <>{score.maxTotal === 100 ? '100점 만점' : '현재 최대 ' + formatScore(score.maxTotal) + '점'} · {skillBasis} {score.matchedRequired.length}/{primarySkills.length}개 일치·관련</>}</p>
       </div>
     </div>
+    {rubric ? <RubricResult rubric={rubric} /> : <>
     <Metric label={skillBasis + " (" + (score.requiredWeight ?? 40) + "%)"} value={primarySkills.length ? score.required : null} note="비교 기준 없음" />
     {(score.dutyWeight ?? 0) > 0 && <Metric label={"업무 기술 (" + score.dutyWeight + "%)"} value={score.duty} note="비교 기준 없음" />}
     <Metric label="우대사항 (20%)" value={score.preferredCriteria?.length || posting.preferredSkills.length || score.preferredCertificates?.length ? score.preferred : null} note="비교할 우대사항 없음" />
@@ -125,10 +208,11 @@ function AnalysisResult({ state }) {
     {!posting.requiredSkills.length && primarySkills.length > 0 && <p className="subtle score-note">필수 기술이 별도로 명시되지 않아 담당 업무에 나온 기술을 비교했습니다. 필수 자격요건을 뜻하지 않습니다.</p>}
     {legacyScoring && <p className="subtle score-note">이전 점수 기준으로 계산된 결과입니다. 다시 비교하면 의미 유사도를 제외한 새 기준이 적용됩니다.</p>}
     {legacyScoring && !semanticOk && <p className="subtle score-note">{SEMANTIC_NOTE[score.semanticStatus]}</p>}
+    </>}
     {score.requiredCertificates?.length > 0 && <section className="result-list">
       <h3><Icon name="file" /> 필수 자격증</h3>
       {score.requiredCertificates.map((item, i) => <div className="role-item" key={i}>
-        <p>{item.condition} · {item.matched ? '프로필에서 확인: ' + item.matchedCertificates.join(', ') : '프로필에서 확인되지 않음 · 총점 0점'}</p>
+        <p>{item.condition} · {item.matched ? '프로필에서 확인: ' + item.matchedCertificates.join(', ') : rubric ? '프로필에서 확인되지 않음 · 지원조건 확인 필요' : '프로필에서 확인되지 않음 · 총점 0점'}</p>
         <Evidence item={{ evidence: [item.evidence] }} labels={new Map()} />
       </div>)}
       <p className="subtle">프로필에 등록된 자격증을 기준으로 비교합니다. 실제 지원 자격은 공고 원문에서 확인해 주세요.</p>
@@ -170,7 +254,7 @@ function AnalysisResult({ state }) {
       {posting.ambiguities.length > 0 && <ul className="role-items">{posting.ambiguities.map((item, i) => <li className="role-item" key={i}><p>모호한 조건: {item.text}</p><Evidence item={{ evidence: [item.evidence] }} labels={new Map()} /></li>)}</ul>}
     </section>
     <RoleAnalysis analysis={analysis} retrying={state.retrying} onRetry={state.retryRole} />
-    <p className="analysis-caveat" role="note">점수는 AI가 아닌 규칙 기반 계산기가 정하고, AI 직무 분석은 점수를 바꾸지 않습니다. 모든 설명은 공고 원문이나 프로필 항목에서 인용 근거를 찾은 내용만 표시합니다. 프로필에 없는 기술은 실제 역량 부족을 의미하지 않습니다.</p>
+    <p className="analysis-caveat" role="note">AI가 프로필 근거로 수행 수준과 지원조건을 평가하고, 서버가 정해진 배점으로 점수를 계산합니다. 제출자료 기준 점수이며 합격 확률은 아닙니다. 프로필에 없는 기술은 실제 역량 부족을 의미하지 않습니다.</p>
     <details className="analysis-versions"><summary>계산 정보</summary>
       <p>구조화 {analysis.versions.extractionModel} · {analysis.versions.extractionPrompt} / 계산기 {analysis.versions.calculator}{legacyScoring && ' / 의미 유사도 ' + analysis.versions.semanticModel}{analysis.versions.roleModel && ' / 직무 분석 ' + analysis.versions.roleModel + ' · ' + analysis.versions.rolePrompt}</p>
     </details>
@@ -179,22 +263,45 @@ function AnalysisResult({ state }) {
 
 function ComparisonResults({ state }) {
   if (!state.comparison?.length || state.analyzing) return <AnalysisResult state={state} />;
-  const hasFailures = state.comparison.some(item => item.error || item.rank == null);
+  const hasErrors = state.comparison.some(item => item.error);
+  const hasOtherUnranked = state.comparison.some(item => item.rank == null && !item.error);
+  const first = state.comparison.find(item => item.rank === 1);
+  const category = (item, key) => {
+    const found = item.result?.score.rubric?.categories?.find(part => part.key === key);
+    return !found?.criteria?.length ? 'N/A' : found.points == null
+      ? `${formatScore(found.lowerPoints)}~${formatScore(found.upperPoints)}` : formatScore(found.points);
+  };
   return <>
     <div className="comparison-results">
       <span className="eyebrow">ROLE COMPARISON</span>
       <h2>직무별 적합도 비교</h2>
-      <p className="subtle">입력한 직무를 같은 프로필로 각각 분석한 결과입니다. 공고별 요구 정보가 다를 수 있으니 점수와 근거를 함께 확인해 주세요.</p>
-      {hasFailures && <p className="upload-error" role="status">분석에 실패했거나 점수 산정 정보가 부족한 직무는 순위에서 제외했어요.</p>}
-      <ol className="comparison-list">{state.comparison.map(item => <li key={item.role}>
+      <p className="subtle">입력한 직무를 같은 프로필로 각각 분석한 결과입니다. 적용 배점이 다를 수 있으니 점수와 근거를 함께 확인해 주세요. 점수는 합격 확률이 아닙니다.</p>
+      {first && <p className="comparison-conclusion">제출자료 기준 적합도 1위는 <strong>{first.role}</strong>입니다. 직무를 선택하면 항목별 점수와 근거를 확인할 수 있어요.</p>}
+      {hasErrors && <p className="upload-error" role="status">일부 직무 분석에 실패했습니다. 해당 직무의 오류 내용을 확인해 주세요.</p>}
+      {hasOtherUnranked && <p className="upload-error" role="status">평가 기준이 없거나 명시적 필수조건 미충족이 확인된 직무는 추천 순위에서 제외했어요.</p>}
+      <ol className="comparison-list">{state.comparison.map(item => {
+        const summary = item.result?.score.rubric ? evidenceSummary(item.result.score.rubric) : null;
+        return <li key={item.role}>
         <button type="button" className={'comparison-row' + (state.analysis?.id === item.result?.id && item.result ? ' selected' : '')}
           onClick={() => item.result && state.selectComparison(item.result.id)} disabled={!item.result}
           aria-pressed={item.result ? state.analysis?.id === item.result.id : undefined}>
           <span className="comparison-rank">{item.rank == null ? '—' : item.rank + '위'}</span>
-          <span><strong>{item.role}</strong>{item.error && <small>{item.error}</small>}{item.result?.score.noRequirements && <small>점수 산정 정보 부족</small>}</span>
-          <strong>{item.result?.score.total != null && !item.result.score.noRequirements ? formatScore(item.result.score.total) + '점' : '점수 없음'}</strong>
+          <span><strong>{item.role}</strong>{item.error && <small>{item.error}</small>}{item.result?.score.noRequirements && <small>점수 산정 정보 부족</small>}
+            {item.result?.score.rubric && <small>필수조건 {item.result.score.rubric.eligibility}</small>}
+            {summary?.confirmed && <small>확인된 근거: {summary.confirmed}</small>}
+            {summary?.needed && <small>보완할 근거: {summary.needed}</small>}
+            {item.similarFit && <small>앞 순위와 유사 적합도</small>}</span>
+          <strong>{item.result?.score.total != null && !item.result.score.noRequirements ? formatScore(item.result.score.total) + '점'
+            : '점수 없음'}</strong>
         </button>
-      </li>)}</ol>
+      </li>; })}</ol>
+      {state.comparison.some(item => item.result?.score.rubric) && <details className="rubric-details"><summary>항목별 점수 비교</summary><div className="comparison-score-table" role="region" aria-label="직무별 항목 점수" tabIndex={0}>
+        <table><caption>직무별 항목 점수 · N/A는 총점에서 제외</caption><thead><tr><th>직무</th><th>업무 /35</th><th>기술 /25</th><th>문제 해결 /15</th><th>도메인 /10</th><th>우대 /10</th><th>선호 /5</th><th>총점 /100</th></tr></thead>
+          <tbody>{state.comparison.filter(item => item.result?.score.rubric).map(item => <tr key={item.role}>
+            <th>{item.role}</th>{['work', 'technology', 'problem', 'domain', 'preferred', 'userPreference'].map(key => <td key={key}>{category(item, key)}</td>)}
+            <td>{item.result.score.total == null ? item.result.score.rubric?.lowerTotal == null ? '—' : scoreRange(item.result.score.rubric) : formatScore(item.result.score.total)}</td>
+          </tr>)}</tbody></table>
+      </div></details>}
       {state.analysis && <p className="subtle">선택한 직무의 상세 분석을 아래에서 확인하세요.</p>}
     </div>
     <AnalysisResult state={state} />

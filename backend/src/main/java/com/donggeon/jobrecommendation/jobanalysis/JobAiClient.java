@@ -29,10 +29,18 @@ public class JobAiClient {
     public record Extraction(StructuredPosting posting, String model, String promptVersion) {}
     public record RoleResult(JsonNode analysis, String model, String promptVersion) {}
     public record ProfileItem(String id, String kind, String text) {}
+    public record EvaluationCriterion(String criterionId, String category, String requirement,
+                                      String postingEvidence, String evaluationType) {}
+    public record ProfileRef(String itemId, String quote) {}
+    public record Rating(String criterionId, Integer level, String status, List<ProfileRef> profileEvidence, String reason) {}
     public record ScoreFacts(List<String> matchedRequired, List<String> matchedPreferred, List<String> missing,
-                             List<String> matchedPreferences) {
+                             List<String> matchedPreferences, List<EvaluationCriterion> criteria) {
+        public ScoreFacts(List<String> matchedRequired, List<String> matchedPreferred, List<String> missing,
+                          List<String> matchedPreferences) {
+            this(matchedRequired, matchedPreferred, missing, matchedPreferences, List.of());
+        }
         public ScoreFacts(List<String> matchedRequired, List<String> matchedPreferred, List<String> missing) {
-            this(matchedRequired, matchedPreferred, missing, List.of());
+            this(matchedRequired, matchedPreferred, missing, List.of(), List.of());
         }
     }
     public record PromptVersions(String extract, String role) {}

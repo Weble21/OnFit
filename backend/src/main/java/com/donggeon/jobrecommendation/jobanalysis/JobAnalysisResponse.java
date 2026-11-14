@@ -38,7 +38,8 @@ public record JobAnalysisResponse(
                         List<JobMatchScorer.RelatedMatch> relatedMatches, Integer requiredWeight, Integer dutyWeight,
                         List<JobMatchScorer.CertificateMatch> requiredCertificates,
                         List<JobMatchScorer.CertificateMatch> preferredCertificates,
-                        List<JobMatchScorer.PreferenceMatch> preferredCriteria) {}
+                        List<JobMatchScorer.PreferenceMatch> preferredCriteria,
+                        RubricScorer.Result rubric) {}
 
     public record Versions(String extractionModel, String extractionPrompt, String calculator,
                            String semanticModel, String roleModel, String rolePrompt) {}

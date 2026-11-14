@@ -119,7 +119,7 @@ public class JobAnalysisService {
             String profileHash = sha256(snapshotJson);
             Long existing = analyses.findFirstByUserIdAndSourceHashAndTargetRoleAndProfileHashAndCalculatorVersionAndCreatedAtGreaterThanEqualOrderByIdDesc(
                     profile.getUser().getId(), sourceHash, targetRole, profileHash, JobMatchScorer.CALCULATOR_VERSION, retention.cutoff())
-                    .filter(found -> fromCurrentPrompts(found, versions))
+                    .filter(found -> found.getRoleStatus() == JobAnalysis.RoleStatus.COMPLETED && fromCurrentPrompts(found, versions))
                     .map(JobAnalysis::getId).orElse(null);
             return new Prepared(profile, snapshot, snapshotJson, profileHash, draftId, existing);
         });
@@ -140,20 +140,23 @@ public class JobAnalysisService {
         String roleError = null;
         try {
             role = ai.analyzeRole(text, targetRole, extracted.posting(), prepared.snapshot().evidenceItems(), facts(scoring));
+            scoring = scorer.applyEvaluation(scoring, role, prepared.snapshot());
         } catch (JobAiException ex) {
             // The score stands on its own; the explanation can be retried later.
             roleError = ex.getCode();
+            role = null;
             log.warn("job_analysis_partial stage=analyze_role code={}", roleError);
         }
 
         final JobAiClient.RoleResult roleResult = role;
+        final JobAnalysis.Scoring finalScoring = scoring;
         final String roleFailure = roleError;
         Long id = tx.execute(status -> {
             User user = users.findByEmail(identity).orElseThrow();
             JobAnalysisDraft draft = prepared.draftId() == null ? null : drafts.getReferenceById(prepared.draftId());
             var analysis = new JobAnalysis(user, request.inputType(), draft, text, targetRole, sourceHash, prepared.snapshotJson(),
                     prepared.profileHash(), json.writeValueAsString(extracted.posting()), extracted.model(),
-                    extracted.promptVersion(), scoring);
+                    extracted.promptVersion(), finalScoring);
             if (roleResult != null) {
                 analysis.completeRoleAnalysis(json.writeValueAsString(roleResult.analysis()), roleResult.model(),
                         roleResult.promptVersion());
@@ -176,7 +179,8 @@ public class JobAnalysisService {
     /** Re-runs only the role analysis, from the stored text, structure, profile snapshot and score. */
     public JobAnalysisResponse retryRoleAnalysis(Long id) {
         String identity = currentUser.identity();
-        record Input(String text, String targetRole, StructuredPosting posting, ProfileSnapshot snapshot, JobAiClient.ScoreFacts facts) {}
+        record Input(String text, String targetRole, StructuredPosting posting, ProfileSnapshot snapshot,
+                     JobAiClient.ScoreFacts facts, JobAnalysis.Scoring scoring) {}
         Input input = readOnly.execute(status -> {
             JobAnalysis analysis = findOwned(id, identity);
             if (analysis.getRoleStatus() == JobAnalysis.RoleStatus.COMPLETED) return null;
@@ -188,13 +192,17 @@ public class JobAnalysisService {
                     : analysis.getTargetRole();
             return new Input(analysis.getSourceText(), role, posting,
                     json.readValue(analysis.getProfileSnapshot(), ProfileSnapshot.class),
-                    scoreFacts(detail));
+                    scoreFacts(detail), analysis.scoring());
         });
         if (input == null) return get(id);
         try {
             var role = ai.analyzeRole(input.text(), input.targetRole(), input.posting(), input.snapshot().evidenceItems(), input.facts());
-            tx.executeWithoutResult(status -> findOwned(id, identity).completeRoleAnalysis(
-                    json.writeValueAsString(role.analysis()), role.model(), role.promptVersion()));
+            var scored = scorer.applyEvaluation(input.scoring(), role, input.snapshot());
+            tx.executeWithoutResult(status -> {
+                var analysis = findOwned(id, identity);
+                analysis.updateEvaluationScore(scored);
+                analysis.completeRoleAnalysis(json.writeValueAsString(role.analysis()), role.model(), role.promptVersion());
+            });
             log.info("job_analysis_role_retried analysis_id={} role_status=COMPLETED", id);
         } catch (JobAiException ex) {
             tx.executeWithoutResult(status -> findOwned(id, identity).failRoleAnalysis(ex.getCode()));
@@ -234,7 +242,11 @@ public class JobAnalysisService {
                 .map(profile -> sha256(json.writeValueAsString(ProfileSnapshot.of(profile)))).orElse(null);
         var detail = json.readValue(analysis.getScoreDetail(), JobMatchScorer.Detail.class);
         var snapshot = json.readValue(analysis.getProfileSnapshot(), ProfileSnapshot.class);
-        var score = new JobAnalysisResponse.Score(detail.noRequirements() ? null : analysis.getTotalScore(), JobMatchScorer.maxTotal(analysis.getCalculatorVersion(), analysis.getSemanticStatus()),
+        var rubric = detail.rubric();
+        boolean replayed = rubric != null && !RubricScorer.POLICY_VERSION.equals(rubric.policyVersion());
+        if (replayed) rubric = RubricScorer.recalculate(rubric);
+        var visibleTotal = rubric == null ? detail.noRequirements() ? null : analysis.getTotalScore() : rubric.total();
+        var score = new JobAnalysisResponse.Score(visibleTotal, JobMatchScorer.maxTotal(analysis.getCalculatorVersion(), analysis.getSemanticStatus()),
                 analysis.getRequiredScore(), analysis.getPreferredScore(), analysis.getSemanticScore(),
                 analysis.getExperienceScore(), analysis.getPreferenceScore(), analysis.getSemanticStatus(),
                 detail.noRequirements(), detail.matchedRequired(), detail.matchedPreferred(), detail.missing(),
@@ -245,9 +257,9 @@ public class JobAnalysisService {
                 detail.dutyWeight() == null ? 0 : detail.dutyWeight(),
                 detail.requiredCertificates() == null ? java.util.List.of() : detail.requiredCertificates(),
                 detail.preferredCertificates() == null ? java.util.List.of() : detail.preferredCertificates(),
-                detail.preferredCriteria() == null ? java.util.List.of() : detail.preferredCriteria());
+                detail.preferredCriteria() == null ? java.util.List.of() : detail.preferredCriteria(), rubric);
         var versions = new JobAnalysisResponse.Versions(analysis.getExtractionModel(), analysis.getExtractionPromptVersion(),
-                analysis.getCalculatorVersion(), analysis.getSemanticModelVersion(), analysis.getRoleModel(),
+                replayed ? RubricScorer.POLICY_VERSION : analysis.getCalculatorVersion(), analysis.getSemanticModelVersion(), analysis.getRoleModel(),
                 analysis.getRolePromptVersion());
         return new JobAnalysisResponse(analysis.getId(), analysis.getInputType(), analysis.getTargetRole(), analysis.getSourceUrl(), analysis.getCreatedAt(),
                 !analysis.getProfileHash().equals(currentHash), json.readTree(analysis.getStructuredPosting()), score,
@@ -276,7 +288,8 @@ public class JobAnalysisService {
         var matched = detail.preferredCriteria() == null ? java.util.List.<String>of()
                 : detail.preferredCriteria().stream().filter(JobMatchScorer.PreferenceMatch::matched)
                         .map(JobMatchScorer.PreferenceMatch::condition).toList();
-        return new JobAiClient.ScoreFacts(detail.matchedRequired(), detail.matchedPreferred(), detail.missing(), matched);
+        return new JobAiClient.ScoreFacts(detail.matchedRequired(), detail.matchedPreferred(), detail.missing(), matched,
+                JobMatchScorer.evaluationCriteria(detail));
     }
 
     /** Same rule as the frontend: CRLF/CR become LF and control characters and spaces at both ends go. */

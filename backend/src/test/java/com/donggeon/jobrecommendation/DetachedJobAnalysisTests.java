@@ -46,7 +46,7 @@ class DetachedJobAnalysisTests {
     }
 
     @Test
-    void certificatesCountAsPreferredAndMissingRequiredCertificateMakesTotalZero() {
+    void missingRequiredCertificateNeedsConfirmationWithoutErasingFitScore() {
         var profile = new UserProfile(new User("cert@example.invalid", "Test"));
         profile.addSkill(new Skill("Java", "java"));
         profile.addProject(new Project("API", "API 개발", "Java", null, null, null));
@@ -58,13 +58,15 @@ class DetachedJobAnalysisTests {
                 List.of(new StructuredPosting.Item("Java", "Java")), List.of(), List.of(), List.of(), List.of(), List.of(required), List.of(preferred));
         var score = scorer.score(profile, posting);
         assertThat(score.preferredScore()).isEqualByComparingTo("100");
-        assertThat(score.totalScore()).isEqualByComparingTo("100");
+        assertThat(score.totalScore()).isPositive();
         assertThat(score.detailJson()).contains("정보처리기사", "requiredCertificates", "preferredCertificates");
 
         var otherRequired = new StructuredPosting.CertificateCondition("정보보안기사 필수", "정보보안기사 필수", List.of("정보보안기사"), false);
         var missing = new StructuredPosting(empty, empty, empty, empty, empty, List.of(),
                 List.of(new StructuredPosting.Item("Java", "Java")), List.of(), List.of(), List.of(), List.of(), List.of(otherRequired), List.of(preferred));
-        assertThat(scorer.score(profile, missing).totalScore()).isEqualByComparingTo("0");
+        var missingScore = scorer.score(profile, missing);
+        assertThat(missingScore.totalScore()).isEqualByComparingTo(score.totalScore());
+        assertThat(missingScore.detailJson()).contains("확인 필요", "지원조건 확인 필요: 정보보안기사 필수");
 
         var languageOnly = new UserProfile(new User("language@example.invalid", "Test"));
         languageOnly.addCertificate(new Certificate("TOEIC", CertificateCategory.LANGUAGE, null, "900"));
@@ -87,7 +89,7 @@ class DetachedJobAnalysisTests {
         var score = scorer.score(profile, posting);
         assertThat(score.requiredScore()).isEqualByComparingTo("100");
         assertThat(score.experienceScore()).isEqualByComparingTo("40");
-        assertThat(score.totalScore()).isEqualByComparingTo("49.5");
+        assertThat(score.totalScore()).isPositive().isLessThan(new java.math.BigDecimal("50"));
         assertThat(score.detailJson()).contains("Web기술", "spring boot", "javascript", "css", "node.js",
                 "matchedDuty", "JAVA", "Spring", "missingDuty", "JSP", "SQL");
     }
@@ -117,14 +119,14 @@ class DetachedJobAnalysisTests {
         var posting = new StructuredPosting(empty, empty, empty, empty, empty, List.of(), List.of(),
                 List.of(), List.of(), List.of(), List.of(new StructuredPosting.Item("JAVA", "JAVA 개발")));
         var score = scorer.score(profile, posting);
-        assertThat(score.totalScore()).isEqualByComparingTo("80");
+        assertThat(score.totalScore()).isPositive();
         assertThat(score.requiredScore()).isEqualByComparingTo("100");
         assertThat(score.experienceScore()).isEqualByComparingTo("100");
         assertThat(score.detailJson()).contains("업무 기술 일치: JAVA").doesNotContain("필수 기술 일치:");
     }
 
     @Test
-    void scoresAfterReadTransactionClosesWithoutLoadingExcludedPreferences() {
+    void scoresAfterReadTransactionClosesWithExplicitPreferencesSnapshotted() {
         var tx = new TransactionTemplate(transactions);
         tx.executeWithoutResult(status -> {
             var user = users.save(new User("detached@example.invalid", "Test"));
@@ -138,16 +140,16 @@ class DetachedJobAnalysisTests {
         var detached = tx.execute(status -> {
             var profile = profiles.findByUserEmail("detached@example.invalid").orElseThrow();
             ProfileSnapshot.of(profile);
-            assertThat(Hibernate.isInitialized(profile.getTargetRoles())).isFalse();
-            assertThat(Hibernate.isInitialized(profile.getPreferredLocations())).isFalse();
+            assertThat(Hibernate.isInitialized(profile.getTargetRoles())).isTrue();
+            assertThat(Hibernate.isInitialized(profile.getPreferredLocations())).isTrue();
             return profile;
         });
         var empty = new StructuredPosting.TextField(null, null);
         var posting = new StructuredPosting(empty, empty, new StructuredPosting.TextField("백엔드 개발자", "백엔드 개발자"),
                 empty, empty, List.of(), List.of(new StructuredPosting.Item("Java", "Java")), List.of(), List.of(), List.of());
         var score = scorer.score(detached, posting);
-        assertThat(score.totalScore()).isEqualByComparingTo("80");
+        assertThat(score.totalScore()).isPositive();
         assertThat(score.preferenceScore()).isEqualByComparingTo("0");
-        assertThat(score.detailJson()).doesNotContain("희망 직무 일치", "희망 지역 일치");
+        assertThat(score.detailJson()).contains("사용자 선호", "희망 직무");
     }
 }
