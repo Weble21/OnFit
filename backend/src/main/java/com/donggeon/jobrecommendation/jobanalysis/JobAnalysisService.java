@@ -49,6 +49,7 @@ public class JobAnalysisService {
     private final JobUrlExtractionService urlExtraction;
     private final JobAiClient ai;
     private final JobMatchScorer scorer;
+    private final StableCriterionEvaluation stableEvaluation;
     private final JobAnalysisRetention retention;
     private final JsonMapper json;
     private final TransactionTemplate tx;
@@ -57,7 +58,7 @@ public class JobAnalysisService {
     public JobAnalysisService(CurrentUser currentUser, UserRepository users, UserProfileRepository profiles,
                               JobAnalysisRepository analyses, JobAnalysisDraftRepository drafts,
                               JobTextExtractionService extraction, JobUrlExtractionService urlExtraction,
-                              JobAiClient ai, JobMatchScorer scorer,
+                              JobAiClient ai, JobMatchScorer scorer, StableCriterionEvaluation stableEvaluation,
                               JobAnalysisRetention retention, JsonMapper json, PlatformTransactionManager transactions) {
         this.currentUser = currentUser;
         this.users = users;
@@ -68,6 +69,7 @@ public class JobAnalysisService {
         this.urlExtraction = urlExtraction;
         this.ai = ai;
         this.scorer = scorer;
+        this.stableEvaluation = stableEvaluation;
         this.retention = retention;
         this.json = json;
         this.tx = new TransactionTemplate(transactions);
@@ -102,7 +104,7 @@ public class JobAnalysisService {
     public JobAnalysisResponse analyze(JobAnalysisRequest request) {
         long started = System.nanoTime();
         String text = normalize(request.text());
-        String targetRole = normalize(request.targetRole());
+        String targetRole = normalizeRole(request.targetRole());
         if (targetRole.isBlank()) throw bad("지원 직무를 입력해 주세요.");
         if (text.length() < MIN_TEXT) throw bad("공고 텍스트를 20자 이상 입력해 주세요.");
         String sourceHash = sha256(text);
@@ -117,9 +119,10 @@ public class JobAnalysisService {
             ProfileSnapshot snapshot = ProfileSnapshot.of(profile); // also loads every collection the scorer reads
             String snapshotJson = json.writeValueAsString(snapshot);
             String profileHash = sha256(snapshotJson);
-            Long existing = analyses.findFirstByUserIdAndSourceHashAndTargetRoleAndProfileHashAndCalculatorVersionAndCreatedAtGreaterThanEqualOrderByIdDesc(
-                    profile.getUser().getId(), sourceHash, targetRole, profileHash, JobMatchScorer.CALCULATOR_VERSION, retention.cutoff())
-                    .filter(found -> found.getRoleStatus() == JobAnalysis.RoleStatus.COMPLETED && fromCurrentPrompts(found, versions))
+            Long existing = analyses.findByUserIdAndSourceHashAndProfileHashAndCalculatorVersionAndCreatedAtGreaterThanEqualOrderByIdDesc(
+                    profile.getUser().getId(), sourceHash, profileHash, JobMatchScorer.CALCULATOR_VERSION, retention.cutoff()).stream()
+                    .filter(found -> normalizeRole(found.getTargetRole()).equals(targetRole))
+                    .filter(found -> found.getRoleStatus() == JobAnalysis.RoleStatus.COMPLETED && fromCurrentPrompts(found, versions)).findFirst()
                     .map(JobAnalysis::getId).orElse(null);
             return new Prepared(profile, snapshot, snapshotJson, profileHash, draftId, existing);
         });
@@ -139,7 +142,11 @@ public class JobAnalysisService {
         JobAiClient.RoleResult role = null;
         String roleError = null;
         try {
-            role = ai.analyzeRole(text, targetRole, extracted.posting(), prepared.snapshot().evidenceItems(), facts(scoring));
+            var initialFacts = facts(scoring);
+            var evaluationFacts = readOnly.execute(status -> stableEvaluation.prepare(prepared.profile().getUser().getId(),
+                    prepared.profileHash(), targetRole, extracted.posting(), initialFacts, versions));
+            role = ai.analyzeRole(text, targetRole, extracted.posting(), prepared.snapshot().evidenceItems(), evaluationFacts);
+            stableEvaluation.verify(evaluationFacts, role);
             scoring = scorer.applyEvaluation(scoring, role, prepared.snapshot());
         } catch (JobAiException ex) {
             // The score stands on its own; the explanation can be retried later.
@@ -179,6 +186,7 @@ public class JobAnalysisService {
     /** Re-runs only the role analysis, from the stored text, structure, profile snapshot and score. */
     public JobAnalysisResponse retryRoleAnalysis(Long id) {
         String identity = currentUser.identity();
+        var versions = ai.promptVersions();
         record Input(String text, String targetRole, StructuredPosting posting, ProfileSnapshot snapshot,
                      JobAiClient.ScoreFacts facts, JobAnalysis.Scoring scoring) {}
         Input input = readOnly.execute(status -> {
@@ -192,11 +200,13 @@ public class JobAnalysisService {
                     : analysis.getTargetRole();
             return new Input(analysis.getSourceText(), role, posting,
                     json.readValue(analysis.getProfileSnapshot(), ProfileSnapshot.class),
-                    scoreFacts(detail), analysis.scoring());
+                    stableEvaluation.prepare(analysis.getUser().getId(), analysis.getProfileHash(), normalizeRole(role),
+                            posting, scoreFacts(detail), versions), analysis.scoring());
         });
         if (input == null) return get(id);
         try {
             var role = ai.analyzeRole(input.text(), input.targetRole(), input.posting(), input.snapshot().evidenceItems(), input.facts());
+            stableEvaluation.verify(input.facts(), role);
             var scored = scorer.applyEvaluation(input.scoring(), role, input.snapshot());
             tx.executeWithoutResult(status -> {
                 var analysis = findOwned(id, identity);
@@ -295,6 +305,12 @@ public class JobAnalysisService {
     /** Same rule as the frontend: CRLF/CR become LF and control characters and spaces at both ends go. */
     static String normalize(String text) {
         return text.replaceAll("\r\n?", "\n").trim();
+    }
+
+    static String normalizeRole(String text) {
+        return java.text.Normalizer.normalize(text, java.text.Normalizer.Form.NFKC)
+                .replaceAll("(?U)\\s+", "")
+                .replaceAll("(?i)^s/?w(?=$|[^a-z]|engineer|developer)", "SW");
     }
 
     static String sha256(String value) {

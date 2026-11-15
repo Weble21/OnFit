@@ -95,7 +95,7 @@ class JobAnalysisApiTests {
         String body = mvc.perform(analyze("TEXT", TEXT, null, null))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.inputType").value("TEXT"))
-                .andExpect(jsonPath("$.targetRole").value("백엔드 개발자"))
+                .andExpect(jsonPath("$.targetRole").value("백엔드개발자"))
                 .andExpect(jsonPath("$.stale").value(false))
                 .andExpect(jsonPath("$.posting.requiredSkills[2].value").value("Postgres"))
                 // Postgres matches the profile's PostgreSQL through the alias table.
@@ -140,6 +140,10 @@ class JobAnalysisApiTests {
         long again = id(mvc.perform(analyze("TEXT", "  " + TEXT.replace("\n", "\r\n") + "\n", null, null))
                 .andExpect(status().isOk()));
         assertThat(again).isEqualTo(first);
+        jdbc.update("update job_analyses set target_role = ? where id = ?", "백엔드 개발자", first);
+        long withoutSpaces = id(mvc.perform(analyze("TEXT", TEXT, null, null, "백엔드개발자"))
+                .andExpect(status().isOk()));
+        assertThat(withoutSpaces).isEqualTo(first);
         verify(ai, times(1)).extract(anyString(), anyString());
 
         // A saved profile makes the old result stale and a new request recomputes against the new profile.
@@ -150,6 +154,21 @@ class JobAnalysisApiTests {
         long recomputed = id(mvc.perform(analyze("TEXT", TEXT, null, null)).andExpect(status().isOk())
                 .andExpect(jsonPath("$.stale").value(false)));
         assertThat(recomputed).isNotEqualTo(first);
+        verify(ai, times(2)).extract(anyString(), anyString());
+    }
+
+    @Test
+    void swAliasesReuseLegacyResultButKeepAffiliatesSeparate() throws Exception {
+        long first = id(mvc.perform(analyze("TEXT", TEXT, null, null, "S/W 엔지니어(생명계열사)"))
+                .andExpect(status().isOk()));
+        jdbc.update("update job_analyses set target_role = ? where id = ?", "S/W 엔지니어(생명계열사)", first);
+        for (String role : List.of("SW엔지니어(생명계열사)", "s/w엔지니어(생명계열사)", "Ｓ／Ｗ 엔지니어(생명계열사)")) {
+            assertThat(id(mvc.perform(analyze("TEXT", TEXT, null, null, role))
+                    .andExpect(status().isOk()))).isEqualTo(first);
+        }
+        verify(ai, times(1)).extract(anyString(), anyString());
+        assertThat(id(mvc.perform(analyze("TEXT", TEXT, null, null, "SW엔지니어(금융계열사)"))
+                .andExpect(status().isOk()))).isNotEqualTo(first);
         verify(ai, times(2)).extract(anyString(), anyString());
     }
 
@@ -173,10 +192,10 @@ class JobAnalysisApiTests {
                 .andExpect(status().isOk()));
         long frontend = id(mvc.perform(analyze("TEXT", TEXT, null, null, "프론트엔드 개발자"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.targetRole").value("프론트엔드 개발자")));
+                .andExpect(jsonPath("$.targetRole").value("프론트엔드개발자")));
         assertThat(frontend).isNotEqualTo(backend);
-        verify(ai).extract(anyString(), org.mockito.ArgumentMatchers.eq("프론트엔드 개발자"));
-        verify(ai).analyzeRole(anyString(), org.mockito.ArgumentMatchers.eq("프론트엔드 개발자"),
+        verify(ai).extract(anyString(), org.mockito.ArgumentMatchers.eq("프론트엔드개발자"));
+        verify(ai).analyzeRole(anyString(), org.mockito.ArgumentMatchers.eq("프론트엔드개발자"),
                 any(), anyList(), any());
     }
 
@@ -221,6 +240,50 @@ class JobAnalysisApiTests {
         mvc.perform(get("/api/job-analysis/" + id)).andExpect(status().isOk())
                 .andExpect(jsonPath("$.score.total").value(100.0))
                 .andExpect(jsonPath("$.versions.calculator").value("career-evidence-score-v4"));
+    }
+
+    @Test
+    void addingPreferenceKeepsTechnologyRatingAndOnlyEvaluatesNewCriterion() throws Exception {
+        when(ai.promptVersions()).thenReturn(new JobAiClient.PromptVersions("test-extract", "role-analysis-v13"));
+        var original = posting(List.of(new Item("JSP", "개발 및 운영(JAVA, JSP, SQL, Spring 등)")), List.of(item("Spring Boot")));
+        var edited = posting(List.of(new Item("JSP", "개발 및 운영(JAVA, JSP, SQL(오라클), Spring 등)")), List.of(item("Spring Boot"), item("인문학 지식")));
+        var senior = new StructuredPosting(edited.companyName(), edited.title(), edited.roleName(),
+                new TextField("경력 5년 이상", "경력 5년 이상"), edited.location(), edited.responsibilities(),
+                edited.requiredSkills(), edited.preferredSkills(), edited.qualifications(), edited.ambiguities());
+        when(ai.extract(anyString(), anyString())).thenReturn(
+                new JobAiClient.Extraction(original, "test-model", "test-extract"),
+                new JobAiClient.Extraction(edited, "test-model", "test-extract"),
+                new JobAiClient.Extraction(senior, "test-model", "test-extract"));
+        var calls = new java.util.ArrayList<JobAiClient.ScoreFacts>();
+        when(ai.analyzeRole(anyString(), anyString(), any(), anyList(), any())).thenAnswer(invocation -> {
+            JobAiClient.ScoreFacts facts = invocation.getArgument(4);
+            calls.add(facts);
+            var ratings = facts.criteria().stream().map(c -> facts.fixedRatings().stream()
+                    .filter(r -> r.criterionId().equals(c.criterionId())).findFirst().orElseGet(() -> {
+                        boolean unknown = c.requirement().contains("인문학");
+                        int level = c.evaluationType().equals("BINARY") ? 4 : c.category().equals("technology") ? calls.size() : 4;
+                        return new JobAiClient.Rating(c.criterionId(), unknown ? null : level,
+                                unknown ? "UNVERIFIED" : "VERIFIED", unknown ? List.of() : List.of(
+                                new JobAiClient.ProfileRef("skills:all", "Java")), "테스트 근거");
+                    })).toList();
+            return new JobAiClient.RoleResult(json.readTree(json.writeValueAsString(Map.of("ratings", ratings))),
+                    "test-model", "role-analysis-v13");
+        });
+        var first = json.readTree(mvc.perform(analyze("TEXT", TEXT, null, null)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.roleStatus").value("COMPLETED"))
+                .andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8));
+        var second = json.readTree(mvc.perform(analyze("TEXT", TEXT + "\n인문학 지식 우대", null, null, "프론트엔드 개발자")).andExpect(status().isOk())
+                .andExpect(jsonPath("$.roleStatus").value("COMPLETED"))
+                .andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8));
+        assertThat(calls.get(0).fixedRatings()).isEmpty();
+        assertThat(calls.get(1).fixedRatings()).anyMatch(r -> r.criterionId().equals("technology:0") && r.level() == 1);
+        assertThat(second.at("/score/rubric/categories/1/points")).isEqualTo(first.at("/score/rubric/categories/1/points"));
+        assertThat(second.at("/score/rubric/categories/1/criteria/0/level")).isEqualTo(first.at("/score/rubric/categories/1/criteria/0/level"));
+        assertThat(second.at("/score/rubric/categories/4/points").decimalValue())
+                .isLessThan(first.at("/score/rubric/categories/4/points").decimalValue());
+        mvc.perform(analyze("TEXT", TEXT + "\n경력 5년 이상", null, null)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.roleStatus").value("COMPLETED"));
+        assertThat(calls.get(2).fixedRatings()).isEmpty();
     }
 
     @Test
@@ -279,7 +342,7 @@ class JobAnalysisApiTests {
                 .andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
         assertThat(json.readTree(retried).path("score")).isEqualTo(json.readTree(first).path("score"));
         verify(ai, times(1)).extract(anyString(), anyString());
-        verify(ai, times(3)).analyzeRole(anyString(), org.mockito.ArgumentMatchers.eq("백엔드 개발자"),
+        verify(ai, times(3)).analyzeRole(anyString(), org.mockito.ArgumentMatchers.eq("백엔드개발자"),
                 any(), anyList(), any());
     }
 

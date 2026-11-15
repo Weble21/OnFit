@@ -324,6 +324,31 @@ def role_request(**overrides):
     return request
 
 
+def test_fixed_ratings_are_not_reevaluated_when_preference_is_added():
+    fixed = {"criterionId": "technology:0", "level": 1, "status": "VERIFIED",
+             "profileEvidence": [{"itemId": "skills:all", "quote": "Java"}], "reason": "기술명 확인"}
+    new = {"criterionId": "preferred:0", "level": None, "status": "UNVERIFIED",
+           "profileEvidence": [], "reason": "관련 근거 없음"}
+    request = job_llm.RoleRequest.model_validate(role_request(scoreFacts={
+        "matchedRequired": [], "matchedPreferred": [], "missing": [], "fixedRatings": [fixed],
+        "criteria": [
+            {"criterionId": "technology:0", "category": "technology", "requirement": "Java",
+             "postingEvidence": "Java", "evaluationType": "PERFORMANCE"},
+            {"criterionId": "preferred:0", "category": "preferred", "requirement": "인문학 지식",
+             "postingEvidence": "인문학 지식 우대", "evaluationType": "PERFORMANCE"}]}))
+    llm = FakeLlm({**ROLE_OUTPUT, "ratings": [new]})
+    response = job_llm.analyze_role(llm, request)
+    assert response["analysis"]["ratings"] == [new, fixed]
+    import json
+    facts = json.loads(llm.calls[0]["user"].split("<score_facts>\n")[1].split("\n</score_facts>")[0])
+    assert [item["criterionId"] for item in facts["criteria"]] == ["preferred:0"]
+    assert facts["fixedRatings"] == [fixed]
+    # A model trying to return a changed locked criterion is rejected, not silently accepted.
+    import pytest
+    with pytest.raises(job_llm.LlmError):
+        job_llm.analyze_role(FakeLlm({**ROLE_OUTPUT, "ratings": [new, {**fixed, "level": 2}]}), request)
+
+
 def quoted(text, *evidence):
     return {"text": text, "evidence": list(evidence)}
 

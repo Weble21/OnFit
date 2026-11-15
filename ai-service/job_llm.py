@@ -19,7 +19,7 @@ log = logging.getLogger("onfit.llm")
 
 LLM_MODEL = os.environ.get("AI_LLM_MODEL", "claude-sonnet-5-5")
 EXTRACT_PROMPT_VERSION = "job-extract-v12"
-ROLE_PROMPT_VERSION = "role-analysis-v12"
+ROLE_PROMPT_VERSION = "role-analysis-v13"
 MAX_SOURCE_CHARS = 15000
 MAX_ITEMS = 30
 
@@ -442,6 +442,7 @@ class ScoreFacts(StrictModel):
     missing: list[str] = Field(max_length=50)
     matchedPreferences: list[str] = Field(default_factory=list, max_length=50)
     criteria: list[EvaluationCriterion] = Field(default_factory=list, max_length=300)
+    fixedRatings: list["Rating"] = Field(default_factory=list, max_length=300)
 
 
 class RoleRequest(StrictModel):
@@ -565,18 +566,33 @@ ratings 평가 정책:
 def analyze_role(llm: Any, request: RoleRequest, request_id: str | None = None) -> dict:
     profile = "\n".join(
         f'<profile_item id="{item.id}" kind="{item.kind}">\n{item.text}\n</profile_item>' for item in request.profileItems)
-    facts = json.dumps(request.scoreFacts.model_dump(), ensure_ascii=False)
+    fixed = {item.criterionId: item for item in request.scoreFacts.fixedRatings}
+    criteria = {item.criterionId: item for item in request.scoreFacts.criteria}
+    if len(fixed) != len(request.scoreFacts.fixedRatings) or not fixed.keys() <= criteria.keys():
+        raise LlmError("LLM_INVALID_OUTPUT", 502)
+    # Validate persisted ratings against the current profile, even though Spring sent them.
+    fixed_request = request.model_copy(update={"scoreFacts": request.scoreFacts.model_copy(update={
+        "criteria": [criteria[key] for key in fixed]})})
+    validate_ratings(list(fixed.values()), fixed_request)
+    pending = [item for item in request.scoreFacts.criteria if item.criterionId not in fixed]
+    pending_facts = request.scoreFacts.model_dump()
+    pending_facts["criteria"] = [item.model_dump() for item in pending]
+    facts = json.dumps(pending_facts, ensure_ascii=False)
     posting = json.dumps(request.posting.model_dump(), ensure_ascii=False)
     scoped_source = role_evidence(request.posting)
     user = (f"<target_role>\n{request.targetRole}\n</target_role>\n"
             f"<job_posting>\n{scoped_source}\n</job_posting>\n"
             f"<structured_posting>\n{posting}\n</structured_posting>\n"
             f"{profile}\n<score_facts>\n{facts}\n</score_facts>")
-    result = _call(llm, "analyze_role", ROLE_PROMPT_VERSION, ROLE_SYSTEM, user, ROLE_SCHEMA, 16000, request_id)
+    system = ROLE_SYSTEM + "\nfixedRatings는 동일 프로필·요구조건에서 검증된 고정 평가입니다. 재평가하거나 변경하지 말고 설명에도 그대로 반영하세요. ratings에는 criteria에 있는 미평가 기준만 반환하세요. 관련 없는 우대조건의 추가·삭제를 다른 기준의 수준 판단에 반영하지 마세요."
+    result = _call(llm, "analyze_role", ROLE_PROMPT_VERSION, system, user, ROLE_SCHEMA, 16000, request_id)
     try:
         raw = RoleAnalysis.model_validate(result.data)
     except ValidationError as ex:
         raise LlmError("LLM_INVALID_OUTPUT", 502) from ex
+    pending_request = request.model_copy(update={"scoreFacts": request.scoreFacts.model_copy(update={"criteria": pending})})
+    validate_ratings(raw.ratings, pending_request)
+    raw = raw.model_copy(update={"ratings": raw.ratings + list(fixed.values())})
     analysis, dropped = ground_role(raw, request)
     return {"analysis": analysis.model_dump(),
             "meta": {"model": result.model, "promptVersion": ROLE_PROMPT_VERSION, "droppedItems": dropped}}

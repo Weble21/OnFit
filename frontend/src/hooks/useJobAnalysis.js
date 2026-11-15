@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { analyzeJob, extractJobDraft, retryRoleAnalysis, textHash } from '../api.js';
 import { validateAttachment } from '../upload.js';
-import { compareRoles, parseComparisonRoles, rankComparison } from '../roleComparison.js';
+import { compareRoles, normalizeRole, parseComparisonRoles, rankComparison } from '../roleComparison.js';
 
 const EMPTY_ATTACHMENT = { attachment: null, text: '', error: '', busy: false, confirmed: false, confirmedText: '', draftId: null, status: '' };
 function draftStatus(result) {
@@ -129,7 +129,7 @@ export function useJobAnalysis(profile, onToast) {
         setComparison(ranked);
         setAnalysis(ranked.find(item => item.result)?.result || null);
       } else {
-        const result = await analyzeJob({ ...body, targetRole: targetRole.trim() }, controller.signal);
+        const result = await analyzeJob({ ...body, targetRole: normalizeRole(targetRole) }, controller.signal);
         if (request !== analysisRef.current) return;
         setAnalysis(result);
       }
@@ -168,9 +168,9 @@ export function useJobAnalysis(profile, onToast) {
     inputMode, fileMode, file, source, hasSource, analysis, analyzing, analysisError, retrying, currentText, canAnalyze, targetRole,
     comparisonMode, comparisonRoles, comparison, comparisonProgress, comparisonRoleError: roleInput.error,
     setComparisonMode(value) { setComparisonMode(value); resetAnalysis(); },
-    editComparisonRoles(value) { setComparisonRoles(value); resetAnalysis(); },
+    editComparisonRoles(value) { setComparisonRoles(value.replace(/[^\S\r\n]/g, '')); resetAnalysis(); },
     selectComparison(id) { const found = comparison?.find(item => item.result?.id === id); if (found) setAnalysis(found.result); },
-    editTargetRole(value) { setTargetRole(value); resetAnalysis(); },
+    editTargetRole(value) { setTargetRole(value.replace(/\s/g, '')); resetAnalysis(); },
     setMode(mode) { setInputMode(mode); resetAnalysis(); },
     editText(value) {
       updateSource({ text: value, confirmed: false, status: '수정한 텍스트를 다시 확인해 주세요.' });

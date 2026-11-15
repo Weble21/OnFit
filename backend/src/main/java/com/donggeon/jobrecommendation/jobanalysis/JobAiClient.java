@@ -34,7 +34,11 @@ public class JobAiClient {
     public record ProfileRef(String itemId, String quote) {}
     public record Rating(String criterionId, Integer level, String status, List<ProfileRef> profileEvidence, String reason) {}
     public record ScoreFacts(List<String> matchedRequired, List<String> matchedPreferred, List<String> missing,
-                             List<String> matchedPreferences, List<EvaluationCriterion> criteria) {
+                             List<String> matchedPreferences, List<EvaluationCriterion> criteria, List<Rating> fixedRatings) {
+        public ScoreFacts(List<String> matchedRequired, List<String> matchedPreferred, List<String> missing,
+                          List<String> matchedPreferences, List<EvaluationCriterion> criteria) {
+            this(matchedRequired, matchedPreferred, missing, matchedPreferences, criteria, List.of());
+        }
         public ScoreFacts(List<String> matchedRequired, List<String> matchedPreferred, List<String> missing,
                           List<String> matchedPreferences) {
             this(matchedRequired, matchedPreferred, missing, matchedPreferences, List.of());

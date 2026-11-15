@@ -1,10 +1,20 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { compareRoles, parseComparisonRoles, rankComparison } from '../src/roleComparison.js';
+import { compareRoles, normalizeRole, parseComparisonRoles, rankComparison } from '../src/roleComparison.js';
 
 const result = (total, noRequirements = false) => ({ score: { total, noRequirements } });
 
+test('normalizes SW aliases without merging different specialties or languages', () => {
+  for (const role of ['S/W 엔지니어', 'S/W엔지니어', 'SW엔지니어', 's/w 엔지니어', 'Ｓ／Ｗ 엔지니어']) {
+    assert.equal(normalizeRole(role), 'SW엔지니어');
+  }
+  assert.ok(parseComparisonRoles('S/W 엔지니어\nSW엔지니어').error);
+  assert.equal(parseComparisonRoles('SW엔지니어(생명계열사)\nSW엔지니어(금융계열사)').error, '');
+  for (const role of ['C++개발자', 'C#개발자', 'SWIFT개발자']) assert.equal(normalizeRole(role), role);
+});
+
 test('requires two to five distinct posting roles', () => {
+  assert.deepEqual(parseComparisonRoles('S/W 엔지니어(생명계열사)\nIT 개발').roles, ['SW엔지니어(생명계열사)', 'IT개발']);
   assert.deepEqual(parseComparisonRoles(' IT개발 \n 정보보호 ').roles, ['IT개발', '정보보호']);
   assert.ok(parseComparisonRoles('IT개발').error);
   assert.ok(parseComparisonRoles('IT 개발\nIT개발').error);

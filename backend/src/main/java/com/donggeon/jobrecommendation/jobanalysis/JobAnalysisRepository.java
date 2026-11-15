@@ -2,6 +2,7 @@ package com.donggeon.jobrecommendation.jobanalysis;
 
 import java.time.Instant;
 import java.util.Optional;
+import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -15,6 +16,12 @@ public interface JobAnalysisRepository extends JpaRepository<JobAnalysis, Long> 
     /** The same confirmed text and the same profile version give back the stored analysis. */
     Optional<JobAnalysis> findFirstByUserIdAndSourceHashAndTargetRoleAndProfileHashAndCalculatorVersionAndCreatedAtGreaterThanEqualOrderByIdDesc(
             Long userId, String sourceHash, String targetRole, String profileHash, String calculatorVersion, Instant cutoff);
+
+    List<JobAnalysis> findByUserIdAndSourceHashAndProfileHashAndCalculatorVersionAndCreatedAtGreaterThanEqualOrderByIdDesc(
+            Long userId, String sourceHash, String profileHash, String calculatorVersion, Instant cutoff);
+
+    List<JobAnalysis> findByUserIdAndProfileHashAndCalculatorVersionAndCreatedAtGreaterThanEqualOrderByIdAsc(
+            Long userId, String profileHash, String calculatorVersion, Instant cutoff);
 
     @Modifying
     @Query(value = "delete from job_analyses where created_at < :cutoff", nativeQuery = true)

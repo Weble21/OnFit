@@ -75,7 +75,7 @@ public class JobMatchScorer {
         var detail = json.readValue(original.detailJson(), Detail.class);
         var node = role.analysis().path("ratings");
         // Older AI services and historical explanations can still be read during a rolling update.
-        if (node.isMissingNode() && !Set.of("role-analysis-v10", "role-analysis-v11", "role-analysis-v12").contains(role.promptVersion())) return original;
+        if (node.isMissingNode() && !Set.of("role-analysis-v10", "role-analysis-v11", "role-analysis-v12", "role-analysis-v13").contains(role.promptVersion())) return original;
         if (!node.isArray()) throw new JobAiException("LLM_INVALID_OUTPUT");
         var ratings = json.readValue(node.toString(), JobAiClient.Rating[].class);
         var rubric = RubricScorer.evaluate(detail.rubric(), evaluationCriteria(detail), List.of(ratings), snapshot.evidenceItems());

@@ -1,6 +1,12 @@
+/** Normalize known role aliases without removing meaningful punctuation (C++, C#, etc.). */
+export function normalizeRole(text) {
+  return text.normalize('NFKC').replace(/\s/g, '')
+    .replace(/^s\/?w(?=$|[^a-z]|engineer|developer)/i, 'SW');
+}
+
 /** A comparison covers distinct roles in one reviewed posting. */
 export function parseComparisonRoles(text) {
-  const lines = text.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+  const lines = text.split(/\r?\n/).map(normalizeRole).filter(Boolean);
   const keys = lines.map(line => line.normalize('NFKC').replace(/\s+/g, '').toLocaleLowerCase());
   if (lines.length < 2 || lines.length > 5) return { roles: lines, error: '비교할 직무를 2개부터 5개까지 입력해 주세요.' };
   if (lines.some(line => line.length > 120)) return { roles: lines, error: '직무명은 각각 120자 이내로 입력해 주세요.' };
